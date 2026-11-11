@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Personal search criteria and other private notes
+private/
+
 # Local Claude Code settings
 .claude/settings.local.json
 
@@ -18,10 +21,17 @@ node_modules/
 dist/
 build/
 
-# Scraped data, caches, and generated output
-data/raw/
+# Local runtime data: database, alert emails, photos, caches, output
+data/
 cache/
 output/
+thumbnails/
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*-wal
+*-shm
 *.log
 
 # OS / editor
