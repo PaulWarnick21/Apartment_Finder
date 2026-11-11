@@ -6,9 +6,6 @@
 # Personal search criteria and other private notes
 private/
 
-# Local Claude Code settings
-.claude/settings.local.json
-
 # Python
 __pycache__/
 *.py[cod]
@@ -21,7 +18,7 @@ node_modules/
 dist/
 build/
 
-# Local runtime data: database, alert emails, photos, caches, output
+# Local runtime data: database, page snapshots, photos, caches, output
 data/
 cache/
 output/
