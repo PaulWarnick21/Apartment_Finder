@@ -1,178 +1,169 @@
 # Listing sources
 
-Which sites Apartment Finder should take Vancouver rental listings from, and how. Researched on
-2026-11-10: each site's own terms of use, robots.txt and help pages were read, then a second,
-independent pass tried to refute the findings. Listing counts are rough snapshots.
+Updated 2026-11-11. Apartment Finder discovers rentals directly from listing websites and
+collects their details for filtering, scoring, and the Sorting Desk.
 
-## Bottom line
+The previous source strategy has been superseded at the user's request. This document is an
+adapter evaluation plan, not a claim that automated access or coverage has been validated.
+Earlier inventory counts and access conclusions are not implementation assumptions.
 
-- **None of the major listing sites allows automated scanning.** Every portal checked forbids bots,
-  scrapers or automated collection in its terms. Zillow, Apartments.com, Rentals.ca, RentFaster,
-  Realtor.ca and liv.rent also actively block non-browser requests, and Craigslist's search RSS
-  feeds now return "blocked".
-- **What does work: each site's own saved-search alerts.** You save searches on the sites, they
-  email you new matches, and Apartment Finder reads those emails in a dedicated inbox. It uses only
-  what is in the email and never follows the links automatically. The sites do the scanning, and
-  "only new listings" comes built in. That is far lower risk than scanning, though not risk-free
-  for every site (see the notes below).
-- **Claude doesn't browse these sites, even though it technically could.** Research on
-  2026-11-11 found that a browser agent on a home connection would mostly get through, but
-  Anthropic's Usage Policy prohibits using Claude to circumvent other platforms' terms, so an agent
-  only browses sites whose terms allow it. Zillow is the exception through its official Claude
-  connector, which works for Vancouver and is the main automatic source.
-- **A few sites are browse-it-yourself.** Facebook Marketplace forbids automated collection even
-  when logged out, and most of it sits behind a login. Rentals.ca and RentFaster go further and
-  forbid using "automated means, algorithms, AI" to research rentals on their sites. Anything you
-  find there can be pasted into the Sorting Desk.
+The [2026-11-11 manual source smoke test](source-smoke-test-2026-11-11.md) retrieved
+listing details from 14 of 15 tested sites; liv.rent presented a verification challenge.
+Read the per-source limits: these are manual access results, not completed adapters.
 
-## Recommendation
+## Candidates
 
-| Site | Vancouver coverage (snapshot) | Automation allowed? | How Apartment Finder would use it | Verdict |
-| --- | --- | --- | --- | --- |
-| liv.rent | High: about 1,430 City of Vancouver listings; verified landlords | No | Your saved-search alerts | **Core** |
-| Zumper | High: about 1,540 citywide, about 230 downtown | No | Your alerts, emailed as new listings match | **Core** |
-| PadMapper | Same listings as Zumper (same company and backend) | No | Not needed: use Zumper | Skip |
-| Craigslist Vancouver | High: 300+ City of Vancouver ads in budget, but many reposts, basement suites and scams | No: scripts may not even open listing pages | Your alerts; only the email's content is used | **Core**, with scam checks |
-| REW.ca (MLS rentals) | Medium: 500+ in the City of Vancouver; realtor-listed condos with unit numbers, often view units | No | Your alerts (daily) | **Core** for view condos |
-| Hollyburn Properties | 50+ buildings, many West End towers | Content may not be stored; robots.txt allows | Hollyburn's own new-listing alerts by neighbourhood and budget; the desk keeps only the link and basic facts (no photos or text) | **Include** |
-| Kijiji | Medium-high: about 560 citywide, many bumped duplicates | No; RSS removed | Your alerts (daily only) | Optional |
-| Zillow | About 490 City of Vancouver rentals, about 30 new a day (connector test, 2026-11-11); also North Vancouver, Burnaby, Port Moody | No for the site; yes through its official Claude connector | Zillow's Claude connector: automatic searches for new listings, with view and amenity tags | **Core** (main automatic source) |
-| Apartments.com | Medium: about 1,700 citywide (Sep 2025), mostly managed buildings, overlaps | No; bot protection | Your alerts (contents unverified; test one first) | Optional |
-| Facebook Marketplace and rental groups | Probably high (unverified); scams are common | No, even logged out; login wall | Manual: paste the link plus the text or screenshots | Manual |
-| Rentals.ca | High: about 2,960 (Aug 2026), mostly purpose-built | No, and no AI use | Browse it yourself; the desk can track a listing, but Claude doesn't score it | Manual, no AI |
-| RentFaster | Medium: about 640 (Nov 2025); same network as Rentals.ca | No, and no AI use | Browse it yourself | Manual, no AI |
-| Realtor.ca | Unknown (blocked); the same MLS listings as REW | No; forbids "grounding" AI with its data | Not needed: REW covers the same listings | Skip |
-| Realtylink.org | About 1,620 region-wide (MLS) | No merging or republishing | Only if REW's alert emails turn out thin; its terms forbid merging its data with other data | Backup |
-| VADA Property Management | Coal Harbour, Yaletown and West End view condos (low volume) | No terms found; robots.txt allows listing pages | Later, if the alert sources leave gaps: a light direct check, after a final terms check | **Candidate for later** (the only direct source) |
-| Senakw (Kits Point towers) | New rental towers by the Burrard Bridge | Unknown | Register for their leasing updates | Optional |
-| CAPREIT (4 West End buildings) | Small | No (bans scraping) | Links on the desk; join waitlists | Manual |
+| Candidate | What to assess | Priority |
+| --- | --- | --- |
+| Zillow | Vancouver inventory, units versus building results, descriptions, photos, IDs | Trial |
+| Apartments.com | Local coverage, managed buildings, unit details, overlap | Trial |
+| Zumper | Vancouver coverage, freshness, unit details, photos, and neighborhood search | Selected for the Zumper/PadMapper network; adapter trial still required |
+| Facebook Marketplace | Local rentals, photos, authentication, unattended-session requirements | Early feasibility trial |
+| Craigslist Vancouver | Private-landlord listings, reposts, detail extraction, IDs | Trial |
+| REW.ca | Rental inventory, unit addresses, condo and view listings | Trial |
+| Rentals.ca / RentFaster | Local inventory, extractable details, duplicate coverage | Evaluate after first working adapters |
+| Kijiji | Unique listings and repost frequency | Evaluate after first working adapters |
+| Property managers including Hollyburn and VADA | Available units, photos, inventory missed by portals | Add where coverage warrants it |
 
-Not worth it: Reddit housing subreddits (few listings), sites built on Yardi RentCafe (its terms ban
-robots), and listing syndicators such as RentSync (their listings already reach Zumper and the
-Rentals.ca network).
+Priorities describe investigations, not guaranteed launch integrations. Start with a small set
+of working sources and expand where a source adds useful unique apartments.
 
-## Per-site notes
+## Deferred sources
 
-**liv.rent.** Vancouver-based with structured listings, 10 to 20 photos each, and a verification
-program (landlord ID or business licence, proof of ownership) that cuts down on scams. Terms (7.1)
-ban scraping, bots and automated processes. A "Create Alert" option exists on search results, and
-account settings have email notifications for matches. Whether alerts go out by email or only as
-push notifications, and what the emails contain, is still to be confirmed.
+- **liv.rent**: removed from the planned scanners at the user's request on 2026-11-11,
+  following the access challenge in the manual test. Exclude it from implementation and
+  recurring discovery for now; reconsider only if the user asks to restore it. Historical
+  test results remain in the smoke-test report.
 
-**Zumper / PadMapper.** One company and one listing backend, so use Zumper only. Strong downtown
-coverage with good structured data. Terms (section 11) ban harvesting data and automated crawling.
-Zumper's help centre (July 2025) says it emails you every time a new listing fits a saved search,
-which makes it the fastest alert source.
+## Zumper / PadMapper decision
 
-**Craigslist.** Huge private-landlord volume, and the source with the most scams and reposts. The
-terms ban robots, scripts and scrapers, and allow only Craigslist's app, ordinary web browsers and
-email clients to interact with the site, so the tool must not even open listing pages from alert
-links. Liquidated damages in the terms run to $3,000 a day. Saved-search alerts need an account;
-how often they arrive and what they contain is unverified.
+On 2026-11-11, select **Zumper only** for this network and remove PadMapper from planned
+recurring discovery. The user requested one source where the two duplicate listings.
 
-**REW.ca.** MLS rental listings posted by realtors: exact unit-number addresses, professional
-photos, and many high-floor downtown and waterfront condos, which suit a view-focused search. Terms
-ban scraping and robots, and also any activity meant to collect, store or reorganize data from its
-pages. Reading your own alert emails is defensible for private, non-commercial use, but it is a
-grey area. Alerts are daily.
+- [Zumper's official help article](https://help.zumper.com/hc/en-us/articles/360045262634-What-other-apartment-search-sites-will-Zumper-list-my-property-on)
+  states that listings published on Zumper are also published on PadMapper.
+- [Zumper's listing plans](https://www.zumper.com/manage/premium-listings) also identify
+  PadMapper as an automatic distribution destination.
+- [PadLister's migration notice](https://padlister.com/) says its landlord accounts moved
+  to Zumper Pro. This supports choosing Zumper as the upstream publishing platform.
 
-**Hollyburn Properties.** The largest West End purpose-built landlord. It runs an official "get
-alerts on new apartments" signup by city, neighbourhood and budget, the most clearly sanctioned
-channel found. Its legal disclaimer allows personal viewing but bars storing content without consent,
-so no copies of its pages or photos.
+These sources establish shared listing distribution, not an exhaustive guarantee that every
+Vancouver search result is identical at every moment. Using one adapter is a practical
+consolidation decision; no quantified coverage-parity or superior extraction claim has been
+validated. Test Zumper's current availability signals and photo extraction before enabling
+scheduled scans. Do not add a separate PadMapper scanner or automatic fallback.
 
-**Kijiji.** Many Vancouver listings, but heavily bumped and duplicated. Terms ban robots and
-scrapers; RSS feeds have been removed. Web alerts arrive once a day. One archived help page suggests
-some Kijiji notifications only give a count of new ads, so its usefulness depends on what the emails
-actually contain.
+## Other source overlap and processing policy
 
-**Zillow and Apartments.com.** Both ban automated access and use bot protection (PerimeterX and
-Akamai). Their Vancouver inventory is mostly managed buildings that likely also appear on Zumper and
-liv.rent. Zillow, however, has an official connector for Claude. Tested on 2026-11-11, it returned
-Vancouver, BC rentals with the address (often including the unit number), coordinates, rent, beds,
-baths, size and link, and it filters by Zillow's view tags, a search of the description, amenities
-and days on Zillow. It returns no photos or descriptions, and its details tool doesn't cover active
-listings. Apartments.com is worth one test alert; keep it only if its emails add listings the core
-sources miss.
+Research checked 2026-11-11:
 
-**Facebook Marketplace.** Probably one of the biggest private-landlord channels, but Meta's terms
-require express written permission for any automated collection, logged in or not; robots.txt
-blocks every path; and there is no API for reading rental listings. Keep it manual: share or copy
-the link and paste it with the text or screenshots.
+- **PadMapper versus Zillow:** no authoritative evidence found that they mirror the same full
+  inventory. [Zillow identifies Zillow, Trulia and HotPads as its rental network](https://www.zillow.com/rentals-network/),
+  while [Zumper documents distribution to PadMapper](https://help.zumper.com/hc/en-us/articles/360045262634-What-other-apartment-search-sites-will-Zumper-list-my-property-on).
+  This does not prove zero overlap or exact Vancouver coverage. Keep Zillow as a separate
+  candidate; keep PadMapper excluded in favor of Zumper. Do not add Trulia or HotPads scanners
+  without evidence of useful unique local coverage.
+- **Canadian shared feeds:** [Zumper's Canada documentation](https://help.zumper.com/hc/en-us/articles/360011031413-Can-I-post-listings-on-Zumper-and-PadMapper-in-Canada)
+  identifies Rentsync as its service for larger Canadian listing providers.
+  [Rentsync's update schedules](https://help.rentsync.com/when-do-my-ads-get-updated) describe
+  distribution to Rentals.ca, RentFaster, Zumper/PadMapper and other sites including REW and
+  Kijiji, with different update times. Shared feeds establish overlapping inventory, not
+  identical complete inventories or equally fresh facts. Retain these as evaluation candidates.
 
-**Rentals.ca and RentFaster.** One network, strong in purpose-built buildings. Besides banning bots,
-their terms say the personal-use licence may not be exercised by "automated means, algorithms, AI",
-which covers having Claude score their listings even from your alert emails. Treat them as sites you
-browse yourself.
+Before enabling additional sources, compare a bounded sample of current Vancouver units
+against enabled sources. Record confirmed duplicates, genuinely new apartments, uncertain
+matches, additional useful facts/photos, freshness, and processing cost. Select one reliable,
+complete source per confirmed redundant group; defer sources adding no useful coverage or
+evidence in the trial. Do not claim an entire site is redundant from ownership alone or a
+small sample with incomplete coverage.
 
-**VADA Property Management.** Manages individually owned condos in exactly the towers this search is
-about (Coal Harbour, Yaletown, West End). No terms of use were found and robots.txt allows the
-listing pages, so a light direct check is the one place automated fetching looks acceptable. It is
-planned for a later phase, only if the alert sources leave gaps. Confirm there are no terms before
-building it, and filter out furnished and short-term units.
+For sources retained because they add unique apartments, perform cheap identity/change checks
+first. Share one apartment record and assessment across confirmed duplicate ads. Reuse unchanged
+photo assessments and research; inspect only new evidence and recalculate affected criteria for
+material changes. Preserve source links, conflicting facts, timestamps, and uncertain duplicates.
+Some lightweight discovery and detail fetching is necessary to detect duplicates and updates;
+avoid repeated expensive analysis rather than promising zero repeated requests.
 
-## What you would set up (once, about an hour)
+## Access and extraction
 
-1. A dedicated Gmail account just for listing alerts, so the tool never touches your personal email.
-   Turn on 2-Step Verification (needed for the app password the tool reads mail with), and add a
-   filter so alert emails never go to spam.
-2. Accounts and saved searches with email alerts, using that address, on liv.rent, Zumper,
-   Craigslist, REW.ca and Hollyburn (optionally Kijiji, Zillow and Apartments.com). Filters: your
-   areas, whole unit, long-term, and a price cap set a little above your budget, so listings with
-   incentives (such as a free month) still come through. The tool applies the real limit.
-3. A one-time sweep: alerts only cover listings posted from now on, so browse each site once and
-   paste anything promising into the Sorting Desk.
-4. If speed matters most, keep the phone app's push alerts on for your top one or two sites. A scan
-   a few times a day is for sorting, not for being first.
+Each source gets an adapter for search discovery and listing details. Use ordinary HTTP for
+usable HTML or structured page data, and Playwright for pages requiring browser rendering.
+Keep parsing deterministic wherever possible.
 
-Apartment Finder never logs in to any of these sites or creates accounts on your behalf.
+Record for each candidate:
 
-## What alert emails contain
+- Representative search/listing URLs, filters, pagination, and date-ordering behavior.
+- Current access conditions, terms, authentication needs, and observed rate limits.
+- Whether unattended runs work and what interaction, if any, is required.
+- Available ID, address/unit, rent, beds/baths, size, dates, description, photos, and amenities.
+- Whether a result is a specific apartment or a building advertisement with multiple units.
+- How to recognize reposts, edits, and explicit rented/removed notices.
+- Expected request volume, cache strategy, photo handling, and failure signals.
 
-Researched 2026-11-11. Only Zillow's format is publicly documented; nothing public shows the others.
+Login prompts and access challenges are source failures needing attention. Do not use CAPTCHA
+solving, identity rotation, or other access-control bypasses. An unreliable source is shown as
+unavailable; it does not silently change the product's intake model.
 
-| Site | Delivery | How often | Known contents |
-| --- | --- | --- | --- |
-| Zillow | Email and push; account needed | Instant or daily | One photo, rent, beds, baths, size, address, link; no description (from a real US email; rentals assumed the same) |
-| Zumper | Email and push; email address only, no account needed | Each new match (help centre, 2025) | Unknown |
-| liv.rent | Account needed; email probably | "Instant", per liv.rent | Unknown |
-| Craigslist | Email; account needed | Varies; up to 20 listings per email; renewed and reposted ads are re-sent | Unknown |
-| Kijiji | Email or app | Once a day on the web | Unknown |
-| REW.ca | Email; account needed | Daily only | Unknown |
-| Apartments.com | Account needed | Unknown | Unknown |
-| Hollyburn | Email; no account | Each time a matching suite opens up | Unknown |
-| Realtylink | Email; account needed | Instant, daily or weekly | Unknown |
+## Incremental scans
 
-Expect enough to identify a listing and apply the hard rules (rent, beds, area), often with one
-photo; the description and window photos are unlikely. The first week of real alerts settles it.
+### Conservative access policy
 
-## Still to verify
+These are initial engineering defaults, not a guarantee against blocks or a claim that browser
+automation is indistinguishable from a person. Adjust source-specific limits only with evidence
+from ordinary access trials; prioritize fewer requests and caching over faster navigation.
 
-- What each site's alert email actually contains. The first week of real emails decides which
-  sources stay.
-- Whether the Zillow connector works in an unattended scheduled run, and any rate limits on it.
-- That VADA really has no terms of use restricting automated access.
+- Start with at most five top-level page visits per source per run, including discovery,
+  details, refreshes and gallery pages, and at least ten seconds between navigations. Use
+  one active source and one navigation at a time by default, with no concurrent tabs on the
+  same source. Configure daily limits too so additional manual runs cannot multiply traffic.
+- Count gallery/API requests and image retrieval separately from top-level visits; page count
+  alone understates traffic. Set bounded per-source media/request budgets during adapter trials,
+  avoid speculative prefetches, and limit scanner-initiated media retrieval concurrency. Normal
+  browser subresources still consume traffic. Queue unfinished galleries for later runs.
+- Use a persistent, private browser profile per source when browser rendering/authentication is
+  needed, with normal cookies and the same host/network under ordinary operation. Do not rotate
+  proxies, identities or fingerprints, reset cookies to evade limits, or attempt CAPTCHA bypass.
+  Use simpler supported HTTP access where validated; all access paths share the same budgets.
+- At the first unusual-traffic notice, challenge, rate-limit response, unexpected error page,
+  or abnormal slowdown, stop further requests to that source, including pending media requests.
+  Persist reason, last successful step and paused-until time. Default cooldown is at least
+  24 hours from the warning, longer if the source requests it. No immediate retry loop, alternate
+  identity, or fallback endpoint to get around the warning. Other sources may continue.
+- An ordinary listing-not-found page is handled as a listing status observation, not automatically
+  a site-wide block; generic error pages remain source failures. Define slowdown/error signals in
+  each adapter rather than interpreting all slow responses as harmless.
+- After a rate-limit/transient-error cooldown, allow one ordinary recovery request; pause again
+  if it fails. Authentication and human-verification challenges need access recovery before
+  resuming, not repeated daily challenge attempts. Manual scans and restarts respect this state.
+- Show a prominent source-paused notice in the desk and one activity notification when it happens,
+  including the reason, incomplete coverage and next eligible check. Do not repeatedly notify
+  unchanged status. External delivery remains optional until configured.
+- Cache fetched facts/photos and reuse assessments across confirmed duplicates. Process cached
+  images locally without further page visits. Full-gallery review may span runs: record exactly
+  what remains pending instead of sampling photos or raising site traffic to finish sooner.
 
-## Key sources
+Verify budgets, sequential access, stop-on-warning behavior, persisted cooldowns, manual-run
+limits and interrupted-gallery recovery with focused tests. No assumption is made that blocks
+will be temporary or that these settings are acceptable to every site.
 
-- Craigslist: [terms of use](https://www.craigslist.org/about/terms.of.use/en),
-  [robots.txt](https://vancouver.craigslist.org/robots.txt),
-  [saved searches help](https://www.craigslist.org/about/help/account/features/searches)
-- Facebook: [Automated Data Collection Terms](https://www.facebook.com/legal/automated_data_collection_terms),
-  [robots.txt](https://www.facebook.com/robots.txt)
-- Zillow: [terms of use](https://www.zillow.com/z/corp/terms/), [robots.txt](https://www.zillow.com/robots.txt)
-- Apartments.com: [terms of service](https://www.apartments.com/grow/about/terms-of-service)
-- Zumper: [terms and conditions](https://www.zumper.com/terms-and-conditions); PadMapper: [terms](https://www.padmapper.com/tos)
-- Rentals.ca: [terms](https://rentals.ca/terms), [robots.txt](https://rentals.ca/robots.txt)
-- liv.rent: [terms](https://liv.rent/terms),
-  [how listings are verified](https://liv.rent/guides/safety-security/verified-listings/how-liv-rent-verifies-landlords-and-listings)
-- RentFaster: [terms of use](https://www.rentfaster.ca/terms-of-use/)
-- Kijiji: [terms of use](https://community.kijiji.ca/helpdesk/policies/kijiji-terms-of-use),
-  [creating search alerts](https://community.kijiji.ca/t/how-to-create-search-alerts/165)
-- Realtor.ca: [terms of use](https://www.realtor.ca/terms-of-use); REW.ca: [terms](https://www.rew.ca/terms)
-- Hollyburn: [find an apartment](https://www.hollyburn.com/find-an-apartment/),
-  [legal disclaimer](https://www.hollyburn.com/legal-disclaimer/)
-- VADA: [rentals search](https://vadapm.com/search/for-rent), [robots.txt](https://vadapm.com/robots.txt)
-- CAPREIT: [terms of use](https://www.capreit.ca/terms-of-use/)
-- Realtylink: [rentals](https://realtylink.org/en/properties~for-rent),
-  [terms](https://realtylink.org/en/terms-use-privacy-policy)
+### Discovery and refresh
+
+Initially discover current inventory in manageable slices. Later discover recent results,
+compare stable source IDs and content fingerprints, and fetch new or changed details. Use an
+overlap window to catch delayed/reordered results. If a source cannot sort reliably by date,
+scan bounded result pages and deduplicate by ID; report when bounds leave coverage incomplete.
+
+Refresh shortlisted listings selectively for price and availability. Failures or incomplete
+pagination must not advance successful-scan checkpoints or mark homes gone. Preserve successful
+items from partial runs and resume unfinished work only within the access policy above.
+
+## Adapter acceptance criteria
+
+1. A real search produces identifiable rentals with working source links.
+2. Core facts, descriptions, and available photos are checked against actual listing pages.
+3. Repeat scans create no duplicate cards and do not re-score unchanged content.
+4. Edited listings update facts without overwriting user stages or notes.
+5. Missing fields stay unknown; blocked/malformed pages are not mistaken for empty inventory.
+6. Field completeness, errors, timestamps, and discovery coverage appear in source health.
+
+Manual entry is an optional convenience, not a requirement for normal operation.
