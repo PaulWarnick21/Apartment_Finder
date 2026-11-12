@@ -1,8 +1,8 @@
 # Design
 
 Updated 2026-11-11 following the user's confirmed direction. This plan implements
-[requirements.md](requirements.md) as a standalone apartment-search application. No application
-code exists yet. The architecture below is the implementation default; remaining preferences
+[requirements.md](requirements.md) as a standalone apartment-search application. The first local
+version is implemented; see README for tested scope and outstanding work. The architecture below describes the target; remaining preferences
 are listed at the end.
 
 ## 1. Product and architecture
@@ -62,6 +62,12 @@ The application obtains details itself. If a source cannot provide photos or a f
 the gap on the card and preserve uncertainty in the score.
 
 ## 3. One scan
+
+**Current approval gate:** the user must approve the source and page/listing/photo/AI limits
+before the first live scan. Startup performs no scans or catch-up work. Approval is for one run
+only, expires after one hour, and does not authorize recurring scans. Defaults are one apartment,
+two pages, twelve photos, zero AI calls. Larger galleries stay pending instead of being sampled
+and labelled complete. Subsequent scheduler/catch-up behavior below remains a future opt-in.
 
 1. Claim queued work with a database-backed lock so scheduled and manual scans cannot overlap.
 2. Discover postings from enabled sources, recording progress and source failures. Check known
@@ -171,6 +177,18 @@ them. Do not tune every example independently with hidden adjustments.
 - Store parking count, availability, inclusion, recurring fee, and evidence independently.
   Use **Parking Unsure** when availability or inclusion is unclear. Unknown is not unavailable;
   no automatic rejection for lack of parking is currently configured.
+- Store laundry location, washer/dryer inclusion, exclusivity and unit-specific evidence.
+  Distinguish shared-only facilities from shared amenities offered alongside in-unit machines;
+  hookups or generic building amenities cannot confirm in-unit laundry. Apply the private
+  laundry eligibility rule as a hard filter. Unknown/conflicting evidence produces Laundry
+  Unsure; confirmed failures remain excluded regardless of bonuses. Reevaluate existing homes
+  when the requirement changes, preserving historical assessments, IDs and user-managed stages.
+- Record unit internet provider/service, connection type, download/upload speeds, dedicated
+  versus shared service, inclusion and cost when stated, with evidence provenance. Generic
+  "high-speed internet" or building-wide service does not establish actual unit performance.
+  Missing information is Internet Unsure, with no automatic exclusion or score deduction.
+  Support a manual pre-lease check of service availability, speeds, reliability and cost;
+  performance thresholds and any score adjustment remain private configuration choices.
 - Furnishings receive a small bonus. The price premium remains part of the normal value score;
   optional furnishing-cost comparisons must disclose the assumed tenancy and setup cost rather
   than double-counting those costs in the score.
@@ -192,6 +210,11 @@ Store view verification separately from quality: unverified, photo-confirmed nat
 or photo-assessed outlook without visible nature. Record scenery type, room/window, supporting
 photo reference, visible obstructions, and whether nature or buildings dominate the outlook.
 One photographed window does not establish the outlook from every room.
+Record compass direction by room/window where supported, distinguishing the main outlook
+from secondary exposures. Use unit-specific descriptions, oriented floor plans or reliable
+geographic evidence; brightness and generic scenery claims do not establish direction.
+Apply the private orientation bonus once when supported. Ambiguous exposure is Orientation
+Unsure, with no earned bonus; direction alone cannot establish a qualifying nature view.
 Street-level trees alone do not establish the desired nature view. Distinguish distant forest
 from nearby landscaping. When sufficient unit-specific evidence confirms only building/street
 outlooks and no qualifying nature, apply the confirmed-failure rule above. Partial qualifying
@@ -352,6 +375,13 @@ latency, and cost. Credentials are needed before live scoring. Provider and spen
 remain open preferences. Do not assume a chat subscription funds API use or reuse unverified
 model/pricing estimates.
 
+The user subsequently selected existing ChatGPT Pro usage without additional purchases.
+The local implementation now defaults to OpenAI's documented Sign in with ChatGPT plan-usage
+flow, with account consent, a model catalog, and Windows-protected credentials. This is separate
+from API-key billing and the API-credit benefit. It has no automatic paid-key fallback. Usage
+shares the account's existing allowance; the user controls app limits and purchased-credit
+overflow in ChatGPT settings. Live account eligibility and inference still need validation.
+
 Track usage per run and enforce an application-level spending limit. Reduce work with hard
 filters, duplicate detection, content fingerprints, cached research, and reuse of unchanged
 photo assessments. Full gallery coverage remains required for assessed apartments. Estimate
@@ -394,8 +424,8 @@ These refine the plan; they do not reopen the confirmed direction or require ano
 architecture approval.
 
 - Further criteria: move-in dates, budget basis, minimum size, preferred short-term duration,
-  pets, laundry, cooling, noise tolerance, and other must-haves. Initial bedroom, workspace,
-  parking, furnishing, and short-term lease preferences are captured in private configuration.
+  pets, cooling, noise tolerance, and other must-haves. Initial bedroom, workspace, laundry,
+  parking, furnishing, and short-term lease criteria are captured in private configuration.
 - Exact station walking limits and airport journey tolerance; relative preference among
   qualifying nature types. Area priorities and the poor rating of building-only views are set.
 - Whether confirmed lack of parking should become a hard exclusion, studio exception thresholds,

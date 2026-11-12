@@ -11,6 +11,80 @@ The [2026-11-11 manual source smoke test](source-smoke-test-2026-11-11.md) retri
 listing details from 14 of 15 tested sites; liv.rent presented a verification challenge.
 Read the per-source limits: these are manual access results, not completed adapters.
 
+## Initial application trial — 2026-11-11
+
+Follow-up trial: the visible Chrome sessions captured three candidates each from Zillow,
+REW and Facebook Marketplace. Their scoped structured galleries yielded 85, 50 and 43
+reviewed photos respectively; one REW candidate failed the shared-laundry requirement
+before image retrieval. This added eight ChatGPT-plan gallery calls, without paid API
+fallback. The completed trial now contains 36 candidates across all 12 remaining sources.
+Apartments.com automatically discovered and processed three candidates through normal Chrome:
+two eligible-for-review candidates had all 41 and 15 gallery photos reviewed; a third
+failed the rent ceiling before gallery retrieval. Version 0.2.3 follows the actual photo
+viewer and excludes separate building/map previews. Incomplete galleries defer AI review.
+The final repair used cached images and two ChatGPT-plan gallery calls. All current
+candidate galleries total 607 reviewed images. Recurring scans remain disabled. See private
+`data/live/remaining-trial/coverage.json` for per-source results.
+
+Zumper clarification: the earlier “floor-plan candidates” wording described unit-type ads,
+not galleries containing only floor-plan drawings. The three saved galleries contain
+17, 22 and 45 interior photographs respectively. Exact-suite attribution remains unverified.
+The desk now requires reviewed interior photographs; floor-plan-only and missing-photo
+records remain outside the active list without losing their history.
+
+All 14 configured sources were checked under the user's three-candidates-per-source
+authorization. The application saved 24 candidates and reviewed all 373 retrieved
+photos using 20 gallery requests through the connected ChatGPT plan. No API-key
+fallback was used. Further scans await user review; recurring scans remain disabled.
+
+| Source | Trial outcome |
+| --- | --- |
+| Craigslist, VADA, Kijiji, Hollyburn, Austeville, EasyRent, Sunstar | Three captured candidates per source |
+| Zumper | Three priced one-bedroom floor-plan candidates; specific suites unconfirmed |
+| Zillow, Apartments.com, REW, Rentals.ca, RentFaster | HTTP 403 access warnings; paused without retries |
+| Facebook Marketplace | Authenticated scanner session required; no listing access established |
+
+Three candidates failed hard requirements before photo retrieval. One Kijiji ad
+provided no images. Every other captured gallery was retrieved and reviewed in full.
+Representative images, display suites, balcony-only vistas, and unclear window
+outlooks remain explicitly unverified. Zumper's three galleries contained 119 images;
+its sequential daily image allowance was bounded at 150 for this trial.
+
+The newer sources used captured-page extraction during this validation. This does
+not establish reliable incremental discovery: their normal scan adapters remain
+disabled. Craigslist gallery extraction and VADA's discovery URL/gallery scoping
+were corrected against the live pages. Tests cover gallery enumeration, unrelated
+gallery exclusion, negative laundry statements, and complete AI result coverage.
+
+Private snapshots, extracted facts, photo findings, per-source outcomes, and database
+backups are stored under gitignored `data/`. The current report is
+`data/live/initial-trial/final-report.json`; the Sources screen shows its summary.
+
+## Visible Chrome access test — 2026-11-11
+
+The user explicitly authorized a supervised recovery test using visible, installed
+Chrome and dedicated persistent profiles. One previously known listing URL was
+visited per affected source, with no listing imports or AI requests. This was a
+specific recovery authorization, not an automatic retry policy or scheduled scan.
+
+- Zillow and REW listing pages loaded with rental details.
+- Facebook required the user to sign in. After sign-in, native browser inspection
+  confirmed account controls, the requested Marketplace listing, and an apartment
+  photo. The test window closed normally; the dedicated profile is retained.
+  Automated extraction and persistence across reopening remain unvalidated.
+- Apartments.com returned HTTP 403 for the main document.
+- Rentals.ca returned 403 for supporting API requests, including similar rentals
+  and account-specific endpoints. RentFaster returned 403 for a saved-search endpoint.
+  These observations do not establish that the public listing pages are inaccessible.
+
+The visible mode permits normal HTTPS subresources within a bounded request budget.
+Diagnostics distinguish main documents from supporting requests and omit URL queries
+and credentials. No stealth modifications, proxy rotation, or CAPTCHA solving were
+used. Browser choice, resource loading and direct listing URLs changed together, so
+this test does not isolate which change restored access. Normal source adapters
+remain disabled until discovery and extraction are validated. Private results and
+profiles live under gitignored `data/live/chrome-access-test/` and `chrome-profiles/`.
+
 ## Candidates
 
 | Candidate | What to assess | Priority |
@@ -21,7 +95,6 @@ Read the per-source limits: these are manual access results, not completed adapt
 | Facebook Marketplace | Local rentals, photos, authentication, unattended-session requirements | Early feasibility trial |
 | Craigslist Vancouver | Private-landlord listings, reposts, detail extraction, IDs | Trial |
 | REW.ca | Rental inventory, unit addresses, condo and view listings | Trial |
-| Rentals.ca / RentFaster | Local inventory, extractable details, duplicate coverage | Evaluate after first working adapters |
 | Kijiji | Unique listings and repost frequency | Evaluate after first working adapters |
 | Property managers including Hollyburn and VADA | Available units, photos, inventory missed by portals | Add where coverage warrants it |
 
@@ -30,6 +103,11 @@ of working sources and expand where a source adds useful unique apartments.
 
 ## Deferred sources
 
+- **Rentals.ca and RentFaster**: removed from active scan configuration at the user's
+  request on 2026-11-11. Exclude them from upcoming trials and recurring discovery;
+  reconsider only if requested. Historical access results above are retained. The
+  remaining configured source list contains 12 sources; configuration is not a claim
+  that all 12 have validated automated adapters.
 - **liv.rent**: removed from the planned scanners at the user's request on 2026-11-11,
   following the access challenge in the manual test. Exclude it from implementation and
   recurring discovery for now; reconsider only if the user asks to restore it. Historical
@@ -158,6 +236,37 @@ pagination must not advance successful-scan checkpoints or mark homes gone. Pres
 items from partial runs and resume unfinished work only within the access policy above.
 
 ## Adapter acceptance criteria
+
+Completed normal-Chrome trial (2026-11-11): automatic discovery, bounded listing visits,
+full gallery capture and ChatGPT-plan review succeeded for the three-candidate trial.
+The two candidates below the rent ceiling matched their advertised gallery counts exactly
+(41/41 and 15/15). The earlier prototype results below are historical. Normal Chrome and
+the local app must remain running; access warnings still pause the source. This successful
+trial does not guarantee uninterrupted future access or enable recurring scans.
+
+Normal Chrome bridge prototype (2026-11-11): the user confirmed that the Apartments.com
+Coopers Lookout listing opens in their regular Chrome, while the dedicated scanner received
+a main-document 403. The local `extension/` prototype supports a paired, explicitly approved
+read of that already-open page. It saves cleaned markup and loaded image URLs locally for
+extractor validation; it does not navigate, download photos, score or import apartments.
+Pairing expires after ten minutes and each capture authorization is single-use. Full gallery
+coverage remains false, source pauses are preserved, and automated source readiness remains
+pending until installation and real-page extraction have been verified. This is a connection
+test toward direct scanning, not a replacement requiring ongoing manual intake.
+
+The first installed-extension capture succeeded without an access warning. It advertised
+20 photos but exposed only five distinct listing photos in the initial capture. Offline
+extraction recovered rent, room counts, amenities and parking, with lease/availability
+conflicts preserved. The capture sanitizer had removed the listing header; version 0.1.1
+preserves it and reads additional existing gallery metadata. Full gallery retrieval,
+AI review and automated discovery remain unvalidated; no readiness flag or pause is cleared.
+
+Installed version 0.1.1 was subsequently validated against two matching captures: the
+listing header is intact and nine distinct gallery image references are available against
+20 advertised photos. The connection test is complete; repeating the same static capture
+does not provide the missing images. Remaining work is gallery interaction/enumeration,
+bounded image retrieval and review, followed by discovery integration. The user has completed
+the setup successfully and should not be asked to repeat an unchanged connection test.
 
 1. A real search produces identifiable rentals with working source links.
 2. Core facts, descriptions, and available photos are checked against actual listing pages.

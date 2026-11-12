@@ -5,7 +5,7 @@ them against private criteria, and manage promising homes in a persistent Sortin
 
 ## Status and documents
 
-Planning only; no application code yet. Read before implementation:
+Implementation in progress; live scanning requires explicit user approval. Read before changes:
 
 - `docs/requirements.md`: the user's requirements.
 - `docs/design.md`: architecture, implementation defaults, and remaining preferences.
@@ -18,6 +18,9 @@ proprietary connectors, or manual detail collection as prerequisites.
 
 ## Conventions
 
+- Never start a live listing scan or paid AI request without the user's approval of a bounded
+  scan plan. Startup, tests and demos must remain offline. Scheduled scans are disabled until
+  separately enabled; first-scan approval is not recurring authorization.
 - Default to TypeScript, a React Sorting Desk, a Node backend/worker, SQLite, and Playwright
   for sources needing browser rendering. Pin compatible versions at setup.
 - Keep AI behind a provider interface. Code handles filtering and score arithmetic; a

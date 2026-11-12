@@ -11,6 +11,8 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
   (see [listing-sources.md](listing-sources.md)).
 - Use Zumper only for the shared Zumper/PadMapper network; PadMapper is excluded from planned
   recurring discovery following the user's source-consolidation request.
+- Rentals.ca, RentFaster and liv.rent are deferred at the user's request. Do not include
+  them in new scans or access trials unless the user asks to restore them.
 - Avoid separate recurring scans of sources demonstrated to duplicate the same inventory.
   Evaluate additional sources for unique apartments, useful evidence, freshness, and cost;
   shared ownership or partial syndication alone does not establish full redundancy.
@@ -51,6 +53,11 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 - Below 3.0 means unsuitable: those listings are dropped and not worth investigating.
 - Scoring uses the listing's photos, its description, and a search of the address and the
   surrounding area.
+- Actual apartment interior photographs are required for the active desk. Floor-plan-only,
+  exterior-only and amenity-only galleries are excluded. Missing or not-yet-reviewed photos
+  remain held out until interior photos are verified. Preserve records and user decisions;
+  do not confuse this photo requirement with proof that a nature view is absent. Representative
+  interiors must remain clearly labelled as unit-unverified and cannot confirm the unit's view.
 - Review every accessible photo attached to each apartment being assessed, including the full
   gallery and additional photos on confirmed duplicate ads. Do not stop at the first good or
   bad window photo. Reuse compatible assessments of unchanged images rather than repeating work.
@@ -75,6 +82,15 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
   the unit from the active desk. Missing or inconclusive photos do not establish failure.
 - Unknown parking produces a **Parking Unsure** flag. Keep factual uncertainty distinct from
   confirmed absence, and distinguish hard exclusions from preferences and small bonuses.
+- Extract unit-specific laundry facilities and evidence, distinguishing in-unit machines,
+  shared/building-only facilities, hookups only, none, and unknown/conflicting information.
+  Apply the laundry hard requirement in private configuration before ranking. A confirmed
+  failure excludes the apartment regardless of its score; unknowns show **Laundry Unsure**
+  pending verification. Preserve historical scores and user workflow decisions when criteria change.
+- Record advertised internet service and supporting details for work-from-home suitability.
+  Unspecified internet is **Internet Unsure**, with no automatic exclusion or score deduction;
+  surface it as a manual check before signing a lease. Do not treat included internet or vague
+  speed claims as proof of adequate performance. Thresholds and scoring weights remain unset.
 - Support explicit additive overall-score bonuses for a usable den/office in a unit without
   a second bedroom, and for a short-term lease, using the provisional values in private criteria.
   Avoid double-counting benefits. Keep the final score at or below 5.0; bonuses cannot override
@@ -84,6 +100,9 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
   or layout rather than awarding unsupported bonuses.
 - Record stove/cooktop fuel type with supporting evidence and support a separate gas-cooking
   bonus from private criteria. Do not infer stove fuel from a gas fireplace or included utilities.
+- Record the apartment's outlook direction and supporting evidence. Support an additive
+  preferred-orientation bonus configured in private criteria, awarded once per apartment.
+  Unknown or ambiguous exposure stays uncertain; other directions are not a hard exclusion.
 
 ## R5 Sorting Desk (private web app)
 
