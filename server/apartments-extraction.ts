@@ -1,0 +1,51 @@
+import {load} from 'cheerio';
+import {listingSchema} from '../src/domain.ts';
+import {createHash} from 'node:crypto';
+type Capture={url:string;title:string;html:string;images:{url:string}[];advertisedPhotos:number|null;warning:string|null;truncated:boolean};
+const clean=(s:string)=>s.replace(/\s+/g,' ').trim();
+const number=(s:string|undefined)=>s?Number(s.replace(/,/g,'')):null;
+/** Offline extraction from the extension's captured DOM; never performs requests. */
+export function extractApartments(c:Capture){
+ const u=new URL(c.url);if(u.origin!=='https://www.apartments.com'||u.username||u.password)throw new Error('Not an Apartments.com capture');
+ if(c.warning)throw new Error('Access warning: capture cannot be treated as a listing');
+ if(c.truncated)throw new Error('Capture truncated; complete listing evidence is required');
+ const $=load(c.html),description=clean($('#descriptionSection > p').map((_,e)=>$(e).text()).get().join('\n'));
+ if(!description)throw new Error('Listing description missing; extractor needs validation');
+ const header=clean($('#profileHeaderWrapper').text()),amenities=clean($('#amenitiesSection').text());
+ const label=clean($('#descriptionSection .leaseDepositLabel').text());
+ const title=clean(c.title.split(' - ')[0]).slice(0,500);
+ const evidence:Record<string,string>={},conflicts:string[]=[];
+ const rentText=clean($('#unitDetailInfoWrapper .propertyBlurbContent').text()).match(/rentals from\s*\$([\d,]+)/i);
+ const rent=number(rentText?.[1])??number(header.match(/\$([\d,]+)\s*Total Monthly Price/i)?.[1]);if(rentText)evidence.rent=rentText[0];
+ const beds=number(header.match(/Bedrooms?\s*(\d+)/i)?.[1])??number(description.match(/\b(\d+)[ -]bedroom/i)?.[1]),baths=number(header.match(/Bathrooms?\s*(\d+(?:\.\d+)?)/i)?.[1])??number(description.match(/\b(\d+(?:\.\d+)?)[ -]bathroom/i)?.[1]);
+ const describedSize=number(description.match(/\b([\d,]+)\s*(?:square feet|sq\.?\s*ft)/i)?.[1]);
+ const headerSize=number(header.match(/Square Feet\s*([\d,]+)/i)?.[1]);
+ const sqft=headerSize!==null&&describedSize!==null&&headerSize!==describedSize?null:headerSize??describedSize;
+ if(headerSize!==null&&describedSize!==null&&headerSize!==describedSize)conflicts.push(`Size differs: header ${headerSize} sq ft; description ${describedSize} sq ft.`);
+ if(!header)evidence.capture='Listing header absent from this capture; header facts and conflicts cannot be verified.';
+ const leaseMonths=number(label.match(/(\d+)\s*Month Lease/i)?.[1]),minimumMonths=number(description.match(/Minimum\s+(\d+)[ -]month lease/i)?.[1]);
+ const leaseConflict=leaseMonths!==null&&minimumMonths!==null&&leaseMonths!==minimumMonths;
+ if(leaseConflict)conflicts.push(`Lease terms differ: ${leaseMonths}-month header; ${minimumMonths}-month minimum in description.`);
+ const lease=[label.match(/\d+ Month Lease/i)?.[0],description.match(/Minimum\s+\d+[ -]month lease/i)?.[0]].filter(Boolean).join('; ')||'Unknown';
+ const availabilityLabel=label.match(/Available\s+(.+)$/i)?.[1];
+ const availabilityDescription=description.match(/Available from\s+([A-Za-z]+\s+\d+(?:st|nd|rd|th)?,?\s+\d{4})/i)?.[1];
+ if(availabilityLabel&&availabilityDescription)conflicts.push(`Confirm availability: header says ${availabilityLabel}; description says ${availabilityDescription}.`);
+ const parking=description.match(/optional[^.]{0,120}parking spot at\s*\$([\d,]+)\/month/i);
+ const noParking=/\bno parking\b|parking (?:is )?not available/i.test(description);
+ const optionalParking=/parking[^.]{0,70}(?:available if desired|optional)|optional[^.]{0,70}parking/i.test(description);
+ const laundry=/\b(?:no in[- ]unit laundry|no washer\/dryer|shared[- ]only laundry)\b/i.test(description)?'unknown':/\bWasher\/Dryer\b/.test(amenities)?'in-unit':'unknown';
+ if(laundry==='in-unit')evidence.laundry='Condo Features: Washer/Dryer (listing claim; confirm for the specific suite).';
+ if(parking)evidence.parking=parking[0];
+ else if(noParking)evidence.parking=description.match(/[^.]*\bno parking\b[^.]*/i)?.[0]??'Parking is explicitly not included or available.';
+ else if(optionalParking)evidence.parking='Optional parking advertised; price needs confirmation.';
+ const furnished=/\bunfurnished\b|not furnished/i.test(description)?false:/\bfully furnished\b/i.test(description)?true:null;
+ const gas=/\b(?:no|without) (?:a )?gas (?:stove|range|cooktop)/i.test(description)?false:/\bgas (?:stove|range|cooktop)\b/i.test(description)?true:null;
+ const workspace=/\b(?:\d+[ -])?den\b/i.test(description)?true:null;
+ if(workspace)evidence.workspace='Den advertised; usability as an office remains to be verified in photos.';
+ const photos=new Map<string,string>();
+ for(const image of c.images){const p=new URL(image.url);const identity=p.pathname.match(/^\/i2\/([^/]+)\//)?.[1];if(p.protocol!=='https:'||!/^images\d+\.apartments\.com$/.test(p.hostname)||!identity||p.username||p.password)continue;if(!photos.has(identity))photos.set(identity,p.href);}
+ const address=description.match(/Location:\s*([^]*?)(?=\s+Schools nearby:|$)/i)?.[1]??clean($('#profileHeaderWrapper h1').first().text()).replace(/\s+Unit\s+.*$/i,'');
+ const unit=title.match(/\bUnit\s+(\d+[A-Za-z]?)(?=\s|,|$)/i)?.[1]??'';
+ const location=/Downtown Vancouver|West End|Coal Harbour|Yaletown/.test(header)?'downtown':'unknown';
+ return listingSchema.parse({source:'apartments',sourceId:u.pathname.split('/').filter(Boolean).at(-1),url:u.origin+u.pathname,title,address:address.slice(0,500),unit,location,rent,beds,baths,sqft,description:description.slice(0,50000),laundry,parking:noParking?'none':parking||optionalParking?'extra':'unknown',parkingCost:number(parking?.[1]),parkingCount:parking&&/\bone\b/i.test(parking[0])?1:null,furnished,gas,workspace,shortLease:leaseConflict?null:(minimumMonths??leaseMonths)!==null?(minimumMonths??leaseMonths)!<12:null,lease,available:[availabilityLabel,availabilityDescription].filter(Boolean).join('; ')||'Unknown',internet:/Utilities included:\s*internet/i.test(description)?'Internet advertised as included; speed and reliability unverified':'Unknown',photos:[...photos].map(([identity,url])=>({id:createHash('sha256').update(identity).digest('hex').slice(0,16),url})),galleryComplete:false,expectedPhotos:c.advertisedPhotos,allOutlooksCovered:false,evidence,conflicts});
+}
