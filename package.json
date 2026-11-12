@@ -1,0 +1,36 @@
+{
+  "name": "apartment-finder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "dev": "tsx server/index.ts --dev",
+    "start": "tsx server/index.ts",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "worker": "tsx server/worker-cli.ts",
+    "demo": "tsx server/index.ts --demo --dev",
+    "backup": "tsx scripts/backup.ts"
+  },
+  "dependencies": {
+    "cheerio": "1.1.2",
+    "jose": "6.2.17",
+    "playwright": "1.56.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "sharp": "0.35.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vite": "7.3.8"
+  }
+}

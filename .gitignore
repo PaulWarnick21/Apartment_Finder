@@ -5,6 +5,7 @@
 
 # Personal search criteria and other private notes
 private/
+/Misc Apartment Finder Files/
 
 # Python
 __pycache__/
@@ -36,3 +37,7 @@ thumbnails/
 Thumbs.db
 .vscode/
 .idea/
+coverage/
+test-results/
+playwright-report/
+.tools/
