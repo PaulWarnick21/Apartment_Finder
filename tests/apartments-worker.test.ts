@@ -17,6 +17,7 @@ test('incomplete Chrome gallery preserves cached work and defers AI without bill
   db.set('browserExtension',{id:'a'.repeat(32)});
   const l=extractApartments(page);Object.assign(l.photos[0],{local:'cached.jpg',status:'reviewed',kind:'interior'});
   const saved=db.ingest(l),home=db.home(saved.id)!;db.update(saved.id,home.revision,{stage:'Interested',notes:'Keep my note',followUp:'',viewing:'',rescued:false});
+  db.set(`pendingGallery:${saved.id}`,{source:'apartments',homeId:saved.id});
   const plan=createPlan(db,{sources:['apartments'],billingMode:'chatgpt',maxPages:2,maxListings:1,maxPhotos:2,maxAiCalls:1,maxReservedUsd:0});approvePlan(db,plan.id,'APPROVE ONE SCAN');
   const jobs={request:async(_budget:unknown,_url:string,kind:string)=>kind==='discovery'?{...page,links:[url]}:page,fail:()=>{}} as unknown as ChromeJobs;
   await runApartmentsPlan(db,plan.id,dir,jobs);

@@ -1,4 +1,6 @@
 import {load} from 'cheerio';
+import {extractFurnishing} from '../src/furnishing.ts';
+import {craigslistGallery} from './photo-resolution.ts';
 import {listingSchema,type Listing} from '../src/domain.ts';
 import {hash} from './db.ts';
 import type {Source} from './sources.ts';
@@ -22,7 +24,7 @@ export function parseListing(html:string,url:string,source:Source):Listing {
  const inUnit=!deniedLaundry&&!hookups&&/(?:in[- ](?:suite|unit)\s+(?:washer|laundry)|private\s+in[- ]suite\s+laundry|w\/d in unit|washer\s*\/\s*dryer\s+in\s+(?:the\s+)?(?:unit|suite))/i.test(text);
  const shared=/(?:shared\s+(?:laundry|washer)|laundry\s+in\s+(?:the\s+)?(?:building|bldg)|laundry\s+room\s+(?:on|in))/i.test(text);
  const urls:string[]=[];
- if(source.adapter==='craigslist')$('a[href]').each((_,a)=>{const href=$(a).attr('href')!;if(allowedUrl(href,source.mediaHosts))urls.push(href);});
+ if(source.adapter==='craigslist'){urls.push(...craigslistGallery(html));if(!urls.length)$('a[href]').each((_,a)=>{const href=$(a).attr('href')!;if(allowedUrl(href,source.mediaHosts))urls.push(href);});}
  else $('a[href],img[src]').each((_,a)=>{const s=$(a).attr('href')||$(a).attr('src')||'';if(/\/rentals\/.*\.(?:jpg|png|webp)/i.test(s))urls.push(new URL(s,url).href);});
  if(!urls.length&&source.adapter==='craigslist')$('img[src]').each((_,a)=>{const s=$(a).attr('src')!;if(s.includes('images.craigslist.org/'))urls.push(s);});
  const photoUrls=[...new Set(urls)].filter(u=>allowedUrl(u,source.mediaHosts));
@@ -32,7 +34,7 @@ export function parseListing(html:string,url:string,source:Source):Listing {
  function matched(key:string,re:RegExp){const m=text.match(re);if(!m)return false;const before=text.slice(Math.max(0,(m.index??0)-20),m.index);if(/(?:no|not|without)\s*$/i.test(before))return false;evidence[key]=m[0];return true;}
  const gas=matched('gas',/gas\s+(?:stove|cooktop|range)/i)?true:null;
  const north=matched('north',/north[- ]facing\s+(?:unit|apartment|view|suite)/i)?true:null;
- const furnished=/\bunfurnished\b/i.test(text)?false:matched('furnished',/fully furnished|furnished apartment/i)?true:null;
+ const furnishing=extractFurnishing(text),furnished=furnishing.value;if(furnishing.statement)evidence.furnishingStatement=furnishing.statement;
  if(inUnit)evidence.laundry=text.match(/.{0,35}(?:in[- ](?:suite|unit).{0,35}(?:laundry|washer)|washer\s*\/\s*dryer).{0,50}/i)?.[0]??'Unit laundry stated';
  else if(shared)evidence.laundry=text.match(/.{0,20}(?:shared laundry|laundry in (?:the )?(?:building|bldg)).{0,80}/i)?.[0]??'Shared laundry stated';
  const parkingIncluded=/(?:parking\s+(?:stall\s+)?included|includes?\s+(?:one\s+)?parking|one parking stall and)/i.test(text);

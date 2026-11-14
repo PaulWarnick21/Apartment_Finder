@@ -12,10 +12,12 @@ export function capturePage(){
  // Strip query strings from outbound links; keep image URLs as evidence only.
  for(const el of clone.querySelectorAll('a[href]')){try{const u=new URL(el.getAttribute('href'),location.href);el.setAttribute('href',u.origin+u.pathname);}catch{el.removeAttribute('href');}}
  const imageMap=new Map();
- const addImage=(raw,alt='',width=0,height=0)=>{if(!raw)return;try{const u=new URL(raw,location.href);if(u.protocol==='https:'&&!u.username&&!u.password&&/^images\d+\.apartments\.com$/.test(u.hostname)&&u.pathname.startsWith('/i2/'))imageMap.set(u.href,{url:u.href,alt:alt.slice(0,1000),width:Math.min(width,100000),height:Math.min(height,100000)});}catch{}};
+ const addImage=(raw,alt='',width=0,height=0)=>{if(!raw)return;try{const u=new URL(raw,location.href);if(u.protocol==='https:'&&!u.username&&!u.password&&/^images\d+\.apartments\.com$/.test(u.hostname)&&u.pathname.startsWith('/i2/')&&(!imageMap.has(u.href)||width>imageMap.get(u.href).width))imageMap.set(u.href,{url:u.href,alt:alt.slice(0,1000),width:Math.min(width,100000),height:Math.min(height,100000)});}catch{}};
+ const addResponsive=el=>{for(const part of (el.getAttribute('srcset')??'').split(',')){const m=part.trim().match(/^(\S+)\s+(\d+)w$/);if(m)addImage(m[1],el.alt??'',Number(m[2]),0);}};
  for(const el of root.querySelectorAll('img')){
   if(el.closest('#nearbySection,nav,footer,#mainHeader,#profileFooter'))continue;
   for(const raw of [el.currentSrc,el.src,el.getAttribute('data-src'),el.getAttribute('data-original')])addImage(raw,el.alt??'',el.naturalWidth||0,el.naturalHeight||0);
+  addResponsive(el);
  }
  // Read only image references already present in the listing gallery DOM.
  // No remote URLs are constructed, fetched or loaded by this enumeration.
@@ -24,6 +26,7 @@ export function capturePage(){
  if(viewing)imageMap.clear(); // Exclude separate building/map previews from this unit's gallery.
  const imageSelector=viewing?'#rentalDetailContainer #activeMedia,#rentalDetailContainer #activeMedia *':'#gallerySection *,#carouselSection *,#profileMediaViewer *';
  for(const el of document.querySelectorAll(imageSelector)){
+  addResponsive(el);
   if(el.id==='activeMedia'||el.closest('#activeMedia'))for(const raw of [el.currentSrc,el.src,el.getAttribute('src')])addImage(raw,el.alt??'',el.naturalWidth||0,el.naturalHeight||0);
   for(const name of ['content','data-src','data-original','data-image','data-image-url','href'])addImage(el.getAttribute(name));
   for(const match of (el.getAttribute('style')??'').matchAll(/url\(["']?([^"')]+)["']?\)/g))addImage(match[1]);

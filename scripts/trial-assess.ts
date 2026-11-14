@@ -1,7 +1,7 @@
 import {loadEnvFile} from 'node:process';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
-import sharp from 'sharp';
+import {storePhoto} from '../server/photo-storage.ts';
 import {Store,hash} from '../server/db.ts';
 import {listingSchema} from '../src/domain.ts';
 import {createPlan,approvePlan,claimPlan,Budget,getPlan} from '../server/plans.ts';
@@ -23,7 +23,7 @@ try{
  let plan:any,session:SourceSession|undefined,error='';
  try{plan=createPlan(store,{purpose:'access-check',billingMode:'chatgpt',sources:[sourceId],maxPages:1,maxListings:3,maxPhotos:sourceId==='zumper'?150:100,maxAiCalls:3,maxReservedUsd:0});approvePlan(store,plan.id,'APPROVE ONE SCAN');claimPlan(store,plan.id);const budget=new Budget(store,plan.id,plan.caps);session=new SourceSession(sourceById(sourceId),budget,dir);await session.start();
  for(const r of rows.filter(r=>r.source===sourceId)){budget.reserve('listings');const h=store.home(r.id)!,l=h.listing;if(h.score.reasons.length||h.stage==='Not Interested'){console.log(JSON.stringify({id:r.id,source:sourceId,skipped:h.score.reasons}));continue;}
- try{for(const p of l.photos){if(p.local)continue;try{const bytes=await session.image(p.url);const jpeg=await sharp(bytes,{limitInputPixels:50000000}).rotate().resize({width:2048,height:2048,fit:'inside',withoutEnlargement:true}).jpeg({quality:90}).toBuffer();p.hash=hash(jpeg.toString('base64'));p.local=p.hash+'.jpg';await writeFile(join(dir,'media',p.local),jpeg);p.status='downloaded';}catch(e){if(session.stopped||/cap|limit|stopped/i.test(String(e)))throw e;p.status='unavailable';p.note=String(e).slice(0,300);}}
+ try{for(const p of l.photos){if(p.local)continue;try{const bytes=await session.image(p.url);Object.assign(p,await storePhoto(bytes,dir));p.status='downloaded';}catch(e){if(session.stopped||/cap|limit|stopped/i.test(String(e)))throw e;p.status='unavailable';p.note=String(e).slice(0,300);}}
  console.log(JSON.stringify({id:r.id,source:sourceId,downloaded:l.photos.filter(p=>p.local).length,total:l.photos.length,stage:'AI review'}));
  if(!aiStopped)try{await reviewGallery(l,budget,dir);}catch(e){aiStopped=true;store.event('Trial AI review stopped without paid fallback: '+String(e));console.log(JSON.stringify({aiStopped:true,error:String(e)}));}
  }finally{store.db.prepare('UPDATE homes SET listing=?,revision=revision+1 WHERE id=?').run(JSON.stringify(l),r.id);}

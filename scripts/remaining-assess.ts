@@ -1,7 +1,7 @@
 import {loadEnvFile} from 'node:process';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
-import sharp from 'sharp';
+import {storePhoto} from '../server/photo-storage.ts';
 import {Store,hash} from '../server/db.ts';
 import {listingSchema} from '../src/domain.ts';
 import {createPlan,approvePlan,claimPlan,Budget,getPlan} from '../server/plans.ts';
@@ -31,7 +31,7 @@ try{
       if([403,429,503].includes(response.status)){store.pause(source,`Photo server returned HTTP ${response.status}`,true);throw new Error('Source paused on photo access warning');}
       if(!response.ok){p.status='unavailable';p.note=`HTTP ${response.status}`;continue;}
       const reader=response.body!.getReader(),chunks:Uint8Array[]=[];let size=0;try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>15000000)throw new Error('Photo exceeds size limit');chunks.push(value);}}finally{await reader.cancel();}
-      const jpg=await sharp(Buffer.concat(chunks),{limitInputPixels:50000000}).rotate().resize({width:2048,height:2048,fit:'inside',withoutEnlargement:true}).jpeg({quality:90}).toBuffer();p.hash=hash(jpg.toString('base64'));p.local=p.hash+'.jpg';p.status='downloaded';await writeFile(join(dir,'media',p.local),jpg);
+      Object.assign(p,await storePhoto(Buffer.concat(chunks),dir));p.status='downloaded';
       await new Promise(r=>setTimeout(r,1000));
      }
      console.log(JSON.stringify({source,id:row.id,photos:l.photos.filter(p=>p.local).length,total:l.photos.length,stage:'AI review'}));

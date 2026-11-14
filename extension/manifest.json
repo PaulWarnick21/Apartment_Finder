@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Apartment Finder — Chrome Bridge",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Send one approved Apartments.com page to your local Apartment Finder.",
   "minimum_chrome_version": "120",
   "permissions": ["scripting", "storage", "alarms"],

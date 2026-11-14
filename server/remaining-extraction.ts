@@ -1,11 +1,12 @@
 import {load} from 'cheerio';
+import {extractFurnishing} from '../src/furnishing.ts';
 import {listingSchema,type Listing} from '../src/domain.ts';
 import {hash} from './db.ts';
 const clean=(s:string)=>s.replace(/\s+/g,' ').trim();
 const num=(s:unknown)=>{const n=Number(String(s??'').replace(/,/g,''));return Number.isFinite(n)&&n>0?n:null;};
 function features(l:Listing,text:string){
  const yes=(field:string,re:RegExp)=>{const m=text.match(re);if(m)l.evidence[field]=m[0];return m?true:null;};
- l.gas=yes('gas',/gas (?:range|stove|cooktop)/i);l.furnished=/\bunfurnished\b/i.test(text)?false:yes('furnished',/(?:fully|beautifully) furnished|Furnished: Yes/i);
+ l.gas=yes('gas',/gas (?:range|stove|cooktop)/i);const furnishing=extractFurnishing(l.title+' '+text);l.furnished=furnishing.value;if(furnishing.statement)l.evidence.furnishingStatement=furnishing.statement;
  l.workspace=yes('workspace',/\bden\b|space for a home office|dedicated[^.]{0,20}office/i);
  l.modern=yes('modern',/renovated[^.]{0,80}(?:kitchen|bathroom)|modern (?:kitchen|finishes)|brand.new appliances/i);
  l.openPlan=yes('openPlan',/open[- ]concept|open (?:living space|floor plan|kitchen)/i);
@@ -30,7 +31,10 @@ export function extractRemaining(source:'zillow'|'rew'|'facebook',html:string,ur
   const unit=p.streetAddress?.match(/#([\w-]+)/)?.[1]??'';
   l=listingSchema.parse({source,sourceId:id,url,title:p.streetAddress,address:`${p.streetAddress.replace(/\s*#.*$/,'')}, ${p.city}, ${p.state}`,unit,rent:p.price,beds:p.bedrooms,baths:p.bathrooms,sqft:p.livingArea,description:p.description,area:p.neighborhoodRegion?.name??'Unknown',laundry:p.resoFacts?.laundryFeatures?.includes('In Unit')?'in-unit':'unknown',lease:p.resoFacts?.leaseTerm??'Unknown',photos:photos.map((url:string)=>({id:hash(url).slice(0,16),url})),expectedPhotos:p.responsivePhotos?.length??photos.length,galleryComplete:photos.length>0&&photos.length===(p.responsivePhotos?.length??photos.length),evidence:{gallery:'All photos in this property’s structured originalPhotos gallery.'}});
   if(/Downtown|West End|Yaletown|Coal Harbour/i.test(l.area))l.location='downtown';
-  return features(l,l.description+' '+(p.resoFacts?.furnished?'Furnished: Yes':''));
+  const supplied=p.resoFacts?.furnished;
+  if(supplied===true||/^(?:yes|true)$/i.test(String(supplied)))l.evidence.furnished='Furnished: Yes';
+  else if(supplied===false||/^(?:no|false)$/i.test(String(supplied)))l.evidence.furnished='Furnished: No';
+  return features(l,l.description+' '+(l.evidence.furnished??''));
  }
  if(source==='facebook'){
   const id=url.match(/item\/(\d+)/)?.[1],parts:any[]=[];
