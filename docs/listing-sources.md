@@ -294,3 +294,18 @@ Manual entry is an optional convenience, not a requirement for normal operation.
 All 12 retained adapters are now connected to the regular approved-plan coordinator, including mixed-source plans containing Apartments.com. The earlier assisted-only status describes the historical implementation. Sources default to selected in the plan dialog; recurring scheduling is still disabled.
 
 Offline validation covers scoped discovery links for all 12 sites, all-source dispatch, source pauses, budget fairness, and interrupted-gallery resumption. Existing captured pages were re-parsed without contacting sources. This is implementation validation, not a new live-access test: discovery changes, current authentication, and full-gallery completeness are checked and reported by the next user-approved run. No access challenge is bypassed and no paused source is silently enabled.
+
+## Final two-per-source test — 2026-11-14
+
+The approved final test captured two new apartments from each of 11 retained sources (22 apartments total). Zillow returned HTTP 403 on its search-data request and remains paused without retries. The other sources were Apartments.com, Craigslist, VADA, Zumper, Facebook Marketplace, REW, Kijiji, Hollyburn, Austeville, EasyRent and Sunstar.
+
+Six candidates failed rent or laundry requirements before image retrieval. All 345 distinct photos from the other 16 rental galleries were reviewed. There were 17 ChatGPT-plan reviews overall, including one non-rental Craigslist ad caught during discovery debugging; that ad is excluded and does not count as an apartment. No paid API fallback was used. Eight new apartments remained in Unreviewed and 14 were excluded at test completion. Private evidence and counts are in `data/live/final-test-report.json`.
+
+Repairs validated during the test:
+
+- Craigslist now uses its current search URL, dedicated Chrome rendering, and a rental-category guard. Restricted loading had left the page on its generic for-sale results. Its 18-slot gallery containing 17 distinct photos is treated as complete only after all advertised slots are accounted for.
+- Sunstar discovery skips portfolio rows explicitly marked rented.
+- REW and Facebook's initial failures came from local browser-request limits, not site access blocks. Browser image/media/font loading is suppressed so full gallery images are fetched once through the accounted media path. Both sources subsequently supplied their remaining candidates; this REW sample failed the rent gate before gallery review.
+- Placeholder rents cannot earn affordability points. Contradictory photo provenance is kept unconfirmed, and an unverified unit nature outlook cannot earn a strong-match score.
+
+Source labels appear on apartment cards and pinned detail headers. Remaining inventory stays queued; this completed test does not authorize a full or recurring scan.

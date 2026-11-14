@@ -63,9 +63,9 @@ Stop the server with Ctrl+C. Nothing is installed into Windows startup or Task S
 - Strict single-run approval, page/listing/photo/AI-call caps, persisted counters, cancellation,
   source cooldowns, request allowlists, sequential pages and persistent browser profiles.
   Bounded page snapshots are saved privately for adapter debugging without repeat visits.
-- Craigslist and VADA parser/worker implementations awaiting capped live validation. The other
-  twelve candidate sources are listed but disabled; their adapters remain to be implemented.
-  liv.rent and PadMapper are excluded.
+- All 12 retained sources are connected to the approved scan runner. Current access failures,
+  incomplete galleries and queued inventory are recorded per source. Apartments.com uses the
+  paired normal-Chrome extension. Rentals.ca, RentFaster, liv.rent and PadMapper are excluded.
 - Full enumerated-gallery processing with pending/unavailable states, local images and assessment
   reuse by image hash/model rubric. An optional OpenAI Responses photo provider sits behind a
   replaceable interface. Credentials and a model must be configured separately; none are supplied.
@@ -73,15 +73,16 @@ Stop the server with Ctrl+C. Nothing is installed into Windows startup or Task S
 ## First scan and cost control
 
 Preparing a plan makes no external requests. Approval expires after one hour and cannot be
-reused. The requested live trial is **three apartments per implemented source**, with every
+reused. The current final test is **two apartments per retained source**, with every
 accessible gallery photo reviewed unless the apartment already fails a hard requirement.
 The discovery page counts as one page. A cap leaves remaining work explicitly pending.
-No live trial has run yet; account connection and model selection are still needed.
+The earlier three-per-source trial is saved locally. New scans require a fresh bounded approval;
+the final test does not enable a full scan or recurring runs.
 
 **ChatGPT plan usage is the default.** In Preferences, select **Continue with ChatGPT**, sign in,
 and allow use of your ChatGPT plan. Then load the available models and choose one that supports
-images. This uses the documented local personal-app integration; account eligibility and live
-photo inference remain unverified until the user connects and a request completes.
+images. The existing local connection has completed live gallery reviews. A new installation
+must connect its own account and verify model access.
 
 In ChatGPT Settings → Usage, set an app limit and turn off purchased-credit overflow if shown.
 The app cannot change that setting or read the remaining weekly allowance. Scans enforce a
