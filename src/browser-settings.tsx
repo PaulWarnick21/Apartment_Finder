@@ -6,7 +6,7 @@ export function BrowserSettings({disabled,request}:Props){
  async function prepare(){setBusy(true);setMessage('');try{const r=await request('browser/prepare','POST');setCode(r.code);setUrl(r.url);setState(await request('browser/state'));}catch(e){setMessage(String(e).replace(/^Error: /,''));}finally{setBusy(false);}}
  async function disconnect(){setBusy(true);try{await request('browser/disconnect','POST');setCode('');setState(await request('browser/state'));}catch(e){setMessage(String(e));}finally{setBusy(false);}}
  const probe=state?.probe??state?.lastCapture;
- return <section className="chatgpt-settings" aria-label="Normal Chrome connection"><h3>Normal Chrome connection</h3>
+ return <section className="chatgpt-settings" aria-label="Normal Chrome Connection"><h3>Normal Chrome Connection</h3>
  <p>{state?.connected?'Extension connected':'Extension not connected'} · Apartments.com</p>
  <p>Version 0.2 opens listing pages and collects galleries only for a scan approved in the desk. Keep Chrome open. The optional connection test below reads one existing page without navigation, photo downloads or AI.</p>
  <div className="dialog-actions"><button disabled={disabled||busy} onClick={prepare}>Approve one page connection test</button>{state?.connected&&<button disabled={disabled||busy} onClick={disconnect}>Disconnect Chrome</button>}</div>

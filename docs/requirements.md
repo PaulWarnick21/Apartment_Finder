@@ -16,6 +16,9 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 - Avoid separate recurring scans of sources demonstrated to duplicate the same inventory.
   Evaluate additional sources for unique apartments, useful evidence, freshness, and cost;
   shared ownership or partial syndication alone does not establish full redundancy.
+- The Sources view must distinguish recorded test results, saved/active listing counts,
+  app scanning support, assisted-only sources, and active access pauses. A successful test
+  does not establish an unattended discovery workflow; a success note is not a pause.
 
 ## R2 Scheduled, incremental scanning
 
@@ -49,7 +52,20 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 
 ## R4 Automatic scoring
 
+- Every apartment detail view supports a personal score and a short reason. Keep the app's
+  score at submission, listing/criteria snapshots, all feedback, and review outcomes.
+  Review each explicit submission through the connected ChatGPT plan, with no paid API fallback.
+  General preference changes must improve agreement across saved examples, preserve correct
+  interest bands, and remain small and reversible. One-off exceptions and uncertain listing facts
+  must not silently become global rules. Failed reviews retain feedback and require an explicit retry.
+- Show furnishing prominently with a supporting listing statement: furnished, unfurnished,
+  optional/partial, conflicting, or not confirmed. Staged furniture, display suites and building
+  guest suites do not establish inclusion. Award a furnishing bonus only for an explicit rental
+  claim; generic floor-plan information must remain distinguished from confirmed unit terms.
+
 - Score every listing from 0.1 to 5.0, where 5.0 is a perfect apartment.
+- Score meanings: 3.0–3.9 is okay and worth a look, but unlikely to be pursued; 4.0–5.0 is a
+  strong match the user is likely to want to move into. Below 3.0 is almost certainly unwanted.
 - Below 3.0 means unsuitable: those listings are dropped and not worth investigating.
 - Scoring uses the listing's photos, its description, and a search of the address and the
   surrounding area.
@@ -72,9 +88,26 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
   Apply the user's detailed scenery preferences from private configuration.
 - Record the supporting photo and what it shows. If photos are unavailable, ambiguous, or
   cannot be attributed to the unit, label the view unverified and do not claim a confirmed match.
-- When the score is uncertain (for example, it can't be determined whether there's a view of the
-  mountains), don't drop the listing automatically. Show it with its uncertainties so the user
-  can decide.
+- Keep uncertainty labels and evidence, but automatically place every headline score below
+  3.0 in Excluded. A higher upper estimate or prior rescue cannot override this threshold.
+- Reviewed, unit-attributed window photos showing buildings without any confirmed nature
+  receive a substantial configured deduction and a below-3 ceiling. This is a poor-fit
+  assessment of available evidence, not a claim that every unseen window lacks nature.
+- When only representative window evidence shows buildings and no interior-window photo
+  shows qualifying nature, cap the provisional headline below 3.0 and exclude it as an
+  unpromising match. Cheap rent does not overcome that evidence. Retain exact-unit uncertainty;
+  exclusion for poor fit is not proof of every window's outlook. The stricter unit rule wins.
+- A building-dominated nature glimpse (best verified interior view quality at most 2/5)
+  caps the headline at 3.3, or 3.1 when interiors are assessed as dated. Preserve the
+  partial-nature evidence; a narrow glimpse is not equivalent to an unobstructed outlook.
+- Moderate partial nature views (quality above 2 and below 4) limit the total score using
+  a configured ceiling that increases gradually for better partial views. Confirmed furnishing,
+  short leases, gas cooking, and a second bedroom modestly extend it. Rent, workspace, and modern
+  finishes cannot turn a mediocre view into a near-perfect match. A flexible sleeping area or
+  ambiguous "Euro 2" label does not establish a second bedroom; preserve the conflict for review.
+- For weaker partial views, higher rent also lowers the view-based ceiling. Apply the strongest
+  cost deduction to weak outlooks, tapering it as partial views improve; keep ordinary rent
+  scoring active. Broad mountain panoramas should not be equated with narrow urban water glimpses.
 - Apply the expanded private criteria and user-provided example scores when calibrating price,
   location, view quality, unit type, workspace, parking, furnishing, and lease preferences. Exact weights remain
   provisional; personal values and example prices stay in private configuration.
@@ -98,6 +131,9 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 - Support modest evidence-based bonuses for modern kitchens/appliances/bathrooms and an
   open-concept layout. Keep personal bonus amounts in private criteria; flag unknown condition
   or layout rather than awarding unsupported bonuses.
+- Apply a modest configured deduction when interiors are assessed as dated. Unknown condition
+  receives neither this deduction nor a modern-interior bonus. User photo assessments take
+  precedence over generic renovation claims in listing text.
 - Record stove/cooktop fuel type with supporting evidence and support a separate gas-cooking
   bonus from private criteria. Do not infer stove fuel from a gas fireplace or included utilities.
 - Record the apartment's outlook direction and supporting evidence. Support an additive
@@ -107,7 +143,7 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 ## R5 Sorting Desk (private web app)
 
 - Listings scored 3.0 or above go to a "Sorting Desk" web app where the user works through them.
-  Potentially suitable listings with uncertain scores remain visible as required by R4.
+  Uncertain listings remain active only when their headline score is at least 3.0.
 - The desk is a lifecycle (state machine). Stages named so far:
   1. **Unreviewed**: scored automatically, not yet reviewed by the user.
   2. **Interested**: reviewed, and the user wants to seriously consider it.
@@ -116,6 +152,26 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 - Proposals for additional stages are welcome.
 
 ## R6 Desk card contents
+
+- Detail-gallery photos open in a full-viewport viewer with zoom, scrolling for close inspection,
+  and Close/Escape to return to the same listing position. Keep the detail close control visible
+  while scrolling; closing a photo must not close the listing or discard unsaved notes.
+- Preserve the exact downloaded source image alongside the bounded analysis/card copy; use the
+  source file in the enlarged viewer. Prefer larger variants explicitly advertised by each listing,
+  show pixel dimensions and distinguish legacy previews from preserved source files. Fit never
+  stretches a small image automatically; Actual size shows one image pixel per CSS pixel.
+- Apply higher-quality photo collection to future scans. The user declined refreshing the
+  existing trial apartments on 2026-11-14; retain their cached photos and do not backfill them
+  unless explicitly requested later. The user will manage their desk stages personally.
+- Previous/Next and arrow-key navigation operate only within the open apartment's gallery.
+  Stop at both ends; never silently open another listing. Keep apartment ID, price and score
+  visible in the viewer and in the pinned detail header while scrolling.
+
+- Prefer a reviewed photo showing the outlook through the apartment's windows as the card
+  image and first detail-gallery image. Use building-facing window photos when that is what
+  the evidence shows; never substitute a rooftop or shared-amenity view for a unit view.
+- Prefer clean window photos, then ordinary apartment interiors, over promotional overlays,
+  bonus-offer graphics, or advertisements. Keep promotional photos at the end of the gallery.
 
 - A few photo thumbnails, enough to judge at a glance whether the apartment is worth a closer
   look. If getting the images is too difficult, leave them out; the user can open the listing.
@@ -137,3 +193,22 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 
 - The full criteria list (coming once the initial program is set up).
 - Possibly email delivery of findings.
+
+## November 14 updates: scan preparation and desk stages
+
+- All 12 retained sources participate in the normal approved scan workflow. Select all by default; keep deferred sources excluded and scheduled scans off. No scan starts during setup, startup, or testing.
+- Share a bounded total across sequential sources, reserving a fair allowance for each. Report a separate outcome for every selected source, including pauses and incomplete discovery. Queue undiscovered work and unfinished new galleries for later approved runs. Previously saved trial apartments must not have their images refreshed.
+- Rename Inbox to Unreviewed and Shortlist to Interested. Remove the Vancouver / Your Search header text. Provide Interested and Not Interested card actions.
+- Enforce Unreviewed → Interested → In Progress → Closed in the backend. Any active stage can close; no skipped or backward stages. An explicit Reopen action is the sole Closed → Unreviewed transition. Preserve notes and history. Automatic score-based Excluded classification remains independent of these user stages.
+
+- Detailed-view decision buttons sit beside score feedback. A changed score and reason are saved before the decision; validation or save failures keep the apartment open and retain the draft. Show Score Breakdown and Still to Confirm above the photos, followed by a four-sentence factual summary below the photos. The summary uses saved evidence and makes no additional AI calls.
+
+- Hide the numeric uncertainty range in apartment details; retain the main score. Label the move-in field as Availability, including when its value is Unknown.
+
+- Keep the detailed feedback form concise: omit the expanded scoring-review results block and the furniture-in-photos reminder. Retain saved feedback and retry/undo actions within collapsed Rating history.
+
+- Excluded and Closed are always ordered by most recent entry into that section, oldest at the bottom. Notes and refreshes do not change that order; a reopened and subsequently closed home receives a new entry time.
+- Keep Your Rating compact: score, one-line expandable reason, decision buttons and collapsed history. Omit the score comparison, score-band explanation and submission/AI explanatory copy.
+- Show Furnishing in the compact facts row with Laundry, Parking, Lease and Internet, without a separate furnishing section.
+- Use title case for interface headings and labels where appropriate (Your Rating, Score Breakdown, Still to Confirm, Not Confirmed). The furnishing fact is labeled Furnished, with Yes, No, or the unconfirmed/optional status.
+- Highlight each apartment’s source on its card and pinned detailed-view header; show all sources for confirmed cross-postings. Scan plans can enforce a per-source apartment cap independently of the shared total.

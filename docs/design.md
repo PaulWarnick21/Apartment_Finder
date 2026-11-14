@@ -7,6 +7,24 @@ are listed at the end.
 
 ## 1. Product and architecture
 
+### Rating feedback and furnishing evidence
+
+The detail view stores each personal rating and reason separately from the app prediction,
+including immutable listing, score and criteria snapshots. A serial, bounded review uses the
+connected ChatGPT plan only when the user submits feedback or explicitly retries. Startup,
+demo and ordinary page views do not make AI requests. Interrupted reviews remain pending.
+The model proposes at most three small changes to allowlisted preference weights; code validates
+the proposal against the latest rating per apartment, accepting it only if average error improves,
+no example regresses substantially, and already-correct interest bands remain correct. Requirements,
+facts, workflow decisions and the 3.0 cutoff cannot be changed by this reviewer. Applied changes
+recalculate current and future scores; an undo is available while it cannot overwrite newer preferences.
+Feedback and calibration history remain local and are included in the user's data export.
+
+Furnishing extraction uses scoped advertisement text or an explicit structured yes/no field,
+not objects visible in photos. The detail view quotes that evidence and distinguishes optional,
+partial and uncertain furnishing. Building-wide guest suites, generic FAQs, display photos and
+floor-plan amenities cannot establish that furniture comes with the specific unit.
+
 Find new Vancouver rentals, evaluate them against private criteria, and keep a useful,
 explainable shortlist. The user opens a private Sorting Desk in a browser to review apartments
 and manage inquiries, viewings, and applications.
@@ -134,10 +152,12 @@ estimates. Apply confirmed-failure caps and hard exclusions, then clamp the fina
 eligibility remains provisional and must not be shown as an earned bonus.
 
 - Suitable listings appear with reasons and source links.
-- Keep a listing if its upper estimate reaches 3.0, even when the headline score is lower;
-  badge it Uncertain and display the unknowns.
-- If its upper estimate is below 3.0, place it in an Auto-rejected bin with reasons and Rescue.
-  Hard-filter rejections retain their reasons too.
+- If reviewed unit-window photos show buildings and no confirmed nature, apply the configured
+  building-view penalty and a 2.9 ceiling. Unknown workspace earns no bonus. Keep evidence
+  uncertainty distinct from this poor-fit assessment.
+- Every rounded headline score below 3.0 belongs in Excluded, even with a higher upper
+  estimate or a previous rescue. Preserve notes and workflow history; derive the desk category
+  without overwriting the user's stage. Hard-filter rejections retain their reasons too.
 - Failed assessments appear as Unscored and can be retried.
 - Apply configured confirmed-failure rules before the ordinary weighted-score threshold. A
   confirmed failure of the required nature outlook caps the headline and upper score below 3.0
@@ -243,6 +263,14 @@ available. Distinguish advertised claims, photo findings, and user feedback in s
 Missing images must not discard a potentially suitable listing, but its view stays unverified.
 
 Store a gallery manifest with source photo IDs/URLs, fingerprints, expected count (or unknown),
+and the preserved source file's dimensions and size. Source image bytes are stored without
+resizing or recompression, with a separate bounded JPEG for existing analysis and card caching.
+Only advertised image variants (srcset, full-image links, or source gallery size metadata) are
+selected; do not probe guessed CDN paths. Legacy cached JPEGs remain labelled previews until
+an explicitly authorized media refresh retrieves a source copy. Such a display-only refresh
+retains existing assessments and user decisions and makes no AI requests.
+
+Also retain
 retrieval/review status for each image, assessment version, and failure/defer reason. A batch or
 model context limit must split the gallery into resumable batches, not silently omit images.
 Aggregate findings across rooms, noting obstructions and disagreements. Full gallery review does
@@ -434,3 +462,11 @@ architecture approval.
 - Scan times/timezone, whether the PC stays awake, and need for continuous operation.
 - Whether authenticated phone access is needed at launch or can follow the local version.
 - Whether to enable price-drop resurfacing or a Not this building action.
+
+## November 14 implementation update
+
+`regular-worker.ts` coordinates all 12 sources under one approval and one worker lock. `SourceBudget` reserves a fair share for each remaining source with at most five page visits per source. ChromeJobs remains the Apartments.com transport; Zillow, REW, and Facebook use their persistent visible Chrome profiles. Other sources use persistent browser sessions and the validated captured-page extractors; Zumper has a scoped structured-data extractor. Austeville follows the inventory endpoint advertised in its vacancies page; Sunstar uses its Juicebox XML gallery.
+
+Discovery queues and per-home pending-gallery markers persist in SQLite metadata. Only unfinished homes created by this workflow can resume; earlier trial homes are skipped. Full galleries use the ChatGPT-plan reviewer with no paid API fallback. Identical gallery evidence can reuse cached findings. All-source request allowance is at most 500 requests per selected source; page, listing, photo, and AI allowances remain the explicitly approved totals. Runtime access failures stay source-specific.
+
+Desk labels are Unreviewed, Interested, In Progress, Excluded, Closed. Shared transition rules validate saves in SQLite and restrict visible options. In Progress retains inquiry/viewing/application substages. Reopen is an explicit revision-checked action; ordinary saves and undo cannot bypass stage rules.

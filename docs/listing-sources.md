@@ -13,6 +13,14 @@ Read the per-source limits: these are manual access results, not completed adapt
 
 ## Initial application trial — 2026-11-11
 
+Current distinction (clarified 2026-11-14): all 12 retained sources supplied three saved
+candidates in the completed trial. Apartments.com, Craigslist and VADA have app scan paths;
+the other nine used the assisted captured-page workflow and are not connected to the regular
+Plan a scan flow yet. Keep them in the source list as assisted sources, not excluded sites.
+The Sources screen reports saved results separately from the available scanning method.
+An informational success note is not an access pause: only an active cooldown or an unresolved
+attention flag should display that state. Scheduled scans remain off for every source.
+
 Follow-up trial: the visible Chrome sessions captured three candidates each from Zillow,
 REW and Facebook Marketplace. Their scoped structured galleries yielded 85, 50 and 43
 reviewed photos respectively; one REW candidate failed the shared-laundry requirement
@@ -31,6 +39,8 @@ not galleries containing only floor-plan drawings. The three saved galleries con
 17, 22 and 45 interior photographs respectively. Exact-suite attribution remains unverified.
 The desk now requires reviewed interior photographs; floor-plan-only and missing-photo
 records remain outside the active list without losing their history.
+
+### Earlier trial attempts (superseded by the completed follow-up above)
 
 All 14 configured sources were checked under the user's three-candidates-per-source
 authorization. The application saved 24 candidates and reviewed all 373 retrieved
@@ -58,7 +68,9 @@ gallery exclusion, negative laundry statements, and complete AI result coverage.
 
 Private snapshots, extracted facts, photo findings, per-source outcomes, and database
 backups are stored under gitignored `data/`. The current report is
-`data/live/initial-trial/final-report.json`; the Sources screen shows its summary.
+`data/live/remaining-trial/coverage.json`; earlier results remain in
+`data/live/initial-trial/final-report.json`. The Sources screen derives current saved and
+active counts from the database rather than displaying obsolete trial counts.
 
 ## Visible Chrome access test — 2026-11-11
 
@@ -276,3 +288,9 @@ the setup successfully and should not be asked to repeat an unchanged connection
 6. Field completeness, errors, timestamps, and discovery coverage appear in source health.
 
 Manual entry is an optional convenience, not a requirement for normal operation.
+
+## Regular runner integration — 2026-11-14
+
+All 12 retained adapters are now connected to the regular approved-plan coordinator, including mixed-source plans containing Apartments.com. The earlier assisted-only status describes the historical implementation. Sources default to selected in the plan dialog; recurring scheduling is still disabled.
+
+Offline validation covers scoped discovery links for all 12 sites, all-source dispatch, source pauses, budget fairness, and interrupted-gallery resumption. Existing captured pages were re-parsed without contacting sources. This is implementation validation, not a new live-access test: discovery changes, current authentication, and full-gallery completeness are checked and reported by the next user-approved run. No access challenge is bypassed and no paused source is silently enabled.

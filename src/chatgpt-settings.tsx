@@ -6,7 +6,7 @@ export function ChatGptSettings({state,disabled,request,action}:Props){
  async function command(path:string,body?:unknown){if(busy)return;setBusy(true);try{await action(()=>request(`chatgpt/${path}`,'POST',body),'ChatGPT settings updated');}finally{setBusy(false);}}
  async function connect(newProfile=false){setBusy(true);try{await action(async()=>{const result=await request('chatgpt/connect','POST',{newProfile});window.location.assign(result.url);},'Opening ChatGPT sign-in');}finally{setBusy(false);}}
  const blocked=disabled||busy;
- return <section className="chatgpt-settings" aria-label="ChatGPT connection"><h3>AI photo analysis</h3><p>Use your existing ChatGPT plan. Requests share your plan’s allowance. The app never switches to a paid API key automatically.</p>
+ return <section className="chatgpt-settings" aria-label="ChatGPT connection"><h3>AI Photo Analysis</h3><p>Use your existing ChatGPT plan. Requests share your plan’s allowance. The app never switches to a paid API key automatically.</p>
  {state.profiles.length>0&&<label>ChatGPT account<select aria-label="ChatGPT account" disabled={blocked||state.pending} value={state.active} onChange={e=>command('account',{id:e.target.value})}>{state.profiles.map(p=><option value={p.id} key={p.id}>{p.label}</option>)}</select></label>}
  <p><strong>{state.sharing?'Using ChatGPT plan':state.connected?'Signed in · plan permission needed':'Not connected'}</strong></p>
  {state.message&&<p role="status">{state.message}</p>}
