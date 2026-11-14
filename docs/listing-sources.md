@@ -309,3 +309,38 @@ Repairs validated during the test:
 - Placeholder rents cannot earn affordability points. Contradictory photo provenance is kept unconfirmed, and an unverified unit nature outlook cannot earn a strong-match score.
 
 Source labels appear on apartment cards and pinned detail headers. Remaining inventory stays queued; this completed test does not authorize a full or recurring scan.
+
+## Zillow normal-Chrome recovery — 2026-11-14
+
+The user authorized implementing and testing Zillow discovery through their regular
+Chrome session. Extension 0.3.0 adds that source to the paired Chrome bridge.
+The app routes Zillow search and unit pages through it, extracts only the matching
+property's public fields and original gallery, and uses the existing bounded
+photo-review/scoring pipeline. Source pauses, daily limits, user stages and notes
+remain preserved. An explicit one-page recovery operation may clear Zillow's pause
+only after discovering valid unit links; empty or challenged pages retain it.
+
+Offline validation covers source authorization, origin matching, warning isolation,
+scoped capture, full-size image references, incomplete galleries, recovery and regular
+worker dispatch. Live validation succeeded after the user reloaded the extension:
+
+- One search page discovered five individual rental links and a next-page link.
+- The initial two listings failed the rent ceiling before photo downloads or AI.
+- The user approved two additional listing visits within the unused 100-photo and
+  two-review allowance. Both galleries were fully downloaded and reviewed: 15/15
+  and 16/16 images. Original source files and dimensions were retained.
+- All four test listings were excluded under the current criteria. A missed
+  "laundry room in the building" phrase was corrected from the cached listing,
+  with regression coverage so future matching listings fail the laundry gate early.
+- Total: five page visits, four listings, 31 image downloads, two ChatGPT-plan
+  reviews, no paid API requests. No access warning occurred. The remaining
+  inventory stays queued; plan status is partial because inventory remains beyond
+  the approved slice, not because the tested galleries failed.
+
+The earlier 403 occurred on the dedicated browser's search-data request. Normal
+Chrome succeeded on the same rental search; this establishes a working session
+route, not Zillow's exact reason for rejecting the earlier request. No connector,
+proxy, fingerprint modification or challenge bypass was needed. Zillow uses the
+normal-Chrome bridge in future approved scans; Chrome and the local app must stay
+open. This test does not enable scheduled scans. Private results are recorded in
+`data/live/zillow-chrome-test-report.json`.

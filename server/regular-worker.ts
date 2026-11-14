@@ -15,6 +15,7 @@ import {storePhoto} from './photo-storage.ts';
 import type {Listing,Criteria} from '../src/domain.ts';
 import type {ChromeJobs} from './chrome-jobs.ts';
 import {runApartmentsSource} from './apartments-worker.ts';
+import {ChromeSourceSession} from './chrome-source-session.ts';
 export type SourceResult={source:string;state:'complete'|'partial'|'paused'|'pending';detail:string};
 export function hardFailure(l:Listing,c:Criteria){return c.maxRent!==null&&l.rent!==null&&l.rent>=c.maxRent||c.requireLaundry&&['none','shared-only'].includes(l.laundry);}
 export function knownUrl(store:Store,source:string,url:string){return !!store.db.prepare('SELECT 1 FROM postings WHERE source=? AND url=?').get(source,url);}
@@ -54,7 +55,7 @@ export async function runRegularPlan(store:Store,id:string,dataDir:string,jobs?:
  try{if(plan.caps.purpose!=='listings')throw new Error('Access checks use their dedicated runner');if(plan.caps.maxAiCalls&&plan.caps.billingMode!=='chatgpt')throw new Error('Regular scans require ChatGPT plan access; paid API fallback is disabled');
  for(let i=0;i<results.length;i++){budget.check();const source=sourceById(results[i].source),share=new SourceBudget(budget,results.length-i);
   try{store.checkSource(source.id);if(!share.remaining('pages')||!share.remaining('listings'))throw new Error('Approved allowance exhausted before this source; no requests made');
-   results[i]=source.id==='apartments'?await(deps.apartments??runApartmentsSource)(store,share,dataDir,jobs):await runWebSource(store,source,share,dataDir,deps);
+   results[i]=source.id==='apartments'?await(deps.apartments??runApartmentsSource)(store,share,dataDir,jobs):await runWebSource(store,source,share,dataDir,source.id==='zillow'&&!deps.session?{...deps,session:(s,b)=>new ChromeSourceSession(s,b,jobs)}:deps);
    if(results[i].state==='complete')store.db.prepare('INSERT INTO source_health(source,last_success) VALUES (?,?) ON CONFLICT(source) DO UPDATE SET last_success=excluded.last_success').run(source.id,new Date().toISOString());
   }catch(e){const detail=e instanceof Error?e.message:String(e);results[i]={source:source.id,state:/paused|challenge|warning/i.test(detail)?'paused':'partial',detail};}
   store.set(`sourceResults:${id}`,results);store.event(`${source.name}: ${results[i].detail}`);

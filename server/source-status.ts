@@ -15,7 +15,7 @@ export function sourceStatuses(store:Store,now=Date.now()){
   return {id:source.id,name:source.name,ready,paused,health:state,
    trialRecorded:!!reports[source.id],candidates,reviewedPhotos,active,
    status:candidates?`${candidates} saved listings · ${reviewedPhotos} photos reviewed · ${active} in the active desk`:'No saved listings yet',
-   scanMethod:ready?(source.id==='apartments'?'App scan through Chrome':'App scan'):(reports[source.id]?'Assisted scan only':'Not yet tested'),
+   scanMethod:ready?(['apartments','zillow'].includes(source.id)?'App scan through Chrome':'App scan'):(reports[source.id]?'Assisted scan only':'Not yet tested'),
    scanDetail:ready?'Included in approved scan plans. The next run checks current access and full-gallery coverage.':reports[source.id]?'The assisted test worked. Discovery is not yet connected to Plan a scan.':'Access and extraction still need a bounded test.'};
  });
 }

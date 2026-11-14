@@ -13,6 +13,7 @@ import {chatGpt,aiMode} from './chatgpt.ts';
 import {providerReady} from './chatgpt-provider.ts';
 import {BrowserBridge,extensionOrigin} from './browser-bridge.ts';
 import {ChromeJobs} from './chrome-jobs.ts';
+import {recoverZillowChrome} from './chrome-recovery.ts';
 import {runApartmentsPlan} from './apartments-worker.ts';
 import {RatingFeedbackService,planFeedbackReviewer,type FeedbackReviewer} from './rating-feedback.ts';
 const decisionSchema=z.object({revision:z.number().int(),stage:stageSchema,notes:z.string().max(10000),followUp:z.string().max(40),viewing:z.string().max(40),rescued:z.boolean()}).strict();
@@ -55,6 +56,13 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  }
  if(path==='/api/state'&&req.method==='GET')return send(200,{csrf,demo,homes:store.homes(),criteria:store.criteria,sources:sourceStatuses(store),events:store.events(),plans:(store.db.prepare('SELECT id FROM plans ORDER BY created_at DESC LIMIT 30').all() as any[]).map(p=>getPlan(store,p.id)),providerReady:await providerReady(dataDir),aiMode:aiMode(),chatgpt:await chatGpt(dataDir).state(),schedule:{enabled:false,reason:'First scan needs one-time approval; recurring scans are not enabled.'}});
  if(path==='/api/browser/state'&&req.method==='GET')return send(200,browserBridge.state());
+ if(path==='/api/browser/recover-zillow'&&req.method==='POST'){
+  if(demo)throw new Error('Live access checks are disabled in demo mode');
+  z.object({confirmation:z.literal('APPROVE ONE ZILLOW RECOVERY')}).strict().parse(await body(req));
+  if(store.db.prepare('SELECT 1 FROM scan_lock WHERE id=1').get())throw new Error('Another scan is running');
+  const plan=createPlan(store,{purpose:'access-check',sources:['zillow'],billingMode:'chatgpt',maxPages:1,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0},{accessRecovery:true});
+  approvePlan(store,plan.id,'APPROVE ONE SCAN');void recoverZillowChrome(store,plan.id,dataDir,chromeJobs).catch(e=>store.event(String(e)));return send(202,{id:plan.id});
+ }
  if(path==='/api/browser/prepare'&&req.method==='POST')return send(200,browserBridge.prepare());
  if(path==='/api/browser/disconnect'&&req.method==='POST'){chromeJobs.fail('Chrome disconnected');browserBridge.disconnect();return send(200,{ok:true});}
  if(path==='/api/criteria'&&req.method==='PUT'){store.set('criteria',criteriaSchema.parse(await body(req)));store.event('Criteria updated; scores recalculated without network or AI requests.');return send(200,{ok:true});}

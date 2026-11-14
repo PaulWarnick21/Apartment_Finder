@@ -17,7 +17,7 @@ test('saved results and current active counts remain separate from connected app
  const s=new Store(':memory:');try{
   s.set('trialSourceReports',{zillow:'3 test candidates; obsolete active count 3'});
   for(let n=1;n<=3;n++)s.ingest(listingSchema.parse({source:'zillow',sourceId:String(n),url:`https://www.zillow.com/${n}`,title:'Example',address:`Example ${n}`,rent:2600,beds:1,photos:[{id:'p',url:'https://example.com/p.jpg',status:'reviewed',kind:'interior'}]}));
-  const status=sourceStatuses(s).find(r=>r.id==='zillow')!;assert.equal(status.trialRecorded,true);assert.equal(status.candidates,3);assert.equal(status.reviewedPhotos,3);assert.equal(status.scanMethod,'App scan');assert.equal(status.ready,true);assert.equal(status.paused,false);assert.ok(!status.status.includes('obsolete'));
+  const status=sourceStatuses(s).find(r=>r.id==='zillow')!;assert.equal(status.trialRecorded,true);assert.equal(status.candidates,3);assert.equal(status.reviewedPhotos,3);assert.equal(status.scanMethod,'App scan through Chrome');assert.equal(status.ready,true);assert.equal(status.paused,false);assert.ok(!status.status.includes('obsolete'));
   const h=s.homes()[0];s.update(h.id,h.revision,{stage:'Closed',notes:'Keep this',followUp:'',viewing:'',rescued:false});const updated=sourceStatuses(s).find(r=>r.id==='zillow')!;assert.equal(updated.candidates,3);assert.equal(updated.active,status.active-1);
  }finally{s.close();}
 });

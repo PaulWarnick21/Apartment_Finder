@@ -1,18 +1,21 @@
 import {capturePage} from './capture.js';
+import {captureZillow} from './zillow-capture.js';
 const api='http://127.0.0.1:4317/api/browser-bridge/';
 let busy=false,lastPage=0;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function call(path,body,token){const r=await fetch(api+path,{method:'POST',credentials:'omit',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json','X-AF-Extension-Id':chrome.runtime.id,Authorization:`Bearer ${token}`},body:JSON.stringify(body)});const value=await r.json();if(!r.ok)throw new Error(value.error??'Local app unavailable');return value;}
-async function snapshot(tabId){return (await chrome.scripting.executeScript({target:{tabId},func:capturePage}))[0].result;}
+async function snapshot(tabId,zillow=false){return (await chrome.scripting.executeScript({target:{tabId},func:zillow?captureZillow:capturePage}))[0].result;}
 async function collect(job,token){
  const check=async()=>{if(Date.now()>job.expires||!(await call('jobs/check',{id:job.id},token)).active)throw new Error('Scan cancelled or expired');};
- const u=new URL(job.url);if(u.origin!=='https://www.apartments.com'||u.username||u.password)throw new Error('Job URL not permitted');
+ const u=new URL(job.url);if(!['https://www.apartments.com','https://www.zillow.com'].includes(u.origin)||u.username||u.password||u.hash)throw new Error('Job URL not permitted');
+ const zillow=u.origin==='https://www.zillow.com';
  await sleep(Math.max(0,10000-(Date.now()-lastPage)));lastPage=Date.now();
  await check();
  const tab=await chrome.tabs.create({url:job.url,active:true});
  try{
   for(let i=0;i<30;i++){await sleep(1000);if((await chrome.tabs.get(tab.id)).status==='complete')break;}
-  await sleep(3000);let page=await snapshot(tab.id);const initial=page;if(page.warning)return page;
+  await sleep(3000);let page=await snapshot(tab.id,zillow);const initial=page;if(page.warning)return page;
+  if(zillow)return page; // Entire property gallery is already embedded in its page data.
   if(job.kind==='discovery')return {...page,links:(await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>[...document.querySelectorAll('a[href]')].map(a=>a.href).filter(h=>/^https:\/\/www\.apartments\.com\/[^/]+\/[a-z0-9]{7}\/$/.test(h)).slice(0,500)}))[0].result};
   const rent=Number((page.text.match(/\$([\d,]+)\s*Total Monthly Price/)?.[1]??'').replaceAll(',',''));
   if(job.maxRent&&rent>=job.maxRent)return page;

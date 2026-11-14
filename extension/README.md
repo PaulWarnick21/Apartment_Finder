@@ -1,5 +1,17 @@
 # Normal Chrome scanner
 
+Version 0.3.0 adds Zillow search and individual rental pages to the same paired
+Chrome connection. Reload the installed extension once and approve Zillow site
+access in Chrome if prompted; pairing does not need to be repeated. Zillow jobs
+run only under an approved bounded plan, retain per-source daily limits and stop
+on access warnings. Captures retain only the matching property's public rental
+fields and its advertised full-resolution gallery, excluding account data and
+nearby ads. Building-only search results are not treated as individual units.
+An explicit one-page recovery check can validate search access before clearing a
+prior Zillow pause; ordinary scans and startup never clear it. Browser-generated
+subrequests are not counted individually by this extension; page visits and
+app-initiated image requests are accounted separately.
+
 Version 0.2 supports approved Apartments.com scans from the desk. A background
 worker checks the local app for an approved command every 30 seconds. It opens one
 page at a time, waits at least ten seconds between page visits, opens the listing

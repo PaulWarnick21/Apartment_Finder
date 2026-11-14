@@ -59,7 +59,7 @@ test('URL and extension boundaries reject lookalikes and off-site captures',()=>
  assert.throws(()=>extensionOrigin(origin,'not-an-extension'));
  assert.equal(listingUrl(testListingUrl+'?tracking=123'),testListingUrl);
  const manifest=JSON.parse(readFileSync('extension/manifest.json','utf8'));
- assert.deepEqual(manifest.host_permissions,['https://www.apartments.com/*','http://127.0.0.1/*']);
+ assert.deepEqual(manifest.host_permissions,['https://www.apartments.com/*','https://www.zillow.com/*','http://127.0.0.1/*']);
  assert.equal(manifest.background.service_worker,'background.js');assert.equal(manifest.content_scripts,undefined);
 });
 

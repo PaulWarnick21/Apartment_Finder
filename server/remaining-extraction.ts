@@ -11,8 +11,12 @@ function features(l:Listing,text:string){
  l.modern=yes('modern',/renovated[^.]{0,80}(?:kitchen|bathroom)|modern (?:kitchen|finishes)|brand.new appliances/i);
  l.openPlan=yes('openPlan',/open[- ]concept|open (?:living space|floor plan|kitchen)/i);
  l.north=/south[- ]facing|southern views/i.test(text)?false:yes('north',/north[- ]facing/i);
- if(/shared laundry|in-building laundry|laundry facilities on the main floor/i.test(text))l.laundry='shared-only';
- else if(/in[- ]?(?:unit|suite) (?:laundry|washer)|Laundry:\s*In Unit|in[- ]suite[^.]{0,25}washer\/dryer/i.test(text))l.laundry='in-unit';
+ const shared=text.match(/shared laundry|in-building laundry|laundry (?:room|facilities) (?:in (?:the )?building|on the main floor)/i);
+ const noPrivate=text.match(/(?:no|without)\s+in[- ](?:unit|suite)\s+(?:laundry|washer)/i);
+ const privateLaundry=text.match(/in[- ]?(?:unit|suite) (?:laundry|washer)|Laundry:\s*In Unit|in[- ]suite[^.]{0,25}washer\/dryer/i);
+ if(noPrivate){l.laundry=shared?'shared-only':'none';l.evidence.laundry=noPrivate[0]+(shared?'; '+shared[0]:'');}
+ else if(privateLaundry||l.laundry==='in-unit'){l.laundry='in-unit';if(privateLaundry)l.evidence.laundry=privateLaundry[0];}
+ else if(shared){l.laundry='shared-only';l.evidence.laundry=shared[0];}
  const parking=text.match(/(?:parking[^.]{0,40}\$([\d,]+)\s*\/?month|parking:\s*\$([\d,]+))/i);
  if(parking){l.parking='extra';l.parkingCost=num(parking[1]??parking[2]);l.parkingCount=1;l.evidence.parking=parking[0];}
  else if(/parking (?:stall|spot|space).{0,30}included|includes? (?:1|one) parking|parking included/i.test(text)){l.parking='included';l.parkingCount=1;}
@@ -27,6 +31,7 @@ export function extractRemaining(source:'zillow'|'rew'|'facebook',html:string,ur
  if(source==='zillow'){
   const next=JSON.parse($('#__NEXT_DATA__').text()),cache=JSON.parse(next.props.pageProps.componentProps.gdpClientCache);const id=url.match(/\/(\d+)_zpid/)?.[1];
   const p=(Object.values(cache) as any[]).map(v=>v.property).find(p=>String(p?.zpid)===id);if(!p)throw new Error('Target Zillow property missing');
+  if(p.homeStatus&&p.homeStatus!=='FOR_RENT')throw new Error('Zillow property is not currently advertised for rent');
   const photos=(p.originalPhotos??[]).map((photo:any)=>[...(photo.mixedSources?.jpeg??[])].sort((a,b)=>b.width-a.width)[0]?.url).filter(Boolean);
   const unit=p.streetAddress?.match(/#([\w-]+)/)?.[1]??'';
   l=listingSchema.parse({source,sourceId:id,url,title:p.streetAddress,address:`${p.streetAddress.replace(/\s*#.*$/,'')}, ${p.city}, ${p.state}`,unit,rent:p.price,beds:p.bedrooms,baths:p.bathrooms,sqft:p.livingArea,description:p.description,area:p.neighborhoodRegion?.name??'Unknown',laundry:p.resoFacts?.laundryFeatures?.includes('In Unit')?'in-unit':'unknown',lease:p.resoFacts?.leaseTerm??'Unknown',photos:photos.map((url:string)=>({id:hash(url).slice(0,16),url})),expectedPhotos:p.responsivePhotos?.length??photos.length,galleryComplete:photos.length>0&&photos.length===(p.responsivePhotos?.length??photos.length),evidence:{gallery:'All photos in this property’s structured originalPhotos gallery.'}});
