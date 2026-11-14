@@ -58,6 +58,12 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
   General preference changes must improve agreement across saved examples, preserve correct
   interest bands, and remain small and reversible. One-off exceptions and uncertain listing facts
   must not silently become global rules. Failed reviews retain feedback and require an explicit retry.
+  Each new submission must immediately affect comparable-listing scoring, using the latest rating
+  per apartment and preserving prior submissions. Apply explicit supported general preferences
+  immediately. Clearly show unresolved interpretation and pause new scan requests until resolved;
+  never silently mark an unimplemented scoring instruction as handled. Keep evidence ceilings and
+  hard requirements above learned adjustments, and do not let downward feedback undo stricter
+  penalties. Audit historical chat and app feedback without new scans or paid AI requests.
 - Show furnishing prominently with a supporting listing statement: furnished, unfurnished,
   optional/partial, conflicting, or not confirmed. Staged furniture, display suites and building
   guest suites do not establish inclusion. Award a furnishing bonus only for an explicit rental

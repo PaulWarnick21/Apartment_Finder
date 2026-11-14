@@ -52,7 +52,7 @@ test('learning cannot bring an unwanted example back into the desk merely to imp
 test('stale reviews cannot overwrite preferences changed during an AI request',async()=>{
  const store=new Store(':memory:');const {id}=store.ingest(listing());let release!:()=>void;const waiting=new Promise<void>(r=>release=r);let started!:()=>void;const ready=new Promise<void>(r=>started=r);
  const service=new RatingFeedbackService(store,async()=>{started();await waiting;return {summary:'Change',interpretation:'Reduce bonus',changes:[{parameter:'bonuses.furnished',value:.05,reason:'Less valuable'}]};});
- service.submit(id,input(store.home(id)!.score.value-.1));await ready;store.set('criteria',{...store.criteria,baseScore:3.1});release();await service.idle();assert.equal(store.criteria.baseScore,3.1);assert.equal(store.criteria.bonuses.furnished,.15);assert.equal(service.list(id)[0].status,'reviewed');await service.close();store.close();
+ service.submit(id,input(store.home(id)!.score.value-.1));await ready;store.set('criteria',{...store.criteria,baseScore:3.1});release();await service.idle();assert.equal(store.criteria.baseScore,3.1);assert.equal(store.criteria.bonuses.furnished,.15);assert.equal(service.list(id)[0].status,'needs-attention');await service.close();store.close();
 });
 test('paid API mode is refused before any provider request',async()=>{
  const previous=process.env.AI_PROVIDER;process.env.AI_PROVIDER='api';try{await assert.rejects(()=>planFeedbackReviewer('.')({criteria:criteriaSchema.parse({}),current:{homeId:1,listing:listing(),score:3,reason:'Test'},appScore:4,examples:[]},new AbortController().signal),/paid API fallback is disabled/);}finally{if(previous===undefined)delete process.env.AI_PROVIDER;else process.env.AI_PROVIDER=previous;}

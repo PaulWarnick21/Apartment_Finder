@@ -17,6 +17,7 @@ import {LocationMaps} from './location-map.ts';
 import {recoverZillowChrome} from './chrome-recovery.ts';
 import {runApartmentsPlan} from './apartments-worker.ts';
 import {RatingFeedbackService,planFeedbackReviewer,type FeedbackReviewer} from './rating-feedback.ts';
+import {assertFeedbackReady,rebuildLearning} from './feedback-learning.ts';
 const decisionSchema=z.object({revision:z.number().int(),stage:stageSchema,notes:z.string().max(10000),followUp:z.string().max(40),viewing:z.string().max(40),rescued:z.boolean()}).strict();
 async function body(req:IncomingMessage,maxBytes=100000){const chunks:Buffer[]=[];let size=0;for await(const chunk of req){const b=Buffer.from(chunk);size+=b.length;if(size>maxBytes)throw new Error('Request too large');chunks.push(b);}return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');}
 const calendarEscape=(s:string)=>s.replace(/\\/g,'\\\\').replace(/[\r\n]+/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
@@ -67,7 +68,7 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  }
  if(path==='/api/browser/prepare'&&req.method==='POST')return send(200,browserBridge.prepare());
  if(path==='/api/browser/disconnect'&&req.method==='POST'){chromeJobs.fail('Chrome disconnected');browserBridge.disconnect();return send(200,{ok:true});}
- if(path==='/api/criteria'&&req.method==='PUT'){store.set('criteria',criteriaSchema.parse(await body(req)));store.event('Criteria updated; scores recalculated without network or AI requests.');return send(200,{ok:true});}
+ if(path==='/api/criteria'&&req.method==='PUT'){store.set('criteria',rebuildLearning(store,criteriaSchema.parse(await body(req))).criteria);store.event('Criteria updated; scores recalculated without network or AI requests.');return send(200,{ok:true});}
  if(path==='/api/recover'&&req.method==='POST'){recoverInterrupted(store);return send(200,{ok:true});}
  if(path.startsWith('/api/chatgpt/')&&req.method==='POST'){
   if(demo)throw new Error('ChatGPT connections are disabled in the offline demo.');
@@ -99,7 +100,7 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  if(planMatch&&req.method==='POST'){
   if(demo)throw new Error('Live scans are disabled in demo mode');const id=planMatch[1];
   if(planMatch[2]==='cancel'){store.db.prepare("UPDATE plans SET state='cancelled' WHERE id=? AND state IN ('draft','approved','running')").run(id);store.event('Scan cancelled; completed work retained.');return send(200,{ok:true});}
-  const p=getPlan(store,id);if(p.caps.maxAiCalls>0&&(!await providerReady(dataDir)||p.caps.billingMode!==aiMode()))throw new Error('Connect your ChatGPT plan and select a model in Preferences, then prepare a new plan.');
+  assertFeedbackReady(store);const p=getPlan(store,id);if(p.caps.maxAiCalls>0&&(!await providerReady(dataDir)||p.caps.billingMode!==aiMode()))throw new Error('Connect your ChatGPT plan and select a model in Preferences, then prepare a new plan.');
   const {confirmation}=z.object({confirmation:z.string()}).parse(await body(req));approvePlan(store,id,confirmation);void runRegularPlan(store,id,dataDir,chromeJobs).catch(e=>store.event(`Worker could not start: ${String(e)}`));return send(202,{ok:true});
  }
  if(path==='/api/duplicates/different'&&req.method==='POST'){const {a,b}=z.object({a:z.number().int().positive(),b:z.number().int().positive()}).parse(await body(req));if(a===b||!store.home(a)||!store.home(b))throw new Error('Choose two different apartments');store.db.prepare('INSERT OR REPLACE INTO duplicate_decisions VALUES (?,?,?)').run(Math.min(a,b),Math.max(a,b),'different');return send(200,{ok:true});}

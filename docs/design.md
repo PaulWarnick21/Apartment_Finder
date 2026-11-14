@@ -13,12 +13,28 @@ The detail view stores each personal rating and reason separately from the app p
 including immutable listing, score and criteria snapshots. A serial, bounded review uses the
 connected ChatGPT plan only when the user submits feedback or explicitly retries. Startup,
 demo and ordinary page views do not make AI requests. Interrupted reviews remain pending.
-The model proposes at most three small changes to allowlisted preference weights; code validates
+Each submission synchronously rebuilds a bounded similarity calibration from the latest active
+rating per apartment, before returning success. New comparable listings use the same adjustment;
+listing IDs are not the matching criterion. Features distinguish verified from representative
+views, view quality, rent, bedrooms, location, condition and relevant conveniences. Downward
+feedback cannot increase a score already reduced below its target by stricter rules. Hard filters,
+photo requirements and evidence-based ceilings always win. User condition assessments are stored
+separately from source facts. Explicit supported floor-height and distance preferences are applied
+immediately; unknown listing facts remain unknown.
+The model then proposes at most three small changes to allowlisted preference weights; code validates
 the proposal against the latest rating per apartment, accepting it only if average error improves,
 no example regresses substantially, and already-correct interest bands remain correct. Requirements,
 facts, workflow decisions and the 3.0 cutoff cannot be changed by this reviewer. Applied changes
 recalculate current and future scores; an undo is available while it cannot overwrite newer preferences.
 Feedback and calibration history remain local and are included in the user's data export.
+All latest examples and their current base predictions are included in interpretation. Unsupported
+instructions, rejected changes, stale reviews and failures are visible; scans cannot start or
+continue requests while the latest feedback interpretation remains unfinished. A no-change model
+response does not disable the synchronous calibration. No past feedback is automatically sent to
+AI at startup. Historical audits use saved evidence and retain original review outcomes separately.
+Future whole-gallery reviews assess dated/modern condition and cramped space with photo references
+alongside outlooks. Explicit unit-floor text and scoped neighbourhood evidence supply height and
+distance; suite numbers and building heights never establish an apartment floor.
 
 Furnishing extraction uses scoped advertisement text or an explicit structured yes/no field,
 not objects visible in photos. The detail view quotes that evidence and distinguishes optional,

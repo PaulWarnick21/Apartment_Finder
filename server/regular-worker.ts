@@ -1,4 +1,6 @@
 import {mkdir,writeFile} from 'node:fs/promises';
+import {assertFeedbackReady} from './feedback-learning.ts';
+import {scoringFacts} from './scoring-facts.ts';
 import {join} from 'node:path';
 import {Store,hash} from './db.ts';
 import {Budget,claimPlan,getPlan} from './plans.ts';
@@ -21,7 +23,7 @@ export function hardFailure(l:Listing,c:Criteria){return c.maxRent!==null&&l.ren
 export function knownUrl(store:Store,source:string,url:string){return !!store.db.prepare('SELECT 1 FROM postings WHERE source=? AND url=?').get(source,url);}
 export function pendingHomes(store:Store,source:string){return store.homes().filter(h=>h.listing.source===source&&!!store.get(`pendingGallery:${h.id}`)&&!['Closed','Leased','Not Interested'].includes(h.stage));}
 function locate(l:Listing){if(l.location!=='unknown')return;const area=l.area!=='Unknown'?l.area:l.address;const text=area+' '+l.title;if(/\b(Coal Harbour|West End|Yaletown|Downtown Vancouver)\b/i.test(text)){l.location='downtown';l.evidence.location=text;}else if(/\b(North Vancouver|West Vancouver|Burnaby|Richmond|Coquitlam|Port Moody|Surrey|New Westminster)\b/i.test(text)){l.location='outside';l.evidence.location=text;}}
-export function extractSource(source:Source,html:string,url:string,xml?:string){let l:Listing;if(source.id==='craigslist')l=parseListing(html,url,source);else if(['zillow','rew','facebook'].includes(source.id))l=extractRemaining(source.id as 'zillow'|'rew'|'facebook',html,url);else if(source.id==='zumper')l=extractZumper(html,url);else l=extractTrial(html,url,source,xml);if(!l.title||l.rent===null)throw new Error('Listing title or rent missing; extraction needs review');locate(l);return l;}
+export function extractSource(source:Source,html:string,url:string,xml?:string){let l:Listing;if(source.id==='craigslist')l=parseListing(html,url,source);else if(['zillow','rew','facebook'].includes(source.id))l=extractRemaining(source.id as 'zillow'|'rew'|'facebook',html,url);else if(source.id==='zumper')l=extractZumper(html,url);else l=extractTrial(html,url,source,xml);if(!l.title||l.rent===null)throw new Error('Listing title or rent missing; extraction needs review');locate(l);return scoringFacts(l);}
 type Queue={urls:string[];next:string|null};
 type Session=Pick<SourceSession,'start'|'html'|'resource'|'image'|'close'|'stopped'>;
 export type ScanDependencies={session?:(source:Source,budget:Budget,dataDir:string)=>Session;review?:typeof reviewGallery;apartments?:typeof runApartmentsSource};
@@ -51,6 +53,7 @@ export async function runWebSource(store:Store,source:Source,budget:Budget,dataD
 }
 /** The only coordinator: one approval, one lock, sequential sources and shared total caps. */
 export async function runRegularPlan(store:Store,id:string,dataDir:string,jobs?:ChromeJobs,deps:ScanDependencies={}){
+ assertFeedbackReady(store);
  const plan=claimPlan(store,id),budget=new Budget(store,id,plan.caps),results:SourceResult[]=plan.caps.sources.map((source:string)=>({source,state:'pending',detail:'Awaiting its turn.'}));store.set(`sourceResults:${id}`,results);
  try{if(plan.caps.purpose!=='listings')throw new Error('Access checks use their dedicated runner');if(plan.caps.maxAiCalls&&plan.caps.billingMode!=='chatgpt')throw new Error('Regular scans require ChatGPT plan access; paid API fallback is disabled');
  for(let i=0;i<results.length;i++){budget.check();const source=sourceById(results[i].source),share=new SourceBudget(budget,results.length-i);
