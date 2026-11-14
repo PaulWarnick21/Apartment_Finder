@@ -9,7 +9,7 @@ import type {Budget} from './plans.ts';
 import {hash} from './db.ts';
 const finding=visionSchema.extend({id:z.string()});
 const resultSchema=z.object({photos:z.array(finding),allOutlooksCovered:z.boolean(),summary:z.string().max(3000)});
-export function validateGallery(value:unknown,ids:string[]){const result=resultSchema.parse(value);if(result.photos.length!==ids.length||new Set(result.photos.map(p=>p.id)).size!==ids.length||result.photos.some(p=>!ids.includes(p.id)))throw new Error('AI gallery response did not cover every submitted photo exactly once');return result;}
+export function validateGallery(value:unknown,ids:string[]){const result=resultSchema.parse(value);if(result.photos.length!==ids.length||new Set(result.photos.map(p=>p.id)).size!==ids.length||result.photos.some(p=>!ids.includes(p.id)))throw new Error('AI gallery response did not cover every submitted photo exactly once');for(const p of result.photos)if(/exact[- ]unit provenance (?:is )?(?:unclear|unverified|unconfirmed|not established)|not verified as the listed suite|identified as another suite/i.test(p.note)){p.unitCertain=false;result.allOutlooksCovered=false;}return result;}
 export async function reviewGallery(listing:Listing,budget:Budget,dataDir:string){
  if(aiMode()!=='chatgpt'||budget.caps.billingMode!=='chatgpt')throw new Error('This trial requires ChatGPT plan access; paid API fallback is disabled.');
  const photos=listing.photos.filter(p=>p.local&&p.status!=='unavailable');if(!photos.length)return;

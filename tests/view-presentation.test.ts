@@ -92,3 +92,5 @@ test('expensive weak partial views rank below the better panorama calibration',(
  assert.ok(scoreListing({...l,rent:2400,beds:1},criteria).value>scoreListing({...l,rent:3190,beds:1},criteria).value);
  assert.ok(scoreListing({...l,rent:3500,beds:1},criteria).value<3);
 });
+
+test('a representative mountain photo cannot turn an unverified rental into a strong match',()=>{const l=listingSchema.parse({source:'fixture',sourceId:'unknown',url:'https://example.com/unknown',title:'Example',address:'Example',rent:2100,beds:2,modern:true,furnished:true,workspace:true,photos:[photo('nature','interior','nature',false)],galleryComplete:true,expectedPhotos:1});const s=scoreListing(l,criteriaSchema.parse({}));assert.equal(s.view,'Unverified');assert.ok(s.value<=3.5);assert.ok(s.adjustments.some(a=>a.label==='Unverified nature view ceiling'));});

@@ -3,6 +3,7 @@ const clamp=(n:number)=>Math.min(5,Math.max(.1,n));
 const round=(n:number)=>Math.round(n*10)/10;
 export function scoreListing(l:Listing,c:Criteria):Score {
   const flags:string[]=[],reasons:string[]=[],adjustments:{label:string;value:number}[]=[];
+  if(l.evidence.nonRental==='true')reasons.push('Not an apartment rental');
   const add=(label:string,value:number)=>adjustments.push({label,value});
   const reviewed=l.photos.filter(p=>p.status==='reviewed');
   const complete=l.galleryComplete && l.photos.length>0 && reviewed.length===l.photos.length && (l.expectedPhotos===null || l.photos.length>=l.expectedPhotos);
@@ -46,10 +47,16 @@ export function scoreListing(l:Listing,c:Criteria):Score {
   if(l.beds===null)flags.push('Bedrooms Unsure');
   if(l.internet==='Unknown')flags.push('Internet Unsure');
   if(l.conflicts.length)flags.push('Conflicting listing details');
+  if(l.rent!==null&&l.rent<=1||l.evidence.rentPlaceholder==='true')reasons.push('Placeholder price; actual monthly rent must be confirmed');
   if(l.modern===false)add('Dated interiors',-c.datedInteriorPenalty);
   if(!views.length&&buildingWindows)add('Building-facing outlook; no confirmed nature',-c.buildingViewPenalty);
   const raw=base+adjustments.reduce((a,b)=>a+b.value,0);
   let low=clamp(raw-spread),high=clamp(raw+spread),value=clamp(raw);
+  if(!reasons.length&&quality===null&&value>3.5){
+    add('Unverified nature view ceiling',Math.round((3.5-raw)*100)/100);
+    flags.push('A strong-match score requires a confirmed unit nature view');
+    value=3.5;low=Math.min(low,value);high=Math.min(high,value);
+  }
   if(!reasons.length&&quality!==null&&quality>2&&quality<4){
     const weakViewCost=cost===null?0:Math.max(0,cost-c.partialViewPriceAnchor)*c.partialViewPriceSlope*Math.min(1,Math.max(0,(3.5-quality)*2));
     const ceiling=c.partialNatureCeiling+(quality-3)*c.viewWeight-weakViewCost+(l.furnished===true?c.bonuses.furnished:0)+(l.shortLease===true?c.bonuses.shortLease:0)+(l.gas===true?c.bonuses.gas:0)+(l.beds!==null&&l.beds>=2?c.bonuses.secondBedroom:0);

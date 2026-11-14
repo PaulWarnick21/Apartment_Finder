@@ -11,6 +11,7 @@ export function discover(html:string,source:Source){const $=load(html);const fou
 export function parseListing(html:string,url:string,source:Source):Listing {
  if(source.id==='vada')return extractTrial(html,url,source);
  const $=load(html);$('script:not([type="application/ld+json"]),style,nav,footer,form').remove();
+ if(source.id==='craigslist'&&/ - (?:appliances|auto parts|furniture|for sale|electronics)\b/i.test($('title').text()))throw new Error('Craigslist page is not an apartment rental');
  const title=source.adapter==='craigslist'?$('#titletextonly').text().trim()||$('h1').first().text().trim():$('h1').first().text().trim();
  const body=source.adapter==='craigslist'?$('#postingbody').text().replace('QR Code Link to This Post','').trim():$('main').text().trim()||$('body').text().trim();
  const text=`${title}\n${$('.attrgroup').text()}\n${body}`.replace(/[ \t]+/g,' ');
@@ -29,8 +30,11 @@ export function parseListing(html:string,url:string,source:Source):Listing {
  if(!urls.length&&source.adapter==='craigslist')$('img[src]').each((_,a)=>{const s=$(a).attr('src')!;if(s.includes('images.craigslist.org/'))urls.push(s);});
  const photoUrls=[...new Set(urls)].filter(u=>allowedUrl(u,source.mediaHosts));
  const pageText=$('body').text();
- const expected=number(pageText.match(/image\s+\d+\s+of\s+(\d+)/i)?.[1])??number(pageText.match(/(\d+)\s+Photos/i)?.[1]);
+ const advertisedExpected=number(pageText.match(/image\s+\d+\s+of\s+(\d+)/i)?.[1])??number(pageText.match(/(\d+)\s+Photos/i)?.[1]);
+ // Repeated gallery slots need one assessment of the identical source image.
+ const expected=source.adapter==='craigslist'&&urls.length===advertisedExpected&&urls.every(u=>allowedUrl(u,source.mediaHosts))?photoUrls.length:advertisedExpected;
  const evidence:Record<string,string>={};
+ if(advertisedExpected!==null&&expected!==null&&expected<advertisedExpected)evidence.galleryDuplicates=`${advertisedExpected} gallery slots contain ${expected} distinct source images.`;
  function matched(key:string,re:RegExp){const m=text.match(re);if(!m)return false;const before=text.slice(Math.max(0,(m.index??0)-20),m.index);if(/(?:no|not|without)\s*$/i.test(before))return false;evidence[key]=m[0];return true;}
  const gas=matched('gas',/gas\s+(?:stove|cooktop|range)/i)?true:null;
  const north=matched('north',/north[- ]facing\s+(?:unit|apartment|view|suite)/i)?true:null;

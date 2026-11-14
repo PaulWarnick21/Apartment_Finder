@@ -36,3 +36,5 @@ test('gallery response must cover every submitted photo with no duplicates or ex
 test('captured-page extraction does not turn a negative laundry statement into a pass',()=>{
  const l=extractTrial('<h1>1 bedroom apartment</h1><div id="postingbody">No in-suite laundry. Comfortable apartment close to downtown.</div>','https://www.craigslist.org/view/d/example/abc',sourceById('craigslist'));assert.equal(l.laundry,'none');
 });
+
+test('uncertain provenance in an AI explanation overrides contradictory certainty',()=>{const p={id:'p1',kind:'interior',scenery:'nature',quality:4,unitCertain:true,note:'Mountains visible. Exact-unit provenance is unclear.'};const result=validateGallery({photos:[p],allOutlooksCovered:true,summary:'Mixed suite gallery'},['p1']);assert.equal(result.photos[0].unitCertain,false);assert.equal(result.allOutlooksCovered,false);});

@@ -6,7 +6,8 @@ export function zumperState(html:string){const $=load(html);for(const script of 
 export function extractZumper(html:string,url:string):Listing{
  const state=zumperState(html),entity=state.detail?.entity?.data;if(!entity)throw new Error('Zumper unit data missing');
  const floorplans=entity.floorplan_listings??[];
- const unit=floorplans.length?[...floorplans].filter(p=>p.min_price>0).sort((a,b)=>(a.bedrooms===1?0:a.bedrooms===2?1:2)-(b.bedrooms===1?0:b.bedrooms===2?1:2)||a.min_price-b.min_price)[0]:entity;
+ // Some advertised types carry $1 placeholders instead of a usable monthly rent.
+ const unit=floorplans.length?[...floorplans].filter(p=>p.min_price>1).sort((a,b)=>(a.bedrooms===1?0:a.bedrooms===2?1:2)-(b.bedrooms===1?0:b.bedrooms===2?1:2)||a.min_price-b.min_price)[0]:entity;
  if(!unit)throw new Error('No priced Zumper unit type found');
  const representative=floorplans.length>0,media=[...(entity.media??[]),...(representative?unit.media??[]:[])].filter(p=>p.is_available!==false);
  const ids=[...new Set(media.map(p=>String(p.media_id)))];
@@ -15,5 +16,6 @@ export function extractZumper(html:string,url:string):Listing{
  const description=load(entity.description??'').text()+' '+load(unit.description??'').text();
  const furnishing=extractFurnishing(description),amenities=(unit.amenity_tags??[]).join('; ');
  const rent=unit.min_price??unit.price??null;
+ if(rent!==null&&rent<=1)throw new Error('Zumper advertises a placeholder price; monthly rent needs confirmation');
  return listingSchema.parse({source:'zumper',sourceId:String(unit.listing_id??entity.building_id),url,title:`${entity.name??unit.title??'Apartment'}${representative?' · '+unit.title:''}`,address:entity.address??entity.formatted_address??'',unit:representative?'':entity.unit??'',area:entity.neighborhood_name??unit.neighborhood?.name??'Unknown',rent,beds:unit.bedrooms??null,baths:unit.bathrooms??null,sqft:unit.square_feet||null,description:(description+(representative?' Representative photos of the building and unit type; exact-unit provenance unverified.':'')).slice(0,50000),furnished:representative?null:furnishing.value,laundry:/In-Unit Laundry/i.test(amenities)?'in-unit':'unknown',lease:unit.min_lease_days?`Minimum ${unit.min_lease_days} days`:'Unknown',shortLease:unit.min_lease_days?unit.min_lease_days<365:null,photos:photoUrls,expectedPhotos:ids.length,galleryComplete:ids.length>0,conflicts:representative?['Building / floor-plan advertisement: exact suite and availability must be confirmed.']:[],evidence:{amenities,...(furnishing.statement&&!representative?{furnishingStatement:furnishing.statement}:{})}});
 }

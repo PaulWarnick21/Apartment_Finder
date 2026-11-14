@@ -16,7 +16,7 @@ import type {Listing,Criteria} from '../src/domain.ts';
 import type {ChromeJobs} from './chrome-jobs.ts';
 import {runApartmentsSource} from './apartments-worker.ts';
 export type SourceResult={source:string;state:'complete'|'partial'|'paused'|'pending';detail:string};
-export function hardFailure(l:Listing,c:Criteria){return c.maxRent!==null&&l.rent!==null&&l.rent>=c.maxRent||c.requireLaundry&&['none','shared-only','hookups'].includes(l.laundry);}
+export function hardFailure(l:Listing,c:Criteria){return c.maxRent!==null&&l.rent!==null&&l.rent>=c.maxRent||c.requireLaundry&&['none','shared-only'].includes(l.laundry);}
 export function knownUrl(store:Store,source:string,url:string){return !!store.db.prepare('SELECT 1 FROM postings WHERE source=? AND url=?').get(source,url);}
 export function pendingHomes(store:Store,source:string){return store.homes().filter(h=>h.listing.source===source&&!!store.get(`pendingGallery:${h.id}`)&&!['Closed','Leased','Not Interested'].includes(h.stage));}
 function locate(l:Listing){if(l.location!=='unknown')return;const area=l.area!=='Unknown'?l.area:l.address;const text=area+' '+l.title;if(/\b(Coal Harbour|West End|Yaletown|Downtown Vancouver)\b/i.test(text)){l.location='downtown';l.evidence.location=text;}else if(/\b(North Vancouver|West Vancouver|Burnaby|Richmond|Coquitlam|Port Moody|Surrey|New Westminster)\b/i.test(text)){l.location='outside';l.evidence.location=text;}}
