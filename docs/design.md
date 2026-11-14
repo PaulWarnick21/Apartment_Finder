@@ -57,6 +57,16 @@ entry remains useful for an apartment found elsewhere.
 
 ## 2. Discovery and extraction
 
+Detail maps use OpenStreetMap's embedded map with a server-side, on-demand
+Nominatim lookup of the public advertised street address. Successful lookups are
+cached for 180 days and misses for one day; requests are serialized at least 1.1
+seconds apart, identified by the app's User-Agent, and paused on access warnings.
+Only a detail-open POST triggers a lookup. Demo mode stays offline. A street pin
+requires a matching house number and road in the Vancouver region; an area-only
+match is labelled approximate and has no apartment pin. Map failures do not block
+the listing. `MAP_GEOCODER_URL` can switch the provider without a code change.
+See the [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/).
+
 Candidate websites and adapter acceptance criteria live in [listing-sources.md](listing-sources.md).
 Validate a small set against real pages before expanding coverage.
 

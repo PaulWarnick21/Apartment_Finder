@@ -153,6 +153,12 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 
 ## R6 Desk card contents
 
+- Opening an apartment detail shows an address-based location map below its key
+  facts, with a larger-map link. Incomplete locations use an explicitly approximate
+  area view without an apartment pin; failed or missing address matches remain
+  unconfirmed. Map lookups use only public listing locations, are cached and paced,
+  and do not run during scanning, startup, offline demos, or ordinary list refreshes.
+
 - Detail-gallery photos open in a full-viewport viewer with zoom, scrolling for close inspection,
   and Close/Escape to return to the same listing position. Keep the detail close control visible
   while scrolling; closing a photo must not close the listing or discard unsaved notes.

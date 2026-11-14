@@ -13,6 +13,7 @@ import {chatGpt,aiMode} from './chatgpt.ts';
 import {providerReady} from './chatgpt-provider.ts';
 import {BrowserBridge,extensionOrigin} from './browser-bridge.ts';
 import {ChromeJobs} from './chrome-jobs.ts';
+import {LocationMaps} from './location-map.ts';
 import {recoverZillowChrome} from './chrome-recovery.ts';
 import {runApartmentsPlan} from './apartments-worker.ts';
 import {RatingFeedbackService,planFeedbackReviewer,type FeedbackReviewer} from './rating-feedback.ts';
@@ -22,6 +23,7 @@ const calendarEscape=(s:string)=>s.replace(/\\/g,'\\\\').replace(/[\r\n]+/g,'\\n
 export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedbackReviewer}:{demo?:boolean;dev?:boolean;feedbackReviewer?:FeedbackReviewer}={}){
  const csrf=randomBytes(32).toString('hex'),browserBridge=new BrowserBridge(store,dataDir,demo),chromeJobs=new ChromeJobs(store);let vite:any;
  const feedback=new RatingFeedbackService(store,demo?null:feedbackReviewer??planFeedbackReviewer(dataDir));
+ const locationMaps=new LocationMaps(store,demo);
  const server=createServer(async(req,res)=>{const host=req.headers.host??'';
  const send=(status:number,value:unknown)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
  try{
@@ -79,6 +81,8 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
   if(path==='/api/chatgpt/disconnect'){await connection.disconnect();return send(200,{ok:true});}
  }
  const ratingHome=path.match(/^\/api\/homes\/(\d+)\/ratings$/);
+ const mapHome=path.match(/^\/api\/homes\/(\d+)\/map$/);
+ if(mapHome&&req.method==='POST'){const home=store.home(Number(mapHome[1]));if(!home)return send(404,{error:'Apartment not found'});return send(200,await locationMaps.get(home.listing));}
  if(ratingHome){const id=Number(ratingHome[1]);if(!store.home(id))return send(404,{error:'Apartment not found'});if(req.method==='GET')return send(200,{ratings:feedback.list(id)});if(req.method==='POST')return send(201,{rating:feedback.submit(id,await body(req))});}
  const ratingAction=path.match(/^\/api\/ratings\/(\d+)\/(retry|undo)$/);
  if(ratingAction&&req.method==='POST'){const id=Number(ratingAction[1]);if(ratingAction[2]==='undo')feedback.undo(id);else feedback.enqueue(id);return send(200,{ok:true});}
