@@ -1,8 +1,10 @@
+import {categoryEntry} from './desk-membership.ts';
 import {DatabaseSync,backup} from 'node:sqlite';
 import {mkdirSync} from 'node:fs';
 import {dirname} from 'node:path';
 import {createHash} from 'node:crypto';
 import {criteriaSchema,listingSchema,type Criteria,type Listing,type Home} from '../src/domain.ts';
+import {canTransition,stageGroup} from '../src/stage-transitions.ts';
 import {scoreListing} from './scoring.ts';
 export const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 export class Store {
@@ -10,6 +12,7 @@ export class Store {
  constructor(public path:string){if(path!==':memory:')mkdirSync(dirname(path),{recursive:true});this.db=new DatabaseSync(path);this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
  CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS homes(id INTEGER PRIMARY KEY AUTOINCREMENT, identity TEXT UNIQUE, listing TEXT NOT NULL, stage TEXT NOT NULL DEFAULT 'Unreviewed',notes TEXT NOT NULL DEFAULT '',follow_up TEXT NOT NULL DEFAULT '',viewing TEXT NOT NULL DEFAULT '',revision INTEGER NOT NULL DEFAULT 0,rescued INTEGER NOT NULL DEFAULT 0,first_seen TEXT NOT NULL,updated_at TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS desk_membership(home_id INTEGER PRIMARY KEY REFERENCES homes(id),category TEXT NOT NULL,entered_at TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS postings(source TEXT,source_id TEXT,home_id INTEGER REFERENCES homes(id),url TEXT,fingerprint TEXT,PRIMARY KEY(source,source_id));
  CREATE TABLE IF NOT EXISTS history(id INTEGER PRIMARY KEY,home_id INTEGER,at TEXT,event TEXT,before_json TEXT,after_json TEXT);
  CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,at TEXT,message TEXT);
@@ -20,12 +23,14 @@ export class Store {
  CREATE TABLE IF NOT EXISTS scan_lock(id INTEGER PRIMARY KEY CHECK(id=1),owner TEXT,heartbeat TEXT);
  CREATE TABLE IF NOT EXISTS requests(id INTEGER PRIMARY KEY,source TEXT,at TEXT,kind TEXT);
  CREATE TABLE IF NOT EXISTS duplicate_decisions(a INTEGER,b INTEGER,decision TEXT,PRIMARY KEY(a,b));
+ CREATE TABLE IF NOT EXISTS rating_feedback(id INTEGER PRIMARY KEY AUTOINCREMENT,request_id TEXT NOT NULL UNIQUE,home_id INTEGER NOT NULL REFERENCES homes(id),at TEXT NOT NULL,user_score REAL NOT NULL,reason TEXT NOT NULL,listing_json TEXT NOT NULL,score_json TEXT NOT NULL,criteria_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',review_json TEXT,error TEXT NOT NULL DEFAULT '',origin TEXT NOT NULL DEFAULT 'app');
+ CREATE TABLE IF NOT EXISTS calibration_changes(id INTEGER PRIMARY KEY AUTOINCREMENT,feedback_id INTEGER NOT NULL UNIQUE REFERENCES rating_feedback(id),at TEXT NOT NULL,before_json TEXT NOT NULL,after_json TEXT NOT NULL,reverted INTEGER NOT NULL DEFAULT 0);
  PRAGMA user_version=1;`);
  if(!this.get('criteria'))this.set('criteria',criteriaSchema.parse({}));
  }
  close(){this.db.close();}
  get<T=unknown>(key:string):T|undefined {const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get(key) as {value:string}|undefined;return row?JSON.parse(row.value):undefined;}
- set(key:string,value:unknown){this.db.prepare('INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(key,JSON.stringify(value));}
+ set(key:string,value:unknown){if(key==='criteria'&&this.get('criteria'))this.homes();this.db.prepare('INSERT INTO meta VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(key,JSON.stringify(value));if(key==='criteria')this.homes();}
  get criteria():Criteria{return criteriaSchema.parse(this.get('criteria'));}
  event(message:string){this.db.prepare('INSERT INTO events(at,message) VALUES (?,?)').run(new Date().toISOString(),message);}
  events(){return this.db.prepare('SELECT * FROM events ORDER BY id DESC LIMIT 100').all();}
@@ -50,9 +55,10 @@ export class Store {
    this.db.prepare('INSERT INTO postings VALUES (?,?,?,?,?) ON CONFLICT(source,source_id) DO UPDATE SET home_id=excluded.home_id,url=excluded.url,fingerprint=excluded.fingerprint').run(l.source,l.sourceId,row.id,l.url,fingerprint);
    return {id:row.id as number,changed:true};
  });}
- homes():Home[]{const criteria=this.criteria;const rows=this.db.prepare('SELECT * FROM homes ORDER BY id DESC').all() as any[];return rows.map(r=>{const listing=listingSchema.parse(JSON.parse(r.listing));return {id:r.id,listing,score:scoreListing(listing,criteria),stage:r.stage,notes:r.notes,followUp:r.follow_up,viewing:r.viewing,revision:r.revision,rescued:!!r.rescued,updatedAt:r.updated_at,firstSeen:r.first_seen,possibleDuplicates:rows.filter(other=>other.id!==r.id&&!!listing.address&&JSON.parse(other.listing).address===listing.address&&(!listing.unit||!JSON.parse(other.listing).unit||listing.unit===JSON.parse(other.listing).unit)&&!this.db.prepare('SELECT 1 FROM duplicate_decisions WHERE a=? AND b=?').get(Math.min(r.id,other.id),Math.max(r.id,other.id))).map(other=>other.id),postings:this.db.prepare('SELECT source,url FROM postings WHERE home_id=?').all(r.id) as any};});}
+ homes():Home[]{const criteria=this.criteria;const rows=this.db.prepare('SELECT * FROM homes ORDER BY id DESC').all() as any[];return rows.map(r=>{const listing=listingSchema.parse(JSON.parse(r.listing));const home:Home={id:r.id,listing,score:scoreListing(listing,criteria),stage:r.stage,notes:r.notes,followUp:r.follow_up,viewing:r.viewing,revision:r.revision,rescued:!!r.rescued,updatedAt:r.updated_at,firstSeen:r.first_seen,possibleDuplicates:rows.filter(other=>other.id!==r.id&&!!listing.address&&JSON.parse(other.listing).address===listing.address&&(!listing.unit||!JSON.parse(other.listing).unit||listing.unit===JSON.parse(other.listing).unit)&&!this.db.prepare('SELECT 1 FROM duplicate_decisions WHERE a=? AND b=?').get(Math.min(r.id,other.id),Math.max(r.id,other.id))).map(other=>other.id),postings:this.db.prepare('SELECT source,url FROM postings WHERE home_id=?').all(r.id) as any};home.categoryEnteredAt=categoryEntry(this.db,home);return home;});}
  home(id:number){return this.homes().find(h=>h.id===id);}
- update(id:number,revision:number,changes:{stage:string;notes:string;followUp:string;viewing:string;rescued:boolean}){return this.transaction(()=>{const prev=this.db.prepare('SELECT * FROM homes WHERE id=?').get(id) as any;if(!prev)throw new Error('Apartment not found');if(prev.revision!==revision)throw new Error('This apartment changed. Refresh before saving.');const after={...changes};this.db.prepare('UPDATE homes SET stage=?,notes=?,follow_up=?,viewing=?,rescued=?,revision=revision+1 WHERE id=?').run(changes.stage,changes.notes,changes.followUp,changes.viewing,Number(changes.rescued),id);this.db.prepare('INSERT INTO history(home_id,at,event,before_json,after_json) VALUES (?,?,?,?,?)').run(id,new Date().toISOString(),'Decision saved',JSON.stringify({stage:prev.stage,notes:prev.notes,followUp:prev.follow_up,viewing:prev.viewing,rescued:!!prev.rescued}),JSON.stringify(after));return this.home(id);});}
+ update(id:number,revision:number,changes:{stage:string;notes:string;followUp:string;viewing:string;rescued:boolean},reopen=false){return this.transaction(()=>{const prev=this.db.prepare('SELECT * FROM homes WHERE id=?').get(id) as any;if(!prev)throw new Error('Apartment not found');if(prev.revision!==revision)throw new Error('This apartment changed. Refresh before saving.');if(!(reopen&&stageGroup(prev.stage)==='Closed'&&changes.stage==='Unreviewed')&&!canTransition(prev.stage,changes.stage as Home['stage']))throw new Error('Move apartments through Unreviewed → Interested → In Progress → Closed without skipping or going backwards.');const after={...changes};this.db.prepare('UPDATE homes SET stage=?,notes=?,follow_up=?,viewing=?,rescued=?,revision=revision+1 WHERE id=?').run(changes.stage,changes.notes,changes.followUp,changes.viewing,Number(changes.rescued),id);this.db.prepare('INSERT INTO history(home_id,at,event,before_json,after_json) VALUES (?,?,?,?,?)').run(id,new Date().toISOString(),'Decision saved',JSON.stringify({stage:prev.stage,notes:prev.notes,followUp:prev.follow_up,viewing:prev.viewing,rescued:!!prev.rescued}),JSON.stringify(after));return this.home(id);});}
+ reopen(id:number,revision:number){const h=this.home(id);if(!h||stageGroup(h.stage)!=='Closed')throw new Error('Only closed apartments can be reopened');return this.update(id,revision,{stage:'Unreviewed',notes:h.notes,followUp:h.followUp,viewing:h.viewing,rescued:h.rescued},true);}
  undo(id:number){const row=this.db.prepare("SELECT * FROM history WHERE home_id=? AND event='Decision saved' ORDER BY id DESC LIMIT 1").get(id) as any;if(!row)throw new Error('No decision to undo');const before=JSON.parse(row.before_json),current=this.home(id)!;this.update(id,current.revision,before);this.db.prepare("UPDATE history SET event='Decision undone' WHERE id=? OR id=(SELECT max(id) FROM history WHERE home_id=?)").run(row.id,id);}
  health(){return this.db.prepare('SELECT * FROM source_health').all() as any[];}
  pause(source:string,reason:string,attention=false,until=Date.now()+86400000){this.db.prepare('INSERT INTO source_health(source,paused_until,reason,needs_attention) VALUES (?,?,?,?) ON CONFLICT(source) DO UPDATE SET paused_until=excluded.paused_until,reason=excluded.reason,needs_attention=excluded.needs_attention').run(source,new Date(until).toISOString(),reason,Number(attention));this.event(`${source} paused: ${reason}`);}

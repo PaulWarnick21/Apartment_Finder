@@ -14,6 +14,7 @@ export function scoreListing(l:Listing,c:Criteria):Score {
   }
   const views=reviewed.filter(p=>p.kind==='interior'&&p.unitCertain&&p.scenery==='nature'&&p.quality!==null);
   const quality=views.length? Math.max(...views.map(p=>p.quality!)):null;
+  const buildingWindows=reviewed.some(p=>p.kind==='interior'&&p.unitCertain&&p.scenery==='buildings');
   const noNature=complete&&l.allOutlooksCovered&&!views.length&&reviewed.some(p=>p.kind==='interior'&&p.unitCertain&&p.scenery==='buildings');
   let base=c.baseScore,spread=0;
   const cost=l.rent===null?null:l.rent+(l.parking==='extra'?(l.parkingCost??0):0);
@@ -45,8 +46,32 @@ export function scoreListing(l:Listing,c:Criteria):Score {
   if(l.beds===null)flags.push('Bedrooms Unsure');
   if(l.internet==='Unknown')flags.push('Internet Unsure');
   if(l.conflicts.length)flags.push('Conflicting listing details');
+  if(l.modern===false)add('Dated interiors',-c.datedInteriorPenalty);
+  if(!views.length&&buildingWindows)add('Building-facing outlook; no confirmed nature',-c.buildingViewPenalty);
   const raw=base+adjustments.reduce((a,b)=>a+b.value,0);
   let low=clamp(raw-spread),high=clamp(raw+spread),value=clamp(raw);
+  if(!reasons.length&&quality!==null&&quality>2&&quality<4){
+    const weakViewCost=cost===null?0:Math.max(0,cost-c.partialViewPriceAnchor)*c.partialViewPriceSlope*Math.min(1,Math.max(0,(3.5-quality)*2));
+    const ceiling=c.partialNatureCeiling+(quality-3)*c.viewWeight-weakViewCost+(l.furnished===true?c.bonuses.furnished:0)+(l.shortLease===true?c.bonuses.shortLease:0)+(l.gas===true?c.bonuses.gas:0)+(l.beds!==null&&l.beds>=2?c.bonuses.secondBedroom:0);
+    flags.push('Partial nature view limits overall fit');
+    if(value>ceiling){add('Partial nature view ceiling',Math.round((ceiling-raw)*100)/100);value=clamp(ceiling);low=Math.min(low,value);high=Math.min(high,value);}
+  }
+  if(!reasons.length&&quality!==null&&quality<=2){
+    const ceiling=l.modern===false?3.1:3.3;
+    flags.push('Nature glimpse only; buildings dominate');
+    if(value>ceiling){add(l.modern===false?'Building-dominated glimpse and dated interiors':'Building-dominated nature glimpse',Math.round((ceiling-raw)*100)/100);value=ceiling;low=Math.min(low,ceiling);}
+  }
+  if(!reasons.length&&!views.length&&buildingWindows){
+    flags.push('Building-facing window photos; nature unverified');
+    if(value>2.9){add('Building-facing view ceiling',Math.round((2.9-raw)*100)/100);value=2.9;low=Math.min(low,2.9);}
+  }
+  const representativeBuildings=reviewed.some(p=>p.kind==='interior'&&!p.unitCertain&&p.scenery==='buildings');
+  const anyNatureWindows=reviewed.some(p=>p.kind==='interior'&&p.scenery==='nature');
+  if(!reasons.length&&!buildingWindows&&representativeBuildings&&!anyNatureWindows){
+    flags.push('Representative windows face buildings; exact-unit view unverified');
+    if(value>2.9){add('Poor representative views; not a promising match',Math.round((2.9-raw)*100)/100);value=2.9;low=Math.min(low,2.9);}
+  }
   if(reasons.length){value=Math.min(2.9,value);low=Math.min(low,value);high=Math.min(2.9,high);}
-  return {value:round(value),low:round(low),high:round(high),base:round(base),adjustments,flags:[...new Set(flags)],reasons,eligible:hasInteriorPhoto&&!reasons.length&&high>=3,uncertain:flags.length>0,view:noNature?'No qualifying nature':quality===null?'Unverified':quality>=4?'Nature dominates':'Partial nature'};
+  if(round(value)<3&&!reasons.includes('Score below 3.0'))reasons.push('Score below 3.0');
+  return {value:round(value),low:round(low),high:round(high),base:round(base),adjustments,flags:[...new Set(flags)],reasons,eligible:hasInteriorPhoto&&!reasons.length&&round(value)>=3,uncertain:flags.length>0,view:noNature?'No qualifying nature':quality===null?'Unverified':quality>=4?'Nature dominates':'Partial nature'};
 }
