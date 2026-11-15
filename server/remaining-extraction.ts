@@ -2,12 +2,13 @@ import {load} from 'cheerio';
 import {extractFurnishing} from '../src/furnishing.ts';
 import {listingSchema,type Listing} from '../src/domain.ts';
 import {hash} from './db.ts';
+import {workspaceTextEvidence} from './workspace-evidence.ts';
 const clean=(s:string)=>s.replace(/\s+/g,' ').trim();
 const num=(s:unknown)=>{const n=Number(String(s??'').replace(/,/g,''));return Number.isFinite(n)&&n>0?n:null;};
 function features(l:Listing,text:string){
  const yes=(field:string,re:RegExp)=>{const m=text.match(re);if(m)l.evidence[field]=m[0];return m?true:null;};
  l.gas=yes('gas',/gas (?:range|stove|cooktop)/i);const furnishing=extractFurnishing(l.title+' '+text);l.furnished=furnishing.value;if(furnishing.statement)l.evidence.furnishingStatement=furnishing.statement;
- l.workspace=yes('workspace',/\bden\b|space for a home office|dedicated[^.]{0,20}office/i);
+ const workspace=workspaceTextEvidence(text);l.workspace=workspace.workspace;if(workspace.evidence)l.evidence.workspace=workspace.evidence;
  l.modern=yes('modern',/renovated[^.]{0,80}(?:kitchen|bathroom)|modern (?:kitchen|finishes)|brand.new appliances/i);
  l.openPlan=yes('openPlan',/open[- ]concept|open (?:living space|floor plan|kitchen)/i);
  l.north=/south[- ]facing|southern views/i.test(text)?false:yes('north',/north[- ]facing/i);

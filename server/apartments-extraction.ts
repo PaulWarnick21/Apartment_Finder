@@ -2,6 +2,7 @@ import {load} from 'cheerio';
 import {extractFurnishing} from '../src/furnishing.ts';
 import {listingSchema} from '../src/domain.ts';
 import {createHash} from 'node:crypto';
+import {workspaceTextEvidence} from './workspace-evidence.ts';
 type Capture={url:string;title:string;html:string;images:{url:string;width?:number;height?:number}[];advertisedPhotos:number|null;warning:string|null;truncated:boolean};
 const clean=(s:string)=>s.replace(/\s+/g,' ').trim();
 const number=(s:string|undefined)=>s?Number(s.replace(/,/g,'')):null;
@@ -41,8 +42,8 @@ export function extractApartments(c:Capture){
  else if(optionalParking)evidence.parking='Optional parking advertised; price needs confirmation.';
  const furnishing=extractFurnishing(title+' '+description),furnished=furnishing.value;if(furnishing.statement)evidence.furnishingStatement=furnishing.statement;
  const gas=/\b(?:no|without) (?:a )?gas (?:stove|range|cooktop)/i.test(description)?false:/\bgas (?:stove|range|cooktop)\b/i.test(description)?true:null;
- const workspace=/\b(?:\d+[ -])?den\b/i.test(description)?true:null;
- if(workspace)evidence.workspace='Den advertised; usability as an office remains to be verified in photos.';
+ const workspaceClaim=workspaceTextEvidence(description),workspace=workspaceClaim.workspace;
+ if(workspaceClaim.evidence)evidence.workspace=workspaceClaim.evidence;
  const photos=new Map<string,string>();
  for(const image of [...c.images].sort((a,b)=>(b.width??0)-(a.width??0))){const p=new URL(image.url);const identity=p.pathname.match(/^\/i2\/([^/]+)\//)?.[1];if(p.protocol!=='https:'||!/^images\d+\.apartments\.com$/.test(p.hostname)||!identity||p.username||p.password)continue;if(!photos.has(identity))photos.set(identity,p.href);}
  const address=description.match(/Location:\s*([^]*?)(?=\s+Schools nearby:|$)/i)?.[1]??clean($('#profileHeaderWrapper h1').first().text()).replace(/\s+Unit\s+.*$/i,'');

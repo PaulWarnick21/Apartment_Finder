@@ -471,3 +471,58 @@ proxy, fingerprint modification or challenge bypass was needed. Zillow uses the
 normal-Chrome bridge in future approved scans; Chrome and the local app must stay
 open. This test does not enable scheduled scans. Private results are recorded in
 `data/live/zillow-chrome-test-report.json`.
+
+## Final new-listing validation — 2026-11-15
+
+The user authorized another two-new-listings-per-source test after the scoring
+calibration and a GitHub backup. This was a new-only intake: known homes were not
+refreshed and their unfinished galleries were not resumed. Scheduled scans remain
+disabled. The test is **partial**, rather than a successful two-per-source result.
+
+| Source | New records | Result |
+| --- | ---: | --- |
+| Craigslist, VADA, Zillow, Facebook Marketplace, Kijiji, Austeville | 2 each | Target reached; eligible galleries reviewed, hard failures scored before image work. |
+| Zumper | 2 | Distinct floor-plan offers at one building, not two independently confirmed physical suites; representative photos remain unit-unverified. |
+| Hollyburn | 2 | Source provides representative display-suite photos. One large gallery remains incomplete under the daily image limit. |
+| REW | 1 | The next listing exhausted the local browser-request allowance; remaining work stayed queued. This was not a site access warning. |
+| Apartments.com | 0 | Existing photo-fetch failure cooldown respected; no source requests made. |
+| EasyRent | 0 | All four attempted candidates were explicitly unavailable; none counted as new apartments. |
+| Sunstar | 0 | Fresh discovery yielded no unseen qualifying candidates in the approved scope. |
+
+Discovery produced 17 new records across the 12 sources, including the two Zumper
+floor-plan offers. It used 31 page visits, 22 candidate attempts, 252 photo-retrieval
+attempts and 24 ChatGPT-plan calls. Four records failed rent or laundry requirements
+before image review. Three new records qualified for the active desk. No paid API
+fallback was used. Original and continuation plans share the original authorization and aggregate
+limits; no paused or request-exhausted source was retried. Private captures, plan
+usage, scoring checks and the original-home preservation audit are retained under
+`data/live/final-validation-2026-11-15/`.
+
+Hollyburn's large gallery reached its source's daily image limit after 90 of 153
+images were downloaded. All 90 retained images were reviewed, including a bounded
+continuation using only saved files and seven ChatGPT-plan calls, with no further
+source requests. The remaining 63 photos are explicitly pending; representative
+photos do not confirm the listed unit's view. All other assessed galleries were
+fully reviewed. The final three-phase preservation audit verified that all 81
+pre-existing homes, their photos, criteria, feedback and user decisions were
+unchanged, and every phase stayed within the original aggregate allowance.
+
+Saved-page and photo review exposed extraction issues that were fixed with offline
+regression coverage:
+
+- Kijiji rent comes from the scoped price/structured offer, with conflicting rent
+  claims retained as uncertain. Optional internet charges cannot become base rent.
+- A den/flex label alone does not establish usable office space; converted closets
+  and shared workspaces cannot earn a unit-office bonus.
+- Craigslist reads the posting location and clearly scoped introductory address,
+  unit and floor facts, retaining conflicting parking claims.
+- Hollyburn furnished-unit facts come from the unit's own rental card, excluding
+  building FAQs. Studio counts and supported three-month minimum terms are retained.
+  Galleries follow the rental masthead's associated popup, excluding unrelated
+  popups and cloned slides. A valid association still does not prove exact-unit
+  provenance: the large captured source gallery itself contains 153 representative
+  images, so it must not be silently reduced to a convenient subset.
+
+Verified corrections were applied only to new test records and their source
+manifests, preserving saved photos and model findings. These results establish the
+tested routes and their current limits; they do not authorize recurring scanning.
