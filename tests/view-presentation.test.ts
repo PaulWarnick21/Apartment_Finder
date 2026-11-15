@@ -32,7 +32,8 @@ test('a tiny nature glimpse cannot overcome building-dominated views, especially
  const criteria=criteriaSchema.parse({priceAnchor:3500,priceSlope:.0006428571428571429});
  const l=listingSchema.parse({source:'fixture',sourceId:'45',url:'https://example.com/45',title:'Example',address:'Example',rent:2400,beds:1,location:'downtown',workspace:true,modern:false,photos:[{...photo('glimpse','interior','nature'),quality:2}],galleryComplete:true,expectedPhotos:1});
  const score=scoreListing(l,criteria);assert.equal(score.value,3.1);assert.equal(score.eligible,true);assert.equal(score.view,'Partial nature');assert.ok(score.low<=score.value);
- assert.equal(scoreListing({...l,modern:null},criteria).value,3.3);
+ // The glimpse ceiling cannot exceed the partial-view ceiling immediately above quality 2.
+ assert.equal(scoreListing({...l,modern:null},criteria).value,3.2);
  assert.ok(scoreListing({...l,photos:[photo('good','interior','nature')]},criteria).value>3.3);
 });
 

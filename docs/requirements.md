@@ -97,17 +97,19 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 - Keep uncertainty labels and evidence, but automatically place every headline score below
   3.0 in Excluded. A higher upper estimate or prior rescue cannot override this threshold.
 - Reviewed, unit-attributed window photos showing buildings without any confirmed nature
-  receive a substantial configured deduction and a below-3 ceiling. This is a poor-fit
-  assessment of available evidence, not a claim that every unseen window lacks nature.
+  normally receive a substantial configured deduction and a below-3 ceiling, subject to
+  the supported-interior tradeoff below. This is a poor-fit assessment of available evidence,
+  not a claim that every unseen window lacks nature.
 - When only representative window evidence shows buildings and no interior-window photo
-  shows qualifying nature, cap the provisional headline below 3.0 and exclude it as an
-  unpromising match. Cheap rent does not overcome that evidence. Retain exact-unit uncertainty;
-  exclusion for poor fit is not proof of every window's outlook. The stricter unit rule wins.
+  shows qualifying nature, normally cap the provisional headline below 3.0. Cheap rent alone
+  does not overcome that evidence. Retain exact-unit uncertainty; representative interiors
+  alone cannot establish the actual-unit evidence required by the supported-interior tradeoff.
 - A building-dominated nature glimpse (best verified interior view quality at most 2/5)
-  caps the headline at 3.3, or 3.1 when interiors are assessed as dated. Preserve the
-  partial-nature evidence; a narrow glimpse is not equivalent to an unobstructed outlook.
-- Moderate partial nature views (quality above 2 and below 4) limit the total score using
-  a configured ceiling that increases gradually for better partial views. Confirmed furnishing,
+  caps the ordinary view-based score at 3.3, or 3.1 when interiors are assessed as dated,
+  subject to the interior alternative below. Preserve the partial-nature evidence; a narrow
+  glimpse is not equivalent to an unobstructed outlook.
+- Moderate partial nature views (quality above 2 and below 4) limit the ordinary view-based
+  score using a configured ceiling that increases gradually for better partial views. Confirmed furnishing,
   short leases, gas cooking, and a second bedroom modestly extend it. Rent, workspace, and modern
   finishes cannot turn a mediocre view into a near-perfect match. A flexible sleeping area or
   ambiguous "Euro 2" label does not establish a second bedroom; preserve the conflict for review.
@@ -117,8 +119,21 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 - Apply the expanded private criteria and user-provided example scores when calibrating price,
   location, view quality, unit type, workspace, parking, furnishing, and lease preferences. Exact weights remain
   provisional; personal values and example prices stay in private configuration.
-- Confirmed absence of the required nature outlook caps the overall score below 3.0 and removes
-  the unit from the active desk. Missing or inconclusive photos do not establish failure.
+- Support an explicitly enabled interior tradeoff: a sufficiently supported combination of
+  furnishing, open layout, modern interiors, and usable workspace can make an apartment worth
+  reviewing despite a poor or absent nature outlook. Require a known advertised rent and reviewed actual-unit interiors;
+  cheap rent or furnishing alone is insufficient. Count workspace only when the known bedroom
+  count establishes that no second-bedroom benefit is being counted instead.
+- The tradeoff uses the apartment's ordinary non-view value, retains a configured view deduction,
+  and has a modest review-band ceiling. Rent, location, dated condition and cramped-layout effects
+  remain active. Apply the same alternative across view qualities so improving a view cannot
+  lower a score; retain a higher ordinary view-based score when justified. Preserve view evidence,
+  uncertainty and gallery-completeness labels without relabelling buildings as nature.
+- Confirmed absence of a qualifying nature outlook otherwise remains below the review threshold.
+  The interior tradeoff cannot bypass budget, laundry, actual-rental, availability or interior-photo
+  requirements, nor the configured distance, street-level and expensive-weak-view limits. Personal
+  thresholds and calibration examples belong in private configuration. Missing or inconclusive
+  photos do not establish absence, and no new photo collection is required to rescore saved evidence.
 - Unknown parking produces a **Parking Unsure** flag. Keep factual uncertainty distinct from
   confirmed absence, and distinguish hard exclusions from preferences and small bonuses.
 - Extract unit-specific laundry facilities and evidence, distinguishing in-unit machines,

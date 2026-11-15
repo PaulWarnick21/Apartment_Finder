@@ -9,9 +9,13 @@ independently of a coding assistant or chat session.
 
 ## Status
 
-The first local version is implemented. **No live scan has been run.** Startup and demo mode
-never scan. Each live run requires explicit approval of a single bounded plan. Recurring scans
-are disabled. See the implementation scope and remaining work below.
+The local application has completed bounded live source and photo-review trials. Startup and
+demo mode never scan. Each live run requires explicit approval of a single bounded plan;
+recurring scans remain disabled. The November 14 final validation found 15 new rental
+candidates (including two unit-unverified floorplan offers); three reached the active desk.
+It was a partial pass: expanded routes, request overhead and stale inventory still limit
+several sources. Captured-page fixes have regression coverage; see the dated source results
+before approving another live test.
 
 ## Run locally
 
@@ -54,30 +58,45 @@ Stop the server with Ctrl+C. Nothing is installed into Windows startup or Task S
 
 - Sorting Desk with search, sorting, comparison, shortlist/stages, notes, follow-up/viewing
   dates, inquiry drafts, calendar downloads, rejection explanations and Rescue.
-- SQLite persistence, source-posting identity, exact address/unit deduplication, change history,
-  user-decision undo, export and database backups. Scanner updates preserve user decisions.
+- SQLite persistence, per-posting evidence, conservative address/unit deduplication, reversible
+  manual merge/split with retained IDs and history, user-decision undo, export and verified
+  database/media/criteria backups. Scanner updates preserve user decisions.
 - Deterministic scores with hard laundry/budget/view gates, explicit uncertainty and bonuses.
   The private initial settings calibrate the user's price/location examples; public defaults
   contain no personal budget. Historic reference IDs #1–#13 are reserved in the live database;
   historical listings remain in the private research ledger and are not imported automatically.
+- Context-aware feedback learning with monotone rent/view behavior, explicit correction clearing,
+  scoped floor evidence and an offline calibration report. The limited personal ratings remain
+  insufficient to establish accuracy for the most desirable apartments.
 - Strict single-run approval, page/listing/photo/AI-call caps, persisted counters, cancellation,
   source cooldowns, request allowlists, sequential pages and persistent browser profiles.
   Bounded page snapshots are saved privately for adapter debugging without repeat visits.
 - All 12 retained sources are connected to the approved scan runner. Current access failures,
   incomplete galleries and queued inventory are recorded per source. Apartments.com uses the
   paired normal-Chrome extension. Rentals.ca, RentFaster, liv.rent and PadMapper are excluded.
+- Fresh discovery alongside queued work, preserved pagination, individual extraction quarantine,
+  separate Zumper offerings and optional bounded factual refresh of active apartments. Expanded
+  Apartments.com/Hollyburn discovery is opt-in and labeled unvalidated until a live trial.
 - Full enumerated-gallery processing with pending/unavailable states, local images and assessment
   reuse by image hash/model rubric. An optional OpenAI Responses photo provider sits behind a
   replaceable interface. Credentials and a model must be configured separately; none are supplied.
+- Incremental gallery review in bounded batches, separate visual/attribution reuse and supported
+  photo evidence for modernity, cramped rooms, gas, workspace, layout and laundry. Incomplete
+  galleries and uncertain views are distinct; representative photos cannot verify a unit.
+- Compact conditional desk refreshes, indexed/cached scoring reads, protected preference patches
+  and a separate scanner process keep the Sorting Desk responsive during approved runs.
+- Known recurring-cost totals with unknown fees shown explicitly, plus optional exact-address
+  geography and public building-permit research. Airport/transit links open current route planners;
+  travel times and walking distances are not inferred or added to the score.
 
-## First scan and cost control
+## Scan approval and cost control
 
 Preparing a plan makes no external requests. Approval expires after one hour and cannot be
-reused. The current final test is **two apartments per retained source**, with every
-accessible gallery photo reviewed unless the apartment already fails a hard requirement.
-The discovery page counts as one page. A cap leaves remaining work explicitly pending.
-The earlier three-per-source trial is saved locally. New scans require a fresh bounded approval;
-the final test does not enable a full scan or recurring runs.
+reused. Every accessible gallery photo is reviewed unless the apartment already fails a hard
+requirement; a cap leaves remaining work explicitly pending. Discovery, detail, pagination and
+optional refreshes share the plan's limits. Earlier bounded source trials are saved locally.
+Fresh discovery does not authorize an unbounded crawl or recurring runs. Factual refreshes
+preserve saved photos and decisions; historical photo backfills require separate authorization.
 
 **ChatGPT plan usage is the default.** In Preferences, select **Continue with ChatGPT**, sign in,
 and allow use of your ChatGPT plan. Then load the available models and choose one that supports
@@ -112,10 +131,22 @@ saved in SQLite through Preferences. `private/criteria.md` remains the detailed 
 Both are gitignored, as are `.env`, `data/` and cached browser sessions. Only localhost is bound;
 do not expose this unauthenticated single-user application publicly.
 
-Preferences can export the desk or create a database backup; `npm run backup` also backs up the
-live database. A full backup includes the database, `data/live/media`, private settings and any
-credentials stored separately and securely. To restore, stop all app/worker processes, preserve
-the current data directory, then restore the database and matching media from your backup.
+Preferences can export the desk or create a complete backup; `npm run backup` creates the same
+kind of bundle. It contains a consistent SQLite snapshot, referenced local media (including
+history and rating evidence), private criteria/settings and a checksum manifest. Credentials
+are excluded: reconnect after restoring. A missing referenced photo fails verification rather
+than silently producing an incomplete backup.
+
+```powershell
+npx tsx scripts/restore.ts data/backups/<bundle>
+npx tsx scripts/restore.ts data/backups/<bundle> data/restore-check
+```
+
+The first command verifies a bundle; the second verifies and restores it into a **new staging
+folder**, never over the running app. To activate a restore, stop all app/worker processes,
+preserve the current data directory, and move the staged database/media to the live directory.
+The staged `private` folder contains the separate private reference files. Reconnect accounts
+and the Chrome extension as needed.
 
 ## Validation and next phases
 
@@ -126,24 +157,31 @@ npm run build
 ```
 
 Tests use fictional fixtures, mocked photo analysis and loopback HTTP only. Browser checks use
-the isolated demo. Live adapter behavior and AI assessment quality are **not yet validated**.
+an isolated demo. Source trials document observed coverage, not universal current access.
+The final live validation exercised gallery review and exposed several extraction and visual
+classification errors. Corrected saved evidence and regression tests cover the repairs; failed
+routes still need a focused approved retest, and future personal ratings are needed to measure
+ranking accuracy. The offline calibration tool reads saved evidence without making requests:
 
-Still to implement after the first approved trial: the remaining source adapters, richer field
-extraction and unit/building-ad distinction, verified geography/airport routing, building research,
-review of all-outlook coverage, manual duplicate merge/split, full incremental discovery cursors,
-scheduled runs and retention/restore tooling. The current view gate deliberately cannot infer
-that every apartment window fails from a single obstructed photo. Modernity/workspace/layout
-stay unknown when extraction has no supported evidence. Optional hosting and notifications
-remain later phases. The design document describes the target, not completed coverage.
+```powershell
+npx tsx scripts/scoring-evaluation.ts --database data/live/apartments.sqlite --out private/review/scoring-evaluation.json
+```
+
+The view gate cannot infer that every apartment window fails from a single obstructed photo.
+Modernity/workspace/layout stay unknown without supported evidence. Public permit records do
+not establish current noise, defects or unit condition. Precise transit/walking calculations,
+broader building research, scheduled runs, optional hosting and notifications remain later work.
 
 ## Project documents
 
-The [normal Chrome scanner](extension/README.md) discovers Apartments.com listings,
+The [normal Chrome scanner](extension/README.md) discovers Apartments.com and Zillow listings,
 captures their full photo viewers, and imports and scores candidates within an approved
 scan budget. Install the local `extension` folder using Chrome's **Load unpacked** option,
 then pair through **Preferences → Normal Chrome connection**. The optional connection
 test is a separate single-page read. Normal scans require the local app and Chrome to
-remain running; recurring scans are disabled.
+remain running; recurring scans are disabled. Reload the unpacked extension after updating to
+version 0.4.0. An interrupted gallery may retain a tab for a later separately approved run;
+retained tabs do not continue scanning in the background.
 
 - [Requirements](docs/requirements.md): intended behavior.
 - [Design](docs/design.md): architecture, workflow, implementation defaults, and phases.

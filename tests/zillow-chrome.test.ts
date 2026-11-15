@@ -34,15 +34,15 @@ test('Zillow capture scopes public property data and preserves full resolution g
 });
 test('Regular Zillow scans dispatch through the paired Chrome bridge and apply the rent gate',async()=>{
  const {db,p,jobs}=setup(),dir=mkdtempSync(join(tmpdir(),'af-zillow-'));db.set('discoveryQueue:zillow',{urls:[url],next:null});
- try{const done=runRegularPlan(db,p.id,dir,jobs);await new Promise(resolve=>setTimeout(resolve,20));const job=jobs.poll().job!;assert.equal(job.kind,'listing');
+ try{const done=runRegularPlan(db,p.id,dir,jobs);await new Promise(resolve=>setTimeout(resolve,20));const discovery=jobs.poll().job!;assert.equal(discovery.kind,'discovery');jobs.result({id:discovery.id,snapshot:capture(null,'Rental search','/vancouver-bc/rentals/')});await new Promise(resolve=>setTimeout(resolve,20));const job=jobs.poll().job!;assert.equal(job.kind,'listing');
  jobs.result({id:job.id,snapshot:capture({...property,price:5000})});await done;
- assert.equal(db.homes().length,1);assert.equal(db.homes()[0].listing.source,'zillow');assert.equal(getPlan(db,p.id).usage.photos,0);assert.equal(getPlan(db,p.id).usage.aiCalls,0);assert.equal(getPlan(db,p.id).usage.pages,1);
+ assert.equal(db.homes().length,1);assert.equal(db.homes()[0].listing.source,'zillow');assert.equal(getPlan(db,p.id).usage.photos,0);assert.equal(getPlan(db,p.id).usage.aiCalls,0);assert.equal(getPlan(db,p.id).usage.pages,2);
  }finally{jobs.fail('cleanup');db.close();rmSync(dir,{recursive:true,force:true});}
 });
 test('Zillow discovery uses only visible same-site unit links',()=>{
  const page=capture(null,'Rental search','/vancouver-bc/rentals/');assert.deepEqual(discoverSource(page.html,sourceById('zillow')),[url]);assert.equal(page.images.length,0);
 });
-function setup(recovery=false){const db=new Store(':memory:');db.set('browserExtension',{id:'a'.repeat(32)});if(recovery)db.pause('zillow','Previous 403',true);const p=createPlan(db,{purpose:recovery?'access-check':'listings',sources:['zillow'],billingMode:'chatgpt',maxPages:1,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0},{accessRecovery:recovery});approvePlan(db,p.id,'APPROVE ONE SCAN');return {db,p,jobs:new ChromeJobs(db)};}
+function setup(recovery=false){const db=new Store(':memory:');db.set('browserExtension',{id:'a'.repeat(32)});if(recovery)db.pause('zillow','Previous 403',true);const p=createPlan(db,{purpose:recovery?'access-check':'listings',sources:['zillow'],billingMode:'chatgpt',maxPages:recovery?1:2,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0},{accessRecovery:recovery});approvePlan(db,p.id,'APPROVE ONE SCAN');return {db,p,jobs:new ChromeJobs(db)};}
 test('Chrome jobs enforce approved source, matching origin, and source-specific warnings',async()=>{
  const {db,p,jobs}=setup();try{claimPlan(db,p.id);const budget=new Budget(db,p.id,p.caps);assert.throws(()=>jobs.request(budget,'https://www.apartments.com/unit/abcdefg/','listing',null,0),/not included/);
  const done=jobs.request(budget,url,'listing',null,0);const rejected=assert.rejects(done,/Zillow shows/);const job=jobs.poll().job!;

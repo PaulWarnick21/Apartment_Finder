@@ -1,0 +1,28 @@
+import type {Listing} from '../src/domain.ts';
+import {hash,type Store} from './db.ts';
+import {discoveryFailure,prioritizeCards,type DiscoveryCard} from './source-discovery.ts';
+import {listingUrl} from './source-discovery.ts';
+import {sourceById,expandedSource} from './sources.ts';
+export type DiscoveryQueue={urls:string[];next:string|null;cards?:Record<string,DiscoveryCard>;offerings?:Listing[];freshCheckedAt?:string};
+export function readQueue(store:Store,source:string):DiscoveryQueue{return {urls:[],next:null,...store.get<DiscoveryQueue>(`discoveryQueue:${source}`)};}
+export function saveQueue(store:Store,source:string,queue:DiscoveryQueue){store.set(`discoveryQueue:${source}`,queue);}
+export function hasPosting(store:Store,source:string,url:string){return !!store.db.prepare('SELECT 1 FROM postings WHERE source=? AND url=?').get(source,url);}
+export function hasOffering(store:Store,listing:Listing){return !!store.db.prepare('SELECT 1 FROM postings WHERE source=? AND source_id=?').get(listing.source,listing.sourceId);}
+export function inventoryCheckKey(source:string,url:string){return `inventoryChecked:${source}:${hash(url)}`;}
+/** A building URL can advertise new floorplans without changing its own URL. Recheck facts only. */
+function inventoryDue(store:Store,source:string,url:string){if(source!=='zumper')return false;const post=store.db.prepare('SELECT home_id FROM postings WHERE source=? AND url=? LIMIT 1').get(source,url) as {home_id:number}|undefined;if(!post)return false;const listing=store.home(post.home_id)?.listing;if(!listing||listing.offeringKind!=='floorplan'&&!/Building \/ floor-plan advertisement|Representative photos of the building/i.test(listing.description+' '+listing.conflicts.join(' ')))return false;const at=store.get<string>(inventoryCheckKey(source,url));return !at||Date.now()-Date.parse(at)>=86400000;}
+export function recordCandidateFailure(store:Store,source:string,url:string,reason:string,kind:'parse'|'prefilter'|'not-found'|'refresh'='parse',options:{preserveExistingGallery?:boolean}={}){
+ const key=`candidateFailures:${source}`,old=store.get<Array<{url:string;reason:string;kind:string;at:string;attempts:number}>>(key)??[],previous=old.find(item=>item.url===url&&item.kind===kind);
+ store.set(key,[...old.filter(item=>item!==previous),{url,reason:reason.slice(0,1000),kind,at:new Date().toISOString(),attempts:(previous?.attempts??0)+1}].slice(-500));
+ if(kind==='parse'&&!options.preserveExistingGallery){const post=store.db.prepare('SELECT home_id FROM postings WHERE source=? AND url=?').get(source,url) as {home_id:number}|undefined;if(post){const markerKey=`pendingGallery:${post.home_id}`,marker=store.get<{source:string;sources?:string[]}>(markerKey);if(marker){const sources=(marker.sources??[marker.source]).filter(item=>item!==source);if(sources.length)store.set(markerKey,{...marker,sources});else store.db.prepare('DELETE FROM meta WHERE key=?').run(markerKey);}}}
+}
+export function isQuarantined(store:Store,source:string,url:string){return (store.get<Array<{url:string;kind:string}>>(`candidateFailures:${source}`)??[]).some(item=>item.url===url&&item.kind==='parse');}
+export function mergeDiscovery(store:Store,source:string,queue:DiscoveryQueue,cards:DiscoveryCard[]){
+ const now=new Date().toISOString(),metadata={...queue.cards};
+ for(const card of cards){metadata[card.url]={...metadata[card.url],...card,discoveredAt:metadata[card.url]?.discoveredAt??now};const failure=discoveryFailure(card,store.criteria.maxRent);if(failure)recordCandidateFailure(store,source,card.url,failure,'prefilter');}
+ const urls=[...new Set([...cards.map(card=>card.url),...queue.urls])].filter(url=>(!hasPosting(store,source,url)||inventoryDue(store,source,url))&&!isQuarantined(store,source,url)&&!discoveryFailure(metadata[url]??{url},store.criteria.maxRent));
+ queue.urls=prioritizeCards(urls.map(url=>metadata[url]??{url})).sort((a,b)=>Number(hasPosting(store,source,a.url))-Number(hasPosting(store,source,b.url))).map(card=>card.url);queue.cards=Object.fromEntries(queue.urls.map(url=>[url,metadata[url]??{url}]));queue.offerings=(queue.offerings??[]).filter(listing=>!hasOffering(store,listing));saveQueue(store,source,queue);
+}
+export function removeCandidate(store:Store,source:string,queue:DiscoveryQueue,url:string){queue.urls=queue.urls.filter(item=>item!==url);if(queue.cards)delete queue.cards[url];saveQueue(store,source,queue);}
+/** An explicit local retry only requeues extraction; it never grants scan authorization. */
+export function retryCandidate(store:Store,source:string,input:string){const normalized=listingUrl(input,expandedSource(sourceById(source)));if(!normalized)throw new Error('Candidate URL is outside this source’s listing routes');const key=`candidateFailures:${source}`,failures=store.get<Array<{url:string;kind:string}>>(key)??[];if(!failures.some(item=>item.url===normalized&&item.kind==='parse'))throw new Error('No quarantined extraction found');store.set(key,failures.filter(item=>!(item.url===normalized&&item.kind==='parse')));const queue=readQueue(store,source);queue.urls=[...new Set([normalized,...queue.urls])];saveQueue(store,source,queue);const post=store.db.prepare('SELECT home_id FROM postings WHERE source=? AND url=?').get(source,normalized) as {home_id:number}|undefined;if(post){const markerKey=`pendingGallery:${post.home_id}`,marker=store.get<{source:string;sources?:string[]}>(markerKey);store.set(markerKey,{source,sources:[...new Set([source,...(marker?.sources??(marker?[marker.source]:[]))])],homeId:post.home_id,explicitRetry:true});}store.event(`${sourceById(source).name}: extraction requeued for a future approved scan.`);}

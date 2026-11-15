@@ -1,498 +1,368 @@
 # Design
 
-Updated 2026-11-11 following the user's confirmed direction. This plan implements
-[requirements.md](requirements.md) as a standalone apartment-search application. The first local
-version is implemented; see README for tested scope and outstanding work. The architecture below describes the target; remaining preferences
-are listed at the end.
+Updated 2026-11-14 after the project review and approved improvements. This document
+describes the implemented local architecture and explicitly identifies remaining work.
+The user's requirements remain in [requirements.md](requirements.md), private preferences
+in `private/criteria.md`, and source acceptance/history in [listing-sources.md](listing-sources.md).
+The review upgrades were validated offline; they do not constitute a new live access or
+model-quality trial.
 
 ## 1. Product and architecture
 
-### Rating feedback and furnishing evidence
-
-The detail view stores each personal rating and reason separately from the app prediction,
-including immutable listing, score and criteria snapshots. A serial, bounded review uses the
-connected ChatGPT plan only when the user submits feedback or explicitly retries. Startup,
-demo and ordinary page views do not make AI requests. Interrupted reviews remain pending.
-Each submission synchronously rebuilds a bounded similarity calibration from the latest active
-rating per apartment, before returning success. New comparable listings use the same adjustment;
-listing IDs are not the matching criterion. Features distinguish verified from representative
-views, view quality, rent, bedrooms, location, condition and relevant conveniences. Downward
-feedback cannot increase a score already reduced below its target by stricter rules. Hard filters,
-photo requirements and evidence-based ceilings always win. User condition assessments are stored
-separately from source facts. Explicit supported floor-height and distance preferences are applied
-immediately; unknown listing facts remain unknown.
-The model then proposes at most three small changes to allowlisted preference weights; code validates
-the proposal against the latest rating per apartment, accepting it only if average error improves,
-no example regresses substantially, and already-correct interest bands remain correct. Requirements,
-facts, workflow decisions and the 3.0 cutoff cannot be changed by this reviewer. Applied changes
-recalculate current and future scores; an undo is available while it cannot overwrite newer preferences.
-Feedback and calibration history remain local and are included in the user's data export.
-All latest examples and their current base predictions are included in interpretation. Unsupported
-instructions, rejected changes, stale reviews and failures are visible; scans cannot start or
-continue requests while the latest feedback interpretation remains unfinished. A no-change model
-response does not disable the synchronous calibration. No past feedback is automatically sent to
-AI at startup. Historical audits use saved evidence and retain original review outcomes separately.
-Future whole-gallery reviews assess dated/modern condition and cramped space with photo references
-alongside outlooks. Explicit unit-floor text and scoped neighbourhood evidence supply height and
-distance; suite numbers and building heights never establish an apartment floor.
-
-Furnishing extraction uses scoped advertisement text or an explicit structured yes/no field,
-not objects visible in photos. The detail view quotes that evidence and distinguishes optional,
-partial and uncertain furnishing. Building-wide guest suites, generic FAQs, display photos and
-floor-plan amenities cannot establish that furniture comes with the specific unit.
-
-Find new Vancouver rentals, evaluate them against private criteria, and keep a useful,
-explainable shortlist. The user opens a private Sorting Desk in a browser to review apartments
-and manage inquiries, viewings, and applications.
+Apartment Finder discovers Vancouver rentals directly, evaluates saved evidence against
+private criteria, and presents promising apartments in a persistent Sorting Desk.
+It does not require a mailbox, saved-search alerts, proprietary connectors, manual detail
+collection, or an open coding-assistant chat.
 
 ```text
-Listing websites -> source adapters -> normalize -> prefilter -> deduplicate
-                                                                  |
-                                                       building research
-                                                                  |
-                                                       AI ratings + evidence
-                                                                  |
-                                                       code-computed scores
-                                                                  |
-                                                         SQLite database
-                                                                  |
-                                                backend API <-> Sorting Desk
+Approved scan -> source adapters -> scoped facts/gallery manifests -> hard prefilter
+                                                                  -> identity matching
+                                                                  -> cached/new visual findings
+                                                                  -> deterministic scores
+                                                                  -> SQLite -> Sorting Desk
+
+Explicit detail-view research -> verified address context / public permit records -> cache
 ```
 
-- **Web app:** a responsive React interface, built with Vite, for desktop and phone layouts.
-- **Backend:** a TypeScript/Node service serving the app, API, and private thumbnails.
-- **Worker:** a separate process for discovery, extraction, research, and scoring. It shares
-  storage code with the backend and runs from a scheduler or a queued Scan now request.
-- **Storage:** SQLite and local image storage for the initial single-user installation.
-- **AI:** a replaceable multimodal model behind a server-side provider interface. The application
-  owns the data, rubric, and score arithmetic.
+- **Web app:** React and Vite; the backend serves the production build and private media.
+- **Backend:** local Node HTTP API, input validation, user decisions, account settings,
+  the authenticated normal-Chrome bridge, and on-demand public research.
+- **Worker:** a separate Node process running the regular approved-plan coordinator.
+  Backend and worker share SQLite/storage code. Browser commands cross local IPC to the
+  backend's Chrome bridge; credentials do not travel in IPC messages.
+- **Storage:** SQLite with WAL, bounded write contention, transactions/savepoints, and
+  local content-addressed media. Domain schemas validate stored and incoming data.
+- **AI:** provider interface with structured output validation. Code owns eligibility,
+  arithmetic, score ceilings, budgets, and persistence. The scorer has no browser,
+  shell, messaging, or database tools.
 
-Direct website discovery is the primary intake. Mailboxes, saved-search alerts, proprietary
-connectors, and user-supplied descriptions or screenshots are not prerequisites. Optional manual
-entry remains useful for an apartment found elsewhere.
+Scheduled scans, startup scans, and catch-up runs remain disabled. The Windows launcher
+starts the app quietly and reuses its running local server; it installs no startup task.
+The PC, local app, and required Chrome session must remain available during an approved run.
 
-## 2. Discovery and extraction
+## 2. Approval, budgets, and source access
 
-Detail maps use OpenStreetMap's embedded map with a server-side, on-demand
-Nominatim lookup of the public advertised street address. Successful lookups are
-cached for 180 days and misses for one day; requests are serialized at least 1.1
-seconds apart, identified by the app's User-Agent, and paused on access warnings.
-Only a detail-open POST triggers a lookup. Demo mode stays offline. A street pin
-requires a matching house number and road in the Vancouver region; an area-only
-match is labelled approximate and has no apartment pin. Map failures do not block
-the listing. `MAP_GEOCODER_URL` can switch the provider without a code change.
-See the [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/).
+Every scan requires a new bounded plan naming sources and maximum pages, apartments,
+photos, and AI calls. The plan dialog displays totals, optional per-source apartment cap,
+and facts-refresh scope before approval. Preparing a plan makes no external requests.
+Approval expires after one hour, is consumed once, and does not authorize recurring work.
 
-Candidate websites and adapter acceptance criteria live in [listing-sources.md](listing-sources.md).
-Validate a small set against real pages before expanding coverage.
+The child worker claims the approved plan and a database-backed lock. The backend and
+worker both consult persistent state; cancellation, unfinished feedback interpretation,
+source pauses, and exhausted budgets stop subsequent requests. A crashed run retains
+completed results and its lock until explicit interrupted-run recovery. Recovery does
+not restart the scan or renew approval.
 
-- Use ordinary HTTP and structured page data where available; use Playwright for pages needing
-  browser rendering or interaction. Prefer deterministic parsers over AI navigation.
-- Collect source ID/URL, address/unit, coordinates where available, rent, beds/baths, size,
-  description, photos, amenities, available date, lease term, furnishing, mandatory costs, and
-  incentives. Preserve provenance and retrieval time; missing fields remain unknown.
-- Distinguish individual apartments from building advertisements with many units or rent ranges.
-- Initially discover current inventory. Later use stable IDs, overlap windows, checkpoints,
-  and content fingerprints to process new or materially changed listings.
-- Refresh active shortlisted homes selectively. Re-score only when relevant evidence,
-  criteria, or the scoring rubric changes.
-- Follow the conservative access policy in listing-sources.md: shared source budgets, sequential
-  navigation, persistent sessions and caching. A source warning stops its queued requests and
-  persists a cooldown; scheduled/manual runs and restarts cannot bypass that pause.
-- Report incomplete coverage. A failed fetch or absence from search results is not evidence
-  that an apartment was rented.
+Source access remains conservative:
 
-The application obtains details itself. If a source cannot provide photos or a field, identify
-the gap on the card and preserve uncertainty in the score.
+- One active source and navigation at a time; at most five top-level page visits per
+  source/run with pacing and shared daily limits.
+- Page, gallery/API, media, and AI allowances are accounted separately. Fair shares
+  reserve work for remaining sources instead of allowing the first source to consume
+  the entire plan.
+- Persistent ordinary browser profiles or the paired normal-Chrome bridge are used
+  where required. Apartments.com and Zillow use the normal-Chrome bridge.
+- The first access warning, challenge, rate limit, or abnormal failure stops that
+  source and persists a cooldown/attention state. Manual runs and restarts respect it.
+  No CAPTCHA solving, identity rotation, proxy rotation, or challenge bypass is used.
+- A failed fetch or incomplete discovery is not evidence that a listing was rented.
+  Each selected source receives its own outcome and coverage explanation.
 
-## 3. One scan
+All twelve retained sources are wired into the coordinator. Deferred sources remain
+excluded. Current adapter access must still be established by the next separately
+approved live run; historical success is not a promise of uninterrupted access.
 
-**Current approval gate:** the user must approve the source and page/listing/photo/AI limits
-before the first live scan. Startup performs no scans or catch-up work. Approval is for one run
-only, expires after one hour, and does not authorize recurring scans. Defaults are one apartment,
-two pages, twelve photos, zero AI calls. Larger galleries stay pending instead of being sampled
-and labelled complete. Subsequent scheduler/catch-up behavior below remains a future opt-in.
+## 3. Discovery, refresh, and resumability
 
-1. Claim queued work with a database-backed lock so scheduled and manual scans cannot overlap.
-2. Discover postings from enabled sources, recording progress and source failures. Check known
-   source IDs and confident apartment matches using discovery metadata before fetching details.
-3. Fetch new/changed details, normalize facts, and record evidence and fingerprints.
-4. Apply hard filters in code: definite budget, area, unit-type, lease, move-in, or must-have
-   violations. Unknowns pass through.
-5. Match postings to apartments and resolve certain duplicates.
-6. Research buildings and surroundings, using cached findings when still relevant.
-7. Reuse compatible cached assessments for unchanged evidence. Request structured AI ratings
-   only for new or materially changed evidence, and validate the response.
-8. Compute weighted scores in code and assess red flags separately.
-9. Commit listing updates without modifying user decisions.
-10. Record completion, source health, and noteworthy findings in the desk's activity feed.
+Adapters collect source ID/URL, unit/address, rent, room counts, size, lease/availability,
+amenities, descriptions, photo references, and supporting statements. Deterministic
+parsing is preferred over model navigation. Building or floor-plan offerings remain
+distinguished from confirmed individual suites.
 
-Steps are resumable and safe to repeat. Only successful discovery advances a source checkpoint.
-Partial runs retain successful items and resume unfinished work only within source budgets and
-after any cooldown or required access recovery. Scoring failure produces an Unscored card,
-never an automatic rejection.
+The scan sequence is:
 
-## 4. Identity and duplicates
+1. Claim the plan and shared worker lock; verify feedback and source readiness.
+2. Discover a bounded slice, preserving first-page opportunities as backlog is processed.
+3. Retain queued URLs, pagination state, candidate failures, and pending galleries.
+4. Fetch and normalize scoped listing facts; apply configured hard filters in code.
+5. Resolve strong identity matches before expensive analysis. Keep ambiguous matches visible.
+6. Apply cached verified address context when it still matches the advertised address.
+7. Retrieve accessible gallery images within allowance; reuse compatible findings and
+   review every remaining accessible image in bounded batches.
+8. Compute scores in code and persist results without replacing user decisions.
+9. Record per-source outcomes, unresolved work, and useful changes.
 
-A **posting** is identified by source and listing ID. A **home** is the apartment, potentially
-represented by several postings. Building advertisements remain distinguishable from units.
+Known source IDs and fingerprints prevent duplicate imports. Queues persist across
+partial runs, and source-specific candidate errors remain available for explicit retry.
+The Chrome gallery workflow can resume bounded enumeration, including when a previously
+retained tab has disappeared. Incomplete captures preserve earlier collected images.
 
-Deduplicate before building research and AI photo analysis, not just before displaying cards.
-Keep one assessment per confirmed apartment and relevant evidence/rubric version. When discovery
-metadata is insufficient, fetch only the details needed to establish identity and detect changes;
-do not skip unknown listings based on a building-level match. Retain source-specific facts and
-timestamps so a duplicate ad can contribute a new photo, price update, or availability conflict.
-Cache image assessments by content fingerprint and assessment version; near-identical images
-may identify reuse candidates but do not alone prove apartment identity. Recalculate code-based
-scores for price/criteria changes without repeating unaffected visual assessments. New photos or
-changed condition/view evidence require the affected assessments to be refreshed.
+A plan may explicitly include facts-only refreshes of interested/in-progress homes.
+These preserve existing gallery images and assessments. Previously saved trial photos
+are not automatically refreshed. New source evidence may add to a confirmed home's
+gallery, but a fetch failure never removes a home or changes its user-managed stage.
 
-| Situation | Handling |
+## 4. Identity, postings, and duplicate decisions
+
+A **posting** is identified by source and source listing ID. A **home** represents one
+apartment and can have several postings. Stable sequential apartment references are
+never reused or renumbered according to score.
+
+| Evidence | Implemented handling |
 | --- | --- |
-| Same source and listing ID | Update the posting; do not create another card. |
-| Same normalized address/unit with compatible facts | Merge into one home with all source links, unless evidence suggests a scam copy. |
-| Same building without unit, similar text, or matching distinctive photos | Show Possible duplicate with Same place / Different actions. |
-| Copied photos with conflicting address/contact or suspicious price | Keep separate and flag a possible scam copy. |
-| Same building, different units | Keep separate; link as related homes. |
-
-Lobby, gym, exterior, stock, model-suite, and floor-plan images are insufficient for automatic
-merging. Keep uncertain matches visible to avoid hiding a good apartment. Remember user
-duplicate decisions, preserve notes during merges, and support undoing a merge.
-
-Not Interested is final by default: suppress confirmed reposts of that home. Uncertain matches
-can appear with a reference to the rejected home. Price-drop resurfacing is optional and off
-unless enabled. Retain identity history for the duration of the search.
-
-## 5. Scoring and evidence
-
-Hard filters, price calculations, location tiers, and score arithmetic run in code. AI assesses
-view, light/condition, layout, building, and surroundings against the private rubric.
-Distinguish confirmed disqualifiers, strong preferences, small bonuses, and unknown facts.
-Preferences must not become hard filters merely because their wording is emphatic.
-
-For each criterion, store a rating or unknown, a plausible range, evidence, and whether it is
-observed in a photo, stated in a listing, or inferred from research. Code calculates a weighted
-base score and applies explicit overall-point bonuses from private configuration, with low/high
-estimates. Apply confirmed-failure caps and hard exclusions, then clamp the final score to
-0.1-5.0. Unknown ratings use the range midpoint for the headline estimate; unknown bonus
-eligibility remains provisional and must not be shown as an earned bonus.
-
-- Suitable listings appear with reasons and source links.
-- If reviewed unit-window photos show buildings and no confirmed nature, apply the configured
-  building-view penalty and a 2.9 ceiling. Unknown workspace earns no bonus. Keep evidence
-  uncertainty distinct from this poor-fit assessment.
-- Every rounded headline score below 3.0 belongs in Excluded, even with a higher upper
-  estimate or a previous rescue. Preserve notes and workflow history; derive the desk category
-  without overwriting the user's stage. Hard-filter rejections retain their reasons too.
-- Failed assessments appear as Unscored and can be retried.
-- Apply configured confirmed-failure rules before the ordinary weighted-score threshold. A
-  confirmed failure of the required nature outlook caps the headline and upper score below 3.0
-  (at most 2.9), regardless of price or convenience bonuses. Record the evidence and rejection
-  reason in the Auto-rejected bin. Incomplete photo coverage cannot trigger this cap.
-
-Weights live in private configuration. Changing them does not require repeating unchanged AI
-assessments. The earlier example weights are superseded by the user's expanded private criteria
-and calibration examples. Location, price, and nature-view quality are the major drivers;
-bedroom suitability and parking matter, while furnishings and extra amenities provide smaller
-bonuses. Keep exact weights provisional while more criteria are arriving.
-
-Calibrate the formula against the approximate outcomes in `private/criteria.md`, including
-otherwise comparable homes at different prices and an exceptional home outside the preferred
-area. Report deviations rather than claiming a formula matches examples without calculating
-them. Do not tune every example independently with hidden adjustments.
-
-### Location, value, and unit preferences
-
-- Use a strong preferred-area rating and meaningful deductions for more distant/inconvenient
-  locations. Homes outside the preferred area remain eligible; proximity to preferred landmarks
-  or useful transit are alternative benefits rather than requirements to satisfy simultaneously.
-- Verify walking access and actual airport routing, transfers, and travel time when evaluating
-  transit convenience. Do not equate proximity to any station with an equally convenient journey.
-- Separate the desired bedroom count, extra-bedroom bonus, and studio penalty. Studio exceptions
-  require exceptional combined value and verified view quality, not low rent alone.
-- For units without a second bedroom, award the configured overall-point bonus for a usable
-  den/home office. Verify workspace suitability; an ambiguous flex/storage label remains
-  **Workspace Unsure**. Do not stack this bonus with the second-bedroom benefit.
-- Short-term leases earn the configured overall-point bonus; long-term leases remain eligible.
-  Do not filter out a listing merely because its lease is short-term. Record minimum commitment,
-  actual duration, mandatory end date, renewal options, and the rent for the offered term.
-  Unknown terms produce **Lease Term Unsure**. The preferred duration is not yet defined.
-- Show base score and additive adjustments separately. Do not also reward the same benefit
-  inside a weighted criterion. Bonuses cannot override a confirmed nature-view failure or any
-  other hard exclusion. Calibrate them alongside the earlier overall-score examples.
-- Store parking count, availability, inclusion, recurring fee, and evidence independently.
-  Use **Parking Unsure** when availability or inclusion is unclear. Unknown is not unavailable;
-  no automatic rejection for lack of parking is currently configured.
-- Store laundry location, washer/dryer inclusion, exclusivity and unit-specific evidence.
-  Distinguish shared-only facilities from shared amenities offered alongside in-unit machines;
-  hookups or generic building amenities cannot confirm in-unit laundry. Apply the private
-  laundry eligibility rule as a hard filter. Unknown/conflicting evidence produces Laundry
-  Unsure; confirmed failures remain excluded regardless of bonuses. Reevaluate existing homes
-  when the requirement changes, preserving historical assessments, IDs and user-managed stages.
-- Record unit internet provider/service, connection type, download/upload speeds, dedicated
-  versus shared service, inclusion and cost when stated, with evidence provenance. Generic
-  "high-speed internet" or building-wide service does not establish actual unit performance.
-  Missing information is Internet Unsure, with no automatic exclusion or score deduction.
-  Support a manual pre-lease check of service availability, speeds, reliability and cost;
-  performance thresholds and any score adjustment remain private configuration choices.
-- Furnishings receive a small bonus. The price premium remains part of the normal value score;
-  optional furnishing-cost comparisons must disclose the assumed tenancy and setup cost rather
-  than double-counting those costs in the score.
-
-Distinguish advertised rent from effective monthly cost, including known mandatory charges and
-incentives, and the cost of the desired parking. Disclose unknown costs. Which measure the cap
-uses remains unresolved; preserve base rent and total-cost estimates separately.
-
-### Views and photos
-
-Review every accessible photo in the listing's full gallery, not just a sample, and include
-new photos from confirmed duplicate ads. Reuse valid assessments of unchanged images. Do not
-stop once a favorable or unfavorable view appears. Qualifying
-evidence must show the scenery through windows of the actual apartment. Separate these from
-rooftop, amenity, balcony-only, exterior, stock, and other-unit images. If the image cannot be
-attributed to the unit, or the scenery cannot be identified confidently, leave it unverified.
-
-Store view verification separately from quality: unverified, photo-confirmed nature view,
-or photo-assessed outlook without visible nature. Record scenery type, room/window, supporting
-photo reference, visible obstructions, and whether nature or buildings dominate the outlook.
-One photographed window does not establish the outlook from every room.
-Record compass direction by room/window where supported, distinguishing the main outlook
-from secondary exposures. Use unit-specific descriptions, oriented floor plans or reliable
-geographic evidence; brightness and generic scenery claims do not establish direction.
-Apply the private orientation bonus once when supported. Ambiguous exposure is Orientation
-Unsure, with no earned bonus; direction alone cannot establish a qualifying nature view.
-Street-level trees alone do not establish the desired nature view. Distinguish distant forest
-from nearby landscaping. When sufficient unit-specific evidence confirms only building/street
-outlooks and no qualifying nature, apply the confirmed-failure rule above. Partial qualifying
-nature views remain eligible and receive a lower view-quality rating.
-
-Suggested quality rubric, applied only to assessed window views and the private preferences:
-
-- 5: preferred nature dominates a broad, mostly unobstructed outlook.
-- 4: substantial nature view with limited obstruction; buildings do not dominate.
-- 3: meaningful but partial nature view with noticeable obstruction.
-- 2: buildings dominate, with at most a small glimpse of nature, or a city/tower outlook.
-- 1: close wall, lane, or similarly restricted outlook with little visual openness.
-
-A marketing claim, view tag, location, or floor height supplies no confirmed view rating.
-Without qualifying photos, keep the rating unknown with an explicitly provisional range;
-never turn an advertised view into a rating of 3. A midpoint used for overall score arithmetic
-is an estimate, not visual confirmation. A cropped or zoomed glimpse cannot establish that
-nature dominates the normal outlook; keep quality uncertain unless wider context supports it.
-
-Enumerate the gallery and make numbered contact sheets covering all retrieved photos. Inspect
-every image; examine originals at sufficient resolution wherever windows, scenery, reflections,
-or ambiguous details need closer review. Classify interior/unit views separately from amenities,
-balcony-only views, and photos with uncertain provenance. Retain supporting photo references and a
-short evidence description. Surface a representative window-view image on the card when
-available. Distinguish advertised claims, photo findings, and user feedback in summaries.
-Missing images must not discard a potentially suitable listing, but its view stays unverified.
-
-Store a gallery manifest with source photo IDs/URLs, fingerprints, expected count (or unknown),
-and the preserved source file's dimensions and size. Source image bytes are stored without
-resizing or recompression, with a separate bounded JPEG for existing analysis and card caching.
-Only advertised image variants (srcset, full-image links, or source gallery size metadata) are
-selected; do not probe guessed CDN paths. Legacy cached JPEGs remain labelled previews until
-an explicitly authorized media refresh retrieves a source copy. Such a display-only refresh
-retains existing assessments and user decisions and makes no AI requests.
-
-Also retain
-retrieval/review status for each image, assessment version, and failure/defer reason. A batch or
-model context limit must split the gallery into resumable batches, not silently omit images.
-Aggregate findings across rooms, noting obstructions and disagreements. Full gallery review does
-not prove that every actual window was photographed; absence of evidence alone cannot reject a
-home. View certainty and review completeness are independent fields.
-
-When page/media budgets or source warnings interrupt retrieval, save progress and show Photo
-review pending or Photos inaccessible. Resume within allowed limits; do not issue extra visits
-just to finish a gallery in one scan. Complete local analysis of already retrieved images without
-further site requests. Test large galleries, missing images, changed/duplicate photos, conflicting
-room views and interrupted/resumed reviews before enabling full scoring.
-
-### Research and scoring reliability
-
-Research by address/building name without disclosing personal criteria. Investigate building
-age/type, documented issues, construction, and noise sources. Cite sources and dates and
-separate evidence from inference. Cache durable facts; refresh time-sensitive findings sooner.
-
-The scorer receives listing and research data but no browsing, shell, messaging, or database
-tools. External content is untrusted. Validate structured output and evidence references;
-unsupported claims become unknown. Render external text safely.
-
-Record model, prompt, and rubric versions. Build a user-labeled set of representative listings
-to test later changes, particularly whether good apartments are rejected. Rejection reasons
-can inform proposed weight changes, never silent changes. Support reviewing and rescuing
-rejected listings, with near-misses first.
-
-## 6. Scam and other red flags
-
-Suitability and risk are separate: a suspicious listing may otherwise score highly. Show
-warnings with evidence; do not present a suspected scam as the best new find.
-
-Signals include copied photos with conflicting facts, unusually low prices, pressure to pay
-before viewing, refusal to allow viewings, unusual payment instructions, and inconsistent
-contact details. A single weak signal is not proof.
-
-Verify any tenancy-law rules against current authoritative BC guidance during implementation,
-recording sources and review dates. Viewing checklists and inquiry drafts help resolve unknowns.
-The app does not automatically contact landlords or make payments.
-
-## 7. Sorting Desk
-
-Required stages: **Unreviewed**, **Interested**, **Inquiry Sent**, and **Not Interested**.
-The plan extends these with **Viewing Booked**, **Applied**, and **Leased**, plus closed reasons
-such as Gone, Landlord declined, No reply, Withdrew, and Leased elsewhere.
-
-Allow skipping stages, going back, undoing actions, and reopening closed cards. Uncertain,
-Possible duplicate, Suspected scam, Price drop, and Follow-up due are badges, not stages.
-Listing removal is a reported fact; closing a user-managed card remains the user's decision.
-
-### Layout
-
-- **Today:** new listings, due follow-ups, upcoming viewings, and decisions awaiting review.
-- **Tabs:** Inbox, Shortlist, In progress, and Closed, with counts and filters.
-- **Short card:** thumbnail, score/range, rent/effective cost, beds/baths, area, availability,
-  view evidence, first-seen date, badges, summary, and Interested / Not interested buttons.
-- **Expanded card:** photos, pros/cons, unknowns, ratings, research/risk evidence, source links,
-  map link, notes, and stage history.
-- **Header:** last successful scan, running/overdue status, and per-source health.
-
-Use stage buttons and responsive layouts. Scan now queues background work and displays progress.
-
-### Follow-through
-
-- Not interested supports undo and optional reason chips.
-- Draft inquiry produces a message from unresolved questions for the user to copy/send.
-- Mark sent records date/channel and can set a follow-up, initially two days later.
-- Viewing Booked records time/timezone, offers a calendar file, and builds a viewing checklist.
-- Compare shows two or three homes side by side.
-- Notes form a timestamped log with an optional pinned summary.
-- Leased offers to pause scans and close other homes, with confirmation of those bulk changes.
-
-## 8. Storage and ownership
-
-The backend is the only route for browser writes. Backend and worker share storage code,
-migrations, transactions, and bounded handling of SQLite write contention.
-
-| Data | Owner/purpose |
-| --- | --- |
-| Homes and postings | Worker-managed facts, links, fingerprints, availability, and merges |
-| Assessments and research | Versioned ratings, evidence, scores, risks, and cached findings |
-| Decisions and notes | User-managed stages, reasons, viewing/follow-up dates, and history |
-| Duplicate feedback | User-confirmed Same place / Different relationships |
-| Jobs, checkpoints, source health | Work queues, retries, locks, coverage, and activity |
-| Media | Private files with database references and retention metadata |
-
-Scanner updates never overwrite user-managed fields. Use transactions and revision checks
-for concurrent edits. Durable IDs connect the desk to its records; scanning updates data
-without republishing the interface.
-
-## 9. Running and accessing the app
-
-Start locally on the user's Windows computer. Serve the app on localhost and launch the worker
-using Windows Task Scheduler. The backend can start at sign-in. Closing the browser or coding
-assistant does not stop background work while the computer and relevant services are running.
-
-Use a configurable schedule, initially three scans per day. Store the scan timezone explicitly;
-America/Vancouver is the planning default for the rental market. Label times so they are not
-confused with the user's current local timezone.
-
-Sleep/power-off delays scans. On restart, queue one catch-up run from the last successful
-checkpoints and report coverage gaps. For continuous operation, the same app/worker can later
-move to an always-on private host.
-
-Responsive layout supports phones, but localhost is reachable only on the host. Phone access
-requires an authenticated private connection or hosted deployment. Do not expose an
-unauthenticated desk publicly.
-
-Start with an in-app activity feed and due-action indicators. Optional external notifications
-can follow, limited to useful matches, reminders, and failures, with quiet hours.
-Email delivery remains a later feature.
-
-## 10. Technology and cost
-
-| Need | Implementation default |
-| --- | --- |
-| Language/runtime | TypeScript on supported Node LTS; verify installed version at setup |
-| Sorting Desk | React with Vite; backend serves production build |
-| Backend/worker | Node HTTP API plus job worker sharing domain/storage code |
-| Extraction | Playwright; ordinary HTTP where a browser is unnecessary |
-| Persistence | SQLite; choose driver against the pinned Node release |
-| Validation | Zod schemas for adapters, API inputs, and AI output |
-| Photos | Sharp for thumbnails/contact sheets |
-| AI | Provider-neutral interface for text, images, and structured ratings |
-| Scheduling | Windows Task Scheduler initially; host-native scheduler for a later server |
-| Tests | Node unit/integration tests and Playwright for critical desk workflows |
-
-Choose the model through a small real-listing comparison of evidence quality, uncertainty,
-latency, and cost. Credentials are needed before live scoring. Provider and spending ceiling
-remain open preferences. Do not assume a chat subscription funds API use or reuse unverified
-model/pricing estimates.
-
-The user subsequently selected existing ChatGPT Pro usage without additional purchases.
-The local implementation now defaults to OpenAI's documented Sign in with ChatGPT plan-usage
-flow, with account consent, a model catalog, and Windows-protected credentials. This is separate
-from API-key billing and the API-credit benefit. It has no automatic paid-key fallback. Usage
-shares the account's existing allowance; the user controls app limits and purchased-credit
-overflow in ChatGPT settings. Live account eligibility and inference still need validation.
-
-Track usage per run and enforce an application-level spending limit. Reduce work with hard
-filters, duplicate detection, content fingerprints, cached research, and reuse of unchanged
-photo assessments. Full gallery coverage remains required for assessed apartments. Estimate
-monthly costs after a representative batch.
-
-Technical references checked on 2026-11-11:
-[Vite](https://vite.dev/guide/), [Playwright](https://playwright.dev/docs/intro),
-[Node SQLite](https://nodejs.org/api/sqlite.html), and
-[Windows Task Scheduler](https://learn.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-start-page).
-Verify APIs against pinned versions during implementation.
-
-## 11. Privacy and retention
-
-- Criteria in gitignored `private/`, credentials in `.env`, runtime data in `data/`.
-  Never ship credentials to the browser.
-- Bind to localhost initially; require authentication for remote access.
-- Minimize stored contact details. Use keyed fingerprints for contact matching where needed
-  and keep unnecessary personal details out of logs and prompts.
-- Initial retention: raw snapshots seven days; thumbnails fourteen days after closure;
-  closed homes archived from the active desk after sixty days. Retain minimal identity and
-  rejection history through the search so discarded homes do not return.
-- Offer export, backup/restore, and full purge when the search ends.
-
-## 12. Implementation phases
-
-| Phase | Deliverable and completion condition |
-| --- | --- |
-| 1. Foundation and source trial | App/backend/worker skeleton, private config, migrations, one working direct adapter; real facts and available photos on basic cards |
-| 2. Useful shortlist | Filters, AI scoring/evidence, uncertainty, research, duplicates, persistent stages; assess usefulness with real listings |
-| 3. Scheduled discovery | More validated adapters, checkpoints, retries, refresh, scheduling, health, restart recovery; repeat scans preserve decisions and avoid repeated scoring |
-| 4. Follow-through | Drafts, follow-ups, calendar files, comparison, richer duplicate detection, scoring calibration |
-| 5. Optional access/delivery | Authenticated phone access, always-on hosting, external notifications if wanted |
-
-Prove direct discovery and useful scoring before expanding features. The first usable version
-does not depend on every source or every later workflow feature.
-
-## 13. Remaining preferences
-
-These refine the plan; they do not reopen the confirmed direction or require another general
-architecture approval.
-
-- Further criteria: move-in dates, budget basis, minimum size, preferred short-term duration,
-  pets, cooling, noise tolerance, and other must-haves. Initial bedroom, workspace, laundry,
-  parking, furnishing, and short-term lease criteria are captured in private configuration.
-- Exact station walking limits and airport journey tolerance; relative preference among
-  qualifying nature types. Area priorities and the poor rating of building-only views are set.
-- Whether confirmed lack of parking should become a hard exclusion, studio exception thresholds,
-  and the tenancy horizon/furnishing budget for cost comparisons.
-- AI provider/model and spending ceiling, informed by a representative trial.
-- Scan times/timezone, whether the PC stays awake, and need for continuous operation.
-- Whether authenticated phone access is needed at launch or can follow the local version.
-- Whether to enable price-drop resurfacing or a Not this building action.
-
-## November 14 implementation update
-
-`regular-worker.ts` coordinates all 12 sources under one approval and one worker lock. `SourceBudget` reserves a fair share for each remaining source with at most five page visits per source. ChromeJobs remains the Apartments.com transport; Zillow, REW, and Facebook use their persistent visible Chrome profiles. Other sources use persistent browser sessions and the validated captured-page extractors; Zumper has a scoped structured-data extractor. Austeville follows the inventory endpoint advertised in its vacancies page; Sunstar uses its Juicebox XML gallery.
-
-Discovery queues and per-home pending-gallery markers persist in SQLite metadata. Only unfinished homes created by this workflow can resume; earlier trial homes are skipped. Full galleries use the ChatGPT-plan reviewer with no paid API fallback. Identical gallery evidence can reuse cached findings. All-source request allowance is at most 500 requests per selected source; page, listing, photo, and AI allowances remain the explicitly approved totals. Runtime access failures stay source-specific.
-
-Desk labels are Unreviewed, Interested, In Progress, Excluded, Closed. Shared transition rules validate saves in SQLite and restrict visible options. In Progress retains inquiry/viewing/application substages. Reopen is an explicit revision-checked action; ordinary saves and undo cannot bypass stage rules.
+| Same source/listing ID | Update its posting and preserve the home reference. |
+| Same normalized address/unit with compatible facts | Combine source links and evidence. |
+| Matching address/unit but incompatible room count, size, or price evidence | Keep separate for review. |
+| Same address with a missing unit | Show possible-duplicate candidates; do not merge automatically. |
+| Same building with distinct explicit units | Keep separate. |
+| Similar text or matching photos alone | Do not merge automatically. |
+
+`posting_details` retains each source's facts, capture time, and gallery manifest.
+Aggregation uses the latest posting snapshots, so a resolved price or laundry conflict
+can clear instead of preserving an obsolete aggregate. Unknown fields do not silently
+override supported facts. Conflicting facts remain visible; conflicting rents use the
+conservative known amount pending resolution.
+
+Source-local photo IDs are not home-wide IDs. The combined gallery uses stable unique
+references, preserving existing references while resolving collisions such as two ads
+both calling an image `p1`. Original source references remain in their manifests.
+Incomplete same-source captures union with previous images; a complete manifest is
+authoritative. A merged gallery does not by itself establish exact-unit provenance.
+
+The user can explicitly mark candidates different or confirm the same apartment.
+A merge keeps the chosen reference, records the other as an alias, combines notes,
+links and evidence, and retains feedback and a merge snapshot. Conflicting saved stages
+or dates require reconciliation. A split restores the original records only while it
+cannot overwrite newer conflicting edits or feedback; otherwise it refuses and explains
+the conflict. Source refreshes cannot undo these decisions. Earlier records may have
+only the canonical historical snapshot until an authorized capture supplies missing
+per-posting details.
+
+Perceptual image matching, broad text-similarity duplicate discovery, and automated scam
+judgments are not implemented. Shared amenity/model-suite photos are never identity proof.
+
+## 5. Photo evidence and AI review
+
+Every accessible photo in an assessed gallery is reviewed, including new photos from
+confirmed duplicate ads. A favorable or unfavorable first image does not end review.
+Missing images, incomplete enumeration, pending analysis, and uncertain unit attribution
+are distinct states. Missing photos do not prove that nature is absent.
+
+The image collector retains exact downloaded source bytes and their dimensions/size,
+plus a separate bounded JPEG for analysis and cards. It chooses larger variants only
+when advertised by the source; it does not probe guessed CDN paths. Legacy previews
+remain labelled as previews. Enlarged viewing uses the source copy when available.
+
+The current gallery reviewer defaults to twelve images per call, with a hard maximum
+of sixteen and a twelve-million-byte image-data bound per batch. Each successful batch
+is applied and cached before the next. Each call consumes the approved AI allowance;
+a large gallery can require several calls or runs. Every response must cover all
+submitted IDs exactly once. Unavailable images do not block assessment of other accessible
+images, but remain incomplete in the coverage record. There is no automatic paid fallback.
+
+Visual cache keys include image hash and model/rubric version. Exact-unit attribution
+is stored separately by stable home/source context and explicit provenance semantics:
+
+- Ordinary description edits retain compatible attribution.
+- Representative/display/other-suite evidence invalidates exact-unit certainty.
+- A new context can receive a separately budgeted, text-only attribution review using
+  saved visual findings, without repeating image analysis. Pending attribution remains
+  explicit and resumable.
+- Each photo's posting manifest supplies its context. A representative cross-post does
+  not invalidate another source's verified photo from the actual unit.
+- Reuse of interior condition findings checks the supporting image hashes as well as IDs.
+
+Nature is confirmed only through actual apartment interior windows. Marketing claims,
+floor height, area, shared amenities, balcony-only views, and other suites cannot substitute.
+Quality distinguishes broad nature-dominated outlooks from narrow building-dominated
+glimpses. Half-point quality ratings are supported. One window does not establish every
+room's outlook; multiple batches are not assumed to prove complete all-window coverage.
+
+Structured findings can establish gas cooking, usable workspace, open layout, and laundry
+with supporting photo IDs when unit attribution is supported. Contradictions remain unknown.
+Modern/dated condition and cramped space also retain photo references. A single washer,
+hookups, an ambiguous flex closet, or a gas fireplace cannot establish a different feature.
+Furniture visible in photos never establishes furnishing terms; furnishing requires a
+scoped rental statement. Exact-URL download reuse across homes is not implemented because
+mutable URLs can change their bytes; unchanged retained images and assessments are reused.
+
+## 6. Scoring and learning
+
+Code calculates headline scores from 0.1 to 5.0. Below 3.0 is Excluded; 3.0–3.9 is worth
+a look but not a strong match; 4.0–5.0 is strong interest. Classification remains separate
+from user stages. A prior rescue or higher uncertainty estimate cannot override a headline
+below 3.0. Missing interior-photo verification remains outside the active desk.
+
+Private configuration owns weights, price anchors, location preferences, bonuses, and
+hard requirements. Confirmed budget/laundry failures take precedence. Views receive
+evidence-based penalties/ceilings, including building-facing outlooks, weak glimpses,
+partial nature, expensive modest views, and unverified views. Ordinary feature bonuses
+cannot bypass evidence ceilings or hard filters; an explicit interior-tradeoff preference
+provides the bounded alternative described below.
+Workspace and second-bedroom benefits are not double-counted. Unknown features earn no
+unsupported bonus; internet uncertainty alone has no automatic penalty.
+
+`criteria.interiorTradeoff` is disabled by default and enabled only through an explicit
+preference change. A qualifying combination of supported furnishing, open layout, modern
+interiors and usable workspace must accompany a known advertised rent and reviewed actual-unit interior photographs.
+Workspace contributes only when a known bedroom count establishes that the second-bedroom
+benefit is not being counted instead. Neither cheap rent nor furnishing alone qualifies.
+The alternate score is the non-view subtotal minus `interiorTradeoff.viewPenalty`, capped by
+`interiorTradeoff.ceiling`; personal values and the calibration examples remain private.
+Ordinary price, location, dated-interior and cramped-layout effects remain in that subtotal.
+Compute this alternative across all view qualities and keep the higher of it and the ordinary
+view-based score, so a better outlook cannot remove the interior benefit. The alternative can
+relax poor/absent/unverified-view exclusion but does not manufacture nature evidence or change
+gallery completeness. Distance, street-level, expensive-weak-view ceilings and actual hard
+requirements still apply afterward. Rescoring uses saved evidence and rebuilds derived learning
+baselines while preserving feedback snapshots, listing facts and user workflow decisions.
+
+Personal scores/reasons retain immutable listing, score, and criteria snapshots. Each
+submission immediately rebuilds bounded comparable-listing calibration from the latest
+rating per home. An explicit one-off exception calibrates that home without teaching a
+general preference. Supported explicit general rules apply immediately. Downward feedback
+cannot raise an already stricter score.
+
+Condition corrections are attached to stable home identity, with source aliases for old
+snapshots/callers. Explicit later corrections can reverse a dated/cramped judgment;
+silence about that field does not reverse it. User corrections remain separate from
+advertiser facts and survive source changes.
+
+A serial bounded ChatGPT-plan interpretation proposes at most three allowlisted numeric
+changes. Code validates step limits, agreement with saved examples, and interest-band
+preservation. Unsupported or unresolved instructions stay visible and block new scan
+requests until resolved. Failed/interrupted reviews require explicit retry. Undo refuses
+to overwrite newer preferences. Startup does not submit historical feedback to AI.
+
+`scripts/scoring-evaluation.ts` evaluates saved examples offline, including leave-one-out
+generalization and counterfactual ordering. Matching training examples alone is not proof
+that future rankings improved. New behavior has regression coverage; live model evidence
+quality still needs a separately approved trial.
+
+Preferences saves patch only edited allowlisted fields using a criteria revision check.
+A stale dialog cannot silently overwrite a completed feedback-derived update. The user
+must reload current preferences and review their edits after a conflict.
+
+## 7. Costs, location, and building context
+
+Advertised rent stays distinct from known recurring cost. Scoped explicit statements
+supply supported monthly parking/utilities/other charges; ambiguous charges remain
+unconfirmed. Repeated or conflicting amounts are not silently added twice. One-time
+deposits and incentives are not amortized into rent. The selected budget basis remains
+an explicit preference, and incomplete costs are disclosed.
+
+Detail maps perform an on-demand server-side Nominatim lookup of the public advertised
+location. Exact pins require matching street/house-number evidence in the Vancouver
+region; approximate areas have no apartment pin. Lookups are cached, serialized/paced,
+and paused after access warnings. Demo/startup/list refreshes do not initiate map lookups.
+Map failures do not prevent apartment review.
+
+The separate building-research action requires approval for at most two public requests:
+an address lookup if not cached, and a bounded City of Vancouver issued-permit query.
+It sends the public address, never private criteria, and uses no AI. Exact geocoding plus
+bundled official local-area boundaries may refine location. A protected cache reapplies
+verified location context to later source refreshes only when the address still matches.
+
+Permit records are cached for seven days, matched to the exact address, and labelled
+with sources/check times. Results are limited to fifty records and report incomplete
+coverage. No match is not proof of no issues; an issued permit does not prove current
+construction, noise, defects, or unit condition. Building defects, current noise, and
+verified station/airport journey times remain future research. Current transit links are
+manual planning aids, not computed travel-time evidence.
+
+## 8. Sorting Desk and data ownership
+
+The current tabs are **Unreviewed**, **Interested**, **In Progress**, **Excluded**, and
+**Closed**. Backend and frontend share the transition rules:
+Unreviewed → Interested → In Progress → Closed. Any active stage may close; ordinary
+saves cannot skip or move backward. Explicit Reopen is the only Closed → Unreviewed
+transition. In Progress retains inquiry/viewing/application substages. Score-based
+exclusion does not overwrite these user stages.
+
+Cards and pinned detail headers identify sources and stable apartment references.
+Window-view evidence is preferred as the lead photo; promotional graphics appear later.
+Details retain score breakdown, uncertainty checks, a factual summary, source evidence,
+notes, ratings/history, source links, and gallery navigation scoped to that apartment.
+The full-screen viewer supports fit, actual size, zoom, and previous/next without wrapping.
+
+The app stores follow-up/viewing dates, produces calendar files and inquiry drafts, and
+compares up to three homes. It never sends inquiries automatically. Rich reminders,
+bulk follow-through actions, and external notifications remain future work.
+
+Scanner facts, user decisions, and feedback are stored separately. Apartment edits use
+revision checks; criteria patches have their own revision guard. Excluded/Closed order
+uses category-entry time, unaffected by note edits. Merge/split and source refreshes
+preserve reference history and user-owned data.
+
+## 9. Query performance and process resilience
+
+The desk requests compact card state and loads full apartment details on demand.
+ETags suppress unchanged responses. Polling is non-overlapping and pauses while the
+document is hidden. Refresh failures are visible instead of silently leaving stale state.
+
+`Store.homes()` parses each listing once per changed raw value, groups duplicate candidates
+by address, batches posting/decision reads, and caches scores against listing/criteria
+content. `home(id)` uses a direct indexed query. Returned objects are copies, so worker/UI
+callers cannot mutate shared cache contents. External worker database writes invalidate
+cached results when their stored content changes.
+
+Public ChatGPT connection status is coalesced/cached rather than decrypting credentials
+twice per poll. Connection errors do not make the saved Sorting Desk unavailable. Account
+mutations invalidate that public status. The separate worker prevents synchronous parsing
+and scoring from occupying the HTTP server's event loop.
+
+Chrome IPC carries approved plan IDs and bounded jobs, not arbitrary browser commands.
+The backend rechecks plan/source state, allowed origins, daily access limits, and source
+pauses. Raw worker stdout/stderr is not relayed into user-visible logs. Worker interruption
+retains completed records and requires explicit recovery/new approval before further work.
+
+## 10. Backups, privacy, and restoration
+
+Live criteria/research are in gitignored `private/` and `data/`; optional API credentials
+are in `.env`. Connected ChatGPT credentials are Windows-DPAPI protected for the current
+Windows user. Credentials never enter browser bundles, model prompts, or ordinary logs.
+The app binds to loopback and uses origin/CSRF checks for mutations. Remote/phone access
+would require a separately designed authenticated deployment.
+
+The backup action and `npm run backup` create a fresh bundle containing:
+
+- A consistent SQLite snapshot, including feedback, decisions, source state, and history.
+- Media referenced by current and historical saved listing/merge snapshots.
+- Available `private/criteria.md` and `private/settings.json` reference files.
+- A manifest with file lengths and SHA-256 checksums.
+
+Creation verifies file checksums, referenced-media completeness, and SQLite integrity.
+Credentials and browser profiles are excluded; account reconnection may be required.
+The JSON desk export is convenient for inspection but is not a complete restore bundle.
+
+`scripts/restore.ts <backup-folder>` verifies without restoring. Supplying a second,
+nonexistent staging-folder path copies and re-verifies a restore there. It refuses to
+overwrite an existing destination and never replaces the running live database. Switching
+to a restored workspace remains a deliberate offline recovery operation after stopping
+the app and preserving the previous data directory. Automatic retention/purge is not enabled.
+
+## 11. Validation and remaining work
+
+The implementation uses pinned TypeScript/React/Vite dependencies, Node 24 SQLite,
+Playwright, Sharp, and Zod. Tests use representative fixtures, mocked model responses,
+isolated SQLite databases, and loopback HTTP; live data and websites are not test fixtures.
+Checks cover budgets/pauses, resumable discovery/gallery work, attribution/cache isolation,
+score ordering and feedback, duplicate merges, persistence, preferences conflicts,
+complete backup restoration, and the isolated worker's offline behavior.
+
+The 2026-11-14 review improves existing paths; it does not authorize new scans, source
+recovery attempts, photo refreshes, paid requests, or recurring schedules. Runtime access
+and model quality must still be checked through a separately approved bounded plan.
+
+Remaining choices/work include:
+
+- Scan times/timezone, scheduling/catch-up policy, and whether continuous hosting is wanted.
+- Additional unique-source trials and long-running source reliability validation.
+- Move-in timing, minimum size, lease duration, pets/cooling/noise preferences, budget basis,
+  station walking/airport tolerance, parking exclusions, and studio exceptions where unset.
+- Broader verified building/noise research and transit travel-time calculation.
+- More labelled evaluation examples, model comparisons, and out-of-sample scoring checks.
+- Authenticated phone access, external notifications, richer due-action tools, and retention.
+- Perceptual duplicate suggestions and safe validator-aware cross-home download reuse.
+
+These refine the confirmed product direction; they do not require reopening the architecture.

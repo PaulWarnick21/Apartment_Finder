@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {extractApartments} from '../server/apartments-extraction.ts';
 const image='https://images1.apartments.com/i2/fixture-key/111/example.jpg';
 const capture={url:'https://www.apartments.com/example-vancouver-bc/abcdefg/',title:'Example Unit Sample Tower - Condo for Rent',warning:null,truncated:false,advertisedPhotos:20,images:[{url:image+'?p=1'},{url:image},{url:'https://www.apartments.com/logo.png'}],html:`
@@ -30,4 +31,14 @@ test('explicit no parking and a six-month header are reflected without inferring
  const l=extractApartments({...capture,html});assert.equal(l.parking,'none');assert.equal(l.shortLease,true);
  const optional=extractApartments({...capture,html:html.replace('No parking.','Parking: One parking spot available if desired. (Optional)')});assert.equal(optional.parking,'extra');assert.equal(optional.parkingCost,null);
  const unknown=extractApartments({...capture,html:html.replace('No parking.','Parking not included.')});assert.equal(unknown.parking,'unknown');
+});
+test('multiple building pricing plans stay representative and cannot become one exact apartment',()=>{
+ const html=readFileSync('tests/fixtures/apartments-building.html','utf8'),listing=extractApartments({...capture,title:'Example Tower Apartments - Vancouver BC',html});
+ assert.equal(listing.offeringKind,'building');assert.equal(listing.unit,'');
+ for(const key of ['rent','beds','baths','sqft','furnished','gas','workspace','parkingCost','parkingCount','shortLease'] as const)assert.equal(listing[key],null,key);
+ assert.equal(listing.laundry,'unknown');assert.equal(listing.parking,'unknown');assert.equal(listing.lease,'Unknown');assert.equal(listing.available,'Unknown');
+ assert.match(listing.description,/Representative photos/);assert.match(listing.evidence.offering,/2 distinct pricing plans/);assert.ok(listing.photos.every(p=>!p.unitCertain));assert.equal(listing.expectedPhotos,20);assert.equal(listing.galleryComplete,false);
+ // A numbered unit or an actual unit detail panel keeps the existing unit path.
+ assert.equal(extractApartments({...capture,title:'Example Tower Unit 1204 - Condo for Rent',html}).offeringKind,'unit');
+ assert.equal(extractApartments({...capture,html:html+'<div id="unitDetailInfoWrapper"><p class="propertyBlurbContent">Rentals from $2400</p></div>'}).offeringKind,'unit');
 });

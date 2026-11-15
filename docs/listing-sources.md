@@ -1,11 +1,135 @@
 # Listing sources
 
-Updated 2026-11-11. Apartment Finder discovers rentals directly from listing websites and
+Updated 2026-11-14. Apartment Finder discovers rentals directly from listing websites and
 collects their details for filtering, scoring, and the Sorting Desk.
 
 The previous source strategy has been superseded at the user's request. This document is an
-adapter evaluation plan, not a claim that automated access or coverage has been validated.
-Earlier inventory counts and access conclusions are not implementation assumptions.
+implementation and validation record. A connected adapter does not establish complete
+coverage or uninterrupted access. Historical trial outcomes below remain dated evidence.
+
+## Current implementation — offline improvements on 2026-11-14
+
+All 12 retained sources use the regular, single-approved-plan coordinator. Apartments.com
+and Zillow use the paired normal-Chrome bridge; the other sources use their configured
+persistent browser sessions. Scheduled scans remain disabled. Implementation first used
+fixtures, mocked transports and offline captured pages, without live requests or photo
+backfill. The separately approved live validation that followed is recorded in the next
+section; it does not authorize further or recurring scans.
+
+- Each eligible source checks fresh discovery during every approved run, even while an older
+  backlog remains. Fresh candidates precede equally ranked older ones. The worker preserves
+  explicit pagination separately, removes completed queue items, and shares the original
+  page/listing/photo/request/AI limits. Pending galleries receive a bounded share alongside
+  new candidates; with one candidate slot, the two kinds alternate when both are waiting.
+- Search-card metadata supplies advertised price, city, area and posting date where scoped
+  evidence exists. Definite over-budget prices and explicitly recognized cities outside the
+  Vancouver region are skipped before a detail visit; ranges and missing facts stay uncertain.
+  Downtown candidates receive priority without turning nearby locations into blanket exclusions.
+- Individual extraction failures are quarantined, with URL, reason, timestamp and attempts.
+  Other candidates can continue. **Retry Extraction** requeues local work for a future approved
+  plan; it makes no request and clears no access pause. A genuine source warning still stops
+  that source immediately. Failed or missing pages never prove that a saved apartment is gone.
+- Optional **facts-only active-listing refresh** is disabled by default and has an explicit
+  per-plan limit. It uses the same approved page/listing budget to revisit Interested and
+  In Progress homes. Facts can change; existing images, assessments, notes and workflow remain
+  preserved. It does not authorize refreshing the older trial photographs.
+- Explicit **new-listings-only validation** separates candidate-attempt limits from the
+  target number of newly created homes. It snapshots existing home IDs, skips old pending
+  galleries and facts refreshes, and rejects known postings or confirmed duplicate homes
+  before downloading their photographs. Failures and duplicates consume their bounded
+  attempts without satisfying the new-home target. Building-only and explicitly unavailable
+  advertisements do not satisfy the target.
+- Zumper retains every advertised floorplan offering with its own source identity, instead of
+  selecting one cheapest type. A floorplan remains distinct from a confirmed available suite.
+  Remaining offerings from an already captured page are queued without another detail fetch.
+  Known building URLs can receive a bounded inventory-facts check after 24 hours to discover
+  newly advertised offerings; this occurs only inside a newly approved run and never refreshes
+  the known offerings' photographs automatically.
+- Gallery enumeration, image availability, visual review and unit attribution are separate.
+  Accessible downloaded images can be reviewed in resumable batches while other evidence remains
+  pending. Permanent 404/410 image failures remain explicit and are not downloaded on every run.
+  Source-specific pending work prevents a new duplicate ad from authorizing a backfill of an
+  older source's gallery. Identical image downloads can share retained source bytes within the
+  same approved run; a reused URL alone is not considered proof of freshness across runs.
+- Chrome bridge **0.4.0** returns pagination explicitly and can retain up to three partially
+  collected Apartments.com gallery tabs for a later approved continuation. It performs no
+  navigation or gallery interaction while waiting. The user may close those tabs; enumeration
+  restarts conservatively when required, retaining cached files. A reload in Chrome's extension
+  manager activates this version; pairing need not be repeated. Browser-generated subrequests
+  and background page requests remain a limitation of this bridge's request accounting.
+
+**Expanded coverage is an optional, unvalidated trial mode**, not a default change. The
+Apartments.com trial rotates its advertised Vancouver one-bedroom, two-bedroom and general
+apartment search routes. Hollyburn's trial uses its advertised Vancouver unfurnished search.
+Their exact routes were observed in saved source pages; offline routing support is not evidence
+that live extraction succeeds. Hollyburn building-only advertisements keep unknown unit terms,
+uncertain prices and incomplete gallery attribution until a specific suite is established.
+Normal source paths remain unchanged; broader Sunstar and nearby-municipality routes are still
+unimplemented. Deferred Rentals.ca, RentFaster, liv.rent and PadMapper remain excluded.
+
+## Final validation after improvements — 2026-11-14
+
+The user authorized a bounded test targeting two new rentals per retained source. It ran in
+two phases under that same authorization: the first stopped after an Apartments.com issue;
+the continuation excluded that paused source and used only the remaining allowance. Across
+both phases, the application used **32 top-level page visits, 19 candidate attempts, 197 photo
+retrieval attempts and 23 ChatGPT-plan calls**. No paid API requests or fallback were used.
+Attempts include failed or subsequently disqualified work; they are not counts of successful
+downloads, available apartments or fully reviewed galleries.
+
+The corrected result is **15 new rental candidates**, including two explicitly identified
+Zumper floorplan offers. A candidate is not necessarily an eligible match, and a floorplan
+offer is not proof of a distinct available physical suite. Three additional saved records
+were a building advertisement and two already-rented advertisements; they are excluded from
+the candidate total.
+
+| Source | New rental candidates | Bounded validation outcome |
+| --- | ---: | --- |
+| Craigslist | 2 | Two new candidates captured; remaining inventory stays queued. |
+| VADA | 2 | Two new candidates captured; remaining inventory stays queued. |
+| Zillow | 2 | Normal-Chrome discovery and capture supplied two new candidates. |
+| Zumper | 2 | Two floorplan offers; exact suites remain unconfirmed. Shared images were reused. |
+| Facebook Marketplace | 2 | Two new candidates captured through the retained authenticated session. |
+| Kijiji | 2 | Two candidates captured; conflicting facts were corrected from saved evidence. |
+| Austeville | 2 | Two candidates captured; unit-header geography was corrected from saved evidence. |
+| REW | 1 | The local browser-request cap stopped the second attempt; unfinished work remains queued. |
+| Apartments.com | 0 | Expanded search exposed a building advertisement; a subsequent photo-fetch failure paused the source. The building is excluded from the rental-candidate total. |
+| Hollyburn | 0 | Expanded search rendered its filter page without recognizable inventory links. This is incomplete discovery, not evidence of no vacancies. |
+| EasyRent | 0 | Both captured advertisements explicitly said rented. Their records remain auditable but do not count as available candidates. |
+| Sunstar | 0 | Fresh bounded discovery left no unseen eligible URLs to process. This does not establish complete source coverage. |
+
+Several sources report **partial** even after meeting the two-new-candidate target because
+additional inventory remains queued. Read that status alongside the target count and source
+detail: REW, Apartments.com, Hollyburn, EasyRent and Sunstar did not meet the target in this
+test. Access warnings and local traffic limits were respected; no caps were increased to
+force completion and no paused source was retried.
+
+The live evidence prompted narrow offline repairs and selective reconciliation of this test's
+new records:
+
+- Apartments.com multi-plan community pages now remain building advertisements with unknown
+  exact-unit terms and representative photo provenance. Expanded Apartments.com and Hollyburn
+  routes remain **unvalidated for production coverage**.
+- EasyRent reads availability and unit facts from their labeled DOM rows, including explicit
+  floor statements. Rented/leased/unavailable status now excludes a candidate before further
+  gallery processing or counting it as a newly available rental; failed fetches still do not
+  imply removal.
+- Explicit parking inclusion and monthly fees are retained; a fee without a billing cadence
+  stays uncertain. Zero included parking spaces does not prove that paid parking is unavailable.
+  Studio labels retain zero bedrooms, conflicting advertised monthly rents remain unknown,
+  and Austeville's actual unit header supplies its civic address and geographic classification.
+- Condition assessments reuse supporting image evidence across shared galleries and combine
+  batches without allowing an amenity-only batch to erase assessed interior condition.
+  Independent inspection of saved photographs also corrected one unsupported nature-view
+  classification to a building-dominated view, without asserting that every outlook was known.
+
+The original **63 saved homes remained unchanged**, including their photo records, user
+decisions and feedback. Corrections used retained pages and images; they did not refresh old
+galleries or make additional source or AI requests. Private captures, the two plans, baseline,
+correction history and independent audit are retained under
+`data/live/final-validation-2026-11-14/`. This bounded sample does not prove full inventory
+coverage, unattended reliability or scoring accuracy for every future listing. Scheduling
+remains disabled.
 
 The [2026-11-11 manual source smoke test](source-smoke-test-2026-11-11.md) retrieved
 listing details from 14 of 15 tested sites; liv.rent presented a verification challenge.
@@ -13,10 +137,9 @@ Read the per-source limits: these are manual access results, not completed adapt
 
 ## Initial application trial — 2026-11-11
 
-Current distinction (clarified 2026-11-14): all 12 retained sources supplied three saved
-candidates in the completed trial. Apartments.com, Craigslist and VADA have app scan paths;
-the other nine used the assisted captured-page workflow and are not connected to the regular
-Plan a scan flow yet. Keep them in the source list as assisted sources, not excluded sites.
+At this historical trial stage, all 12 retained sources supplied three saved candidates.
+Apartments.com, Craigslist and VADA had app scan paths; the other nine used the assisted
+captured-page workflow. Regular-runner integration below subsequently connected all twelve.
 The Sources screen reports saved results separately from the available scanning method.
 An informational success note is not an access pause: only an active cooldown or an unresolved
 attention flag should display that state. Scheduled scans remain off for every source.
@@ -29,7 +152,8 @@ fallback. The completed trial now contains 36 candidates across all 12 remaining
 Apartments.com automatically discovered and processed three candidates through normal Chrome:
 two eligible-for-review candidates had all 41 and 15 gallery photos reviewed; a third
 failed the rent ceiling before gallery retrieval. Version 0.2.3 follows the actual photo
-viewer and excludes separate building/map previews. Incomplete galleries defer AI review.
+viewer and excludes separate building/map previews. At this stage, incomplete galleries
+deferred all AI review; the newer resumable review behavior is described above.
 The final repair used cached images and two ChatGPT-plan gallery calls. All current
 candidate galleries total 607 reviewed images. Recurring scans remain disabled. See private
 `data/live/remaining-trial/coverage.json` for per-source results.
@@ -60,14 +184,14 @@ Representative images, display suites, balcony-only vistas, and unclear window
 outlooks remain explicitly unverified. Zumper's three galleries contained 119 images;
 its sequential daily image allowance was bounded at 150 for this trial.
 
-The newer sources used captured-page extraction during this validation. This does
-not establish reliable incremental discovery: their normal scan adapters remain
-disabled. Craigslist gallery extraction and VADA's discovery URL/gallery scoping
+The newer sources used captured-page extraction during this validation. It did
+not establish reliable incremental discovery; their normal scan adapters were
+disabled at that stage. Craigslist gallery extraction and VADA's discovery URL/gallery scoping
 were corrected against the live pages. Tests cover gallery enumeration, unrelated
 gallery exclusion, negative laundry statements, and complete AI result coverage.
 
 Private snapshots, extracted facts, photo findings, per-source outcomes, and database
-backups are stored under gitignored `data/`. The current report is
+backups are stored under gitignored `data/`. The completed initial-trial report is
 `data/live/remaining-trial/coverage.json`; earlier results remain in
 `data/live/initial-trial/final-report.json`. The Sources screen derives current saved and
 active counts from the database rather than displaying obsolete trial counts.
@@ -83,7 +207,7 @@ specific recovery authorization, not an automatic retry policy or scheduled scan
 - Facebook required the user to sign in. After sign-in, native browser inspection
   confirmed account controls, the requested Marketplace listing, and an apartment
   photo. The test window closed normally; the dedicated profile is retained.
-  Automated extraction and persistence across reopening remain unvalidated.
+  Automated extraction and persistence across reopening were unvalidated at this stage.
 - Apartments.com returned HTTP 403 for the main document.
 - Rentals.ca returned 403 for supporting API requests, including similar rentals
   and account-specific endpoints. RentFaster returned 403 for a saved-search endpoint.
@@ -94,10 +218,13 @@ Diagnostics distinguish main documents from supporting requests and omit URL que
 and credentials. No stealth modifications, proxy rotation, or CAPTCHA solving were
 used. Browser choice, resource loading and direct listing URLs changed together, so
 this test does not isolate which change restored access. Normal source adapters
-remain disabled until discovery and extraction are validated. Private results and
+remained disabled until subsequent discovery/extraction work. Private results and
 profiles live under gitignored `data/live/chrome-access-test/` and `chrome-profiles/`.
 
-## Candidates
+## Original candidate evaluation priorities (historical)
+
+The table records the initial investigation order. Current integration and bounded
+live-validation results are recorded above and in the dated November 14 sections below.
 
 | Candidate | What to assess | Priority |
 | --- | --- | --- |
@@ -293,11 +420,11 @@ Manual entry is an optional convenience, not a requirement for normal operation.
 
 All 12 retained adapters are now connected to the regular approved-plan coordinator, including mixed-source plans containing Apartments.com. The earlier assisted-only status describes the historical implementation. Sources default to selected in the plan dialog; recurring scheduling is still disabled.
 
-Offline validation covers scoped discovery links for all 12 sites, all-source dispatch, source pauses, budget fairness, and interrupted-gallery resumption. Existing captured pages were re-parsed without contacting sources. This is implementation validation, not a new live-access test: discovery changes, current authentication, and full-gallery completeness are checked and reported by the next user-approved run. No access challenge is bypassed and no paused source is silently enabled.
+Offline validation covers scoped discovery links for all 12 sites, all-source dispatch, source pauses, budget fairness, and interrupted-gallery resumption. Existing captured pages were re-parsed without contacting sources. This established implementation behavior; the separately approved live tests in this document supply the access and extraction evidence. No access challenge is bypassed and no paused source is silently enabled.
 
-## Final two-per-source test — 2026-11-14
+## Earlier two-per-source test — 2026-11-14
 
-The approved final test captured two new apartments from each of 11 retained sources (22 apartments total). Zillow returned HTTP 403 on its search-data request and remains paused without retries. The other sources were Apartments.com, Craigslist, VADA, Zumper, Facebook Marketplace, REW, Kijiji, Hollyburn, Austeville, EasyRent and Sunstar.
+This earlier approved test captured two new apartments from each of 11 retained sources (22 apartments total). Zillow returned HTTP 403 on its search-data request and was paused without retries at that stage. The other sources were Apartments.com, Craigslist, VADA, Zumper, Facebook Marketplace, REW, Kijiji, Hollyburn, Austeville, EasyRent and Sunstar. The later normal-Chrome recovery and final validation after improvements are separate dated evidence below and above.
 
 Six candidates failed rent or laundry requirements before image retrieval. All 345 distinct photos from the other 16 rental galleries were reviewed. There were 17 ChatGPT-plan reviews overall, including one non-rental Craigslist ad caught during discovery debugging; that ad is excluded and does not count as an apartment. No paid API fallback was used. Eight new apartments remained in Unreviewed and 14 were excluded at test completion. Private evidence and counts are in `data/live/final-test-report.json`.
 

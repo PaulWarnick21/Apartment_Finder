@@ -1,4 +1,4 @@
-export type Source={dailyImages?:number;visibleChrome?:boolean;id:string;name:string;hosts:string[];mediaHosts:string[];search:string;adapter:'craigslist'|'vada'|'apartments'|'captured'|'pending';status:string};
+export type Source={dailyImages?:number;visibleChrome?:boolean;id:string;name:string;hosts:string[];mediaHosts:string[];search:string;adapter:'craigslist'|'vada'|'apartments'|'captured'|'pending';status:string;coverageScope?:string;unvalidatedExpansion?:string[];expandedSearches?:string[];coverageTrial?:boolean};
 export const sources:Source[]=[
  {id:'apartments',name:'Apartments.com',hosts:['www.apartments.com'],mediaHosts:['images1.apartments.com'],search:'https://www.apartments.com/condos/vancouver-bc/',adapter:'apartments',status:'Chrome extension · capped validation'},
  {id:'craigslist',name:'Craigslist',hosts:['vancouver.craigslist.org','www.craigslist.org'],mediaHosts:['images.craigslist.org'],search:'https://www.craigslist.org/search/area/vancouver?cat=apa',adapter:'craigslist',status:'Ready for capped validation'},
@@ -13,5 +13,14 @@ for(const source of sources){if(searches[source.id])Object.assign(source,{search
 sources.find(s=>s.id==='zillow')!.mediaHosts.push('photos.zillowstatic.com');
 sources.find(s=>s.id==='rew')!.mediaHosts.push('assets-listings.rew.ca');
 sources.find(s=>s.id==='facebook')!.mediaHosts.push('*.fbcdn.net');
+// These limitations are explicit. Broader routes are not silently enabled or claimed as tested.
+Object.assign(sources.find(s=>s.id==='apartments')!,{coverageScope:'Vancouver condo search; broader apartment categories require validation.',unvalidatedExpansion:['Vancouver apartment buildings and non-condo rentals','Exceptional nearby municipalities']});
+Object.assign(sources.find(s=>s.id==='hollyburn')!,{coverageScope:'Furnished inventory; advertised cities outside Metro Vancouver are filtered.',unvalidatedExpansion:['Vancouver unfurnished unit inventory']});
+Object.assign(sources.find(s=>s.id==='sunstar')!,{coverageScope:'Downtown portfolio page only.',unvalidatedExpansion:['Other Vancouver and nearby-area portfolio pages']});
+Object.assign(sources.find(s=>s.id==='zumper')!,{coverageScope:'Vancouver search; all advertised floorplan offerings are retained separately as unit-unverified.'});
+// Advertised links preserved in the November 14 captures. They are opt-in trials, not claimed coverage.
+sources.find(s=>s.id==='apartments')!.expandedSearches=['https://www.apartments.com/vancouver-bc/1-bedrooms/','https://www.apartments.com/vancouver-bc/2-bedrooms/','https://www.apartments.com/vancouver-bc/'];
+sources.find(s=>s.id==='hollyburn')!.expandedSearches=['https://www.hollyburn.com/find-an-apartment/?city=Vancouver'];
+export function expandedSource(source:Source,index=0):Source{return source.expandedSearches?.length?{...source,search:source.expandedSearches[index%source.expandedSearches.length],coverageTrial:true}:source;}
 export function sourceById(id:string){const s=sources.find(s=>s.id===id);if(!s)throw new Error('Unknown or excluded source');return s;}
 export function allowedUrl(url:string,hosts:string[]){try{const u=new URL(url);return u.protocol==='https:'&&!u.username&&!u.password&&(!u.port||u.port==='443')&&hosts.some(host=>host.startsWith('*.')?u.hostname.endsWith(host.slice(1)):u.hostname===host);}catch{return false;}}

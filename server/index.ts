@@ -5,6 +5,7 @@ import {Store} from './db.ts';
 import {criteriaSchema} from '../src/domain.ts';
 import {seedDemo} from './demo.ts';
 import {createApp} from './api.ts';
+import {applyLocalUpgrades} from './local-upgrades.ts';
 if(existsSync('.env'))loadEnvFile('.env');
 const demo=process.argv.includes('--demo'),dev=process.argv.includes('--dev');
 const dataDir=resolve('data',demo?'demo':'live');mkdirSync(dataDir,{recursive:true});
@@ -12,6 +13,7 @@ const store=new Store(resolve(dataDir,'apartments.sqlite'));
 if(!demo&&existsSync('private/settings.json')&&!store.get('privateImported')){store.set('criteria',criteriaSchema.parse(JSON.parse(readFileSync('private/settings.json','utf8'))));store.set('privateImported',true);}
 if(!demo&&!store.get('idsReserved')){store.db.prepare("INSERT INTO sqlite_sequence(name,seq) SELECT 'homes',13 WHERE NOT EXISTS(SELECT 1 FROM sqlite_sequence WHERE name='homes')").run();store.set('idsReserved',true);}
 if(demo)seedDemo(store);
+applyLocalUpgrades(store);
 // Never clear another worker's lock or resume work on startup. Interrupted scans
 // remain locked until the user explicitly recovers them in Activity.
 const app=createApp(store,dataDir,{demo,dev});const port=Number(process.env.PORT??(demo?4318:4317));

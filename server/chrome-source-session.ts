@@ -1,13 +1,13 @@
 import {setTimeout as sleep} from 'node:timers/promises';
 import {Budget} from './plans.ts';
-import {ChromeJobs} from './chrome-jobs.ts';
+import type {ChromeJobClient} from './chrome-jobs.ts';
 import {allowedUrl,type Source} from './sources.ts';
 import {listingUrl} from './source-discovery.ts';
 
 /** Normal Chrome owns page navigation; only public gallery images use HTTP. */
 export class ChromeSourceSession {
  stopped=false;private lastImage=0;
- constructor(private source:Source,private budget:Budget,private jobs?:ChromeJobs){}
+ constructor(private source:Source,private budget:Budget,private jobs?:ChromeJobClient){}
  async start(){this.budget.check();this.budget.store.checkSource(this.source.id);if(!this.jobs)throw new Error('Keep the app and paired Chrome extension open for Zillow scans');}
  async html(url:string){
   const page=await this.jobs!.request(this.budget,url,listingUrl(url,this.source)?'listing':'discovery',this.budget.store.criteria.maxRent,this.budget.remaining('photos'));

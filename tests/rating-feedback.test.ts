@@ -57,6 +57,25 @@ test('stale reviews cannot overwrite preferences changed during an AI request',a
 test('paid API mode is refused before any provider request',async()=>{
  const previous=process.env.AI_PROVIDER;process.env.AI_PROVIDER='api';try{await assert.rejects(()=>planFeedbackReviewer('.')({criteria:criteriaSchema.parse({}),current:{homeId:1,listing:listing(),score:3,reason:'Test'},appScore:4,examples:[]},new AbortController().signal),/paid API fallback is disabled/);}finally{if(previous===undefined)delete process.env.AI_PROVIDER;else process.env.AI_PROVIDER=previous;}
 });
+
+test('an explicitly local exception cannot tune global preferences even if the reviewer proposes it',async()=>{
+ const store=new Store(':memory:'),{id}=store.ingest(listing()),before=store.criteria;
+ const service=new RatingFeedbackService(store,async()=>({summary:'Local exception.',interpretation:'This apartment is a one-off.',unresolved:[],changes:[{parameter:'bonuses.furnished',value:.05,reason:'Suggested adjustment'}]}));
+ service.submit(id,input(2.8,'This is a one-off exception; do not generalize to other apartments.'));await service.idle();
+ assert.equal(store.criteria.bonuses.furnished,before.bonuses.furnished);assert.equal(store.criteria.learnedExamples[0].scope,'one-off');
+ assert.equal(service.list(id)[0].status,'applied');assert.match(service.list(id)[0].review!.outcome,/one-off.*only/);
+ const unseen=listing({sourceId:'unseen',address:'Another address'});assert.equal(scoreListing(unseen,store.criteria).value,scoreListing(unseen,before).value);
+ await service.close();store.close();
+});
+
+test('a later explicit condition correction remains separate from the source and can clear an earlier assessment',async()=>{
+ const store=new Store(':memory:'),{id}=store.ingest(listing({modern:null,cramped:null})),service=new RatingFeedbackService(store,async()=>noChange);
+ service.submit(id,input(2.8,'Dated kitchen and cramped rooms.'));await service.idle();
+ service.submit(id,input(3.4,'Correction: the kitchen is modern, not dated, and the apartment is no longer cramped.'));await service.idle();
+ assert.equal(store.criteria.userAssessments[`home:${id}`].modern,true);assert.equal(store.criteria.userAssessments[`home:${id}`].cramped,false);
+ assert.equal(store.home(id)!.listing.modern,null);assert.equal(service.list(id).length,2);
+ await service.close();store.close();
+});
 test('ratings API requires CSRF, stores offline in demo, and exports history',async()=>{
  const store=new Store(':memory:');const {id}=store.ingest(listing());const app=createApp(store,join(tmpdir(),'feedback-offline-demo'),{demo:true});await new Promise<void>(r=>app.server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${(app.server.address() as any).port}`;
  try{const state=await (await fetch(base+'/api/state')).json() as any;const payload=JSON.stringify(input());const path=`/api/homes/${id}/ratings`;

@@ -15,6 +15,7 @@ export function extractTrial(html:string,url:string,source:Source,galleryXml?:st
  const page=$('body').text().replace(/\s+/g,' ').trim();
  let body=source.id==='craigslist'?$('#postingbody').text():source.id==='easyrent'?$('article .entry-content').text():page;
  body=(body||page).replace(/\s+/g,' ').trim();
+ if(source.id==='easyrent'&&$('article .entry-content').length){const content=$('article .entry-content').clone();content.find('p,ul,h3').append('\n');body=content.text().replace(/[ \t\r]+/g,' ').replace(/\n\s*/g,'\n').trim();}
  if(source.id==='kijiji')body=page.split('Home Insurance')[0];
  if(source.id==='hollyburn')body=page.split('Check availability')[0];
  if(source.id==='austeville')body=page.split('More vacancies')[0];
@@ -54,5 +55,42 @@ export function extractTrial(html:string,url:string,source:Source,galleryXml?:st
  if(source.id==='vada'&&/Rental Listing Features[^]*Washer\s*\/\s*Dryer/i.test(text)){l.laundry='in-unit';l.evidence.laundry='Washer / Dryer under Rental Listing Features';}
  if(source.id==='vada'&&/\b1 Parking stall\b/.test(text)){l.parking='included';l.parkingCount=1;}
  if(/(?:no|without)\s+in[- ](?:suite|unit)\s+(?:laundry|washer)/i.test(text)){l.laundry='none';l.evidence.laundry=text.match(/(?:no|without)\s+in[- ](?:suite|unit)\s+(?:laundry|washer)/i)![0];}
+ if(source.id==='easyrent'){
+  // Read individual labeled rows before their text loses DOM boundaries.
+  const fields=new Map<string,string>();$('article .entry-content p.details').each((_,e)=>{const row=$(e),label=row.find('strong').first().text().trim().replace(/:$/,'').toLowerCase();const value=row.clone().children('strong').remove().end().text().trim();if(label)fields.set(label,value);});
+  const numeric=(key:string)=>{const value=fields.get(key);return value!==undefined&&/^\d+(?:\.\d+)?$/.test(value)?Number(value):null;};
+  const available=fields.get('availability');if(available){l.available=available;l.evidence.availability=`Availability: ${available}`;}
+  const exactUnit=fields.get('unit #');if(exactUnit&&/^[A-Za-z0-9-]+$/.test(exactUnit)){l.unit=exactUnit;l.evidence.unit=`Unit #: ${exactUnit}`;const prefix=new RegExp('^'+exactUnit.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[ -]+');if(prefix.test(title))l.address=title.replace(prefix,'');}
+  const beds=numeric('bedrooms'),baths=numeric('bathrooms'),size=numeric('size unit (sqft)');if(beds!==null)l.beds=beds;if(baths!==null)l.baths=baths;if(size!==null&&size>0)l.sqft=size;
+  const floor=fields.get('located on')?.match(/^(ground|\d{1,3})(?:st|nd|rd|th)?\s+floor$/i);if(floor){const value=floor[1].toLowerCase()==='ground'?0:Number(floor[1]);if(value<=200){l.floorLevel=value;l.evidence.floorLevel=`Located On: ${fields.get('located on')}`;}}
+  const lease=fields.get('lease type');if(lease)l.lease=lease;
+  const parking=numeric('parking');if(parking!==null){l.parkingCount=parking;l.parking=parking===0?'none':'included';l.evidence.parking=`Parking: ${parking}`;}
+ }
+ if(source.id==='austeville'){
+  const header=$('.property-snapshot').first(),area=header.find('.property-snapshot__header .eyebrow').first().text().trim();
+  if(area){l.area=area;l.evidence.location=`Property header: ${area}`;if(/\b(?:West Vancouver|North Vancouver|Burnaby|Richmond|Coquitlam|Surrey|New Westminster)\b/i.test(area)){l.location='outside';l.downtownDistance='far';}else if(/\b(?:Coal Harbour|West End|Yaletown|Downtown Vancouver)\b/i.test(area)){l.location='downtown';l.downtownDistance='downtown';}}
+  header.find('.property-snapshot__details').each((_,e)=>{const paragraphs=$(e).children('p').map((_,p)=>$(p).text().trim()).get();if(paragraphs.length&&/^\d{1,6}\s+\S/.test(paragraphs[0]))l.address=paragraphs.join(', ').slice(0,500);});
+  const availability=header.find('li').map((_,e)=>$(e).text().trim()).get().find(value=>/^Available:/i.test(value));if(availability){l.available=availability.replace(/^Available:\s*/i,'');l.evidence.availability=availability;}
+  if(!l.unit)l.unit=new URL(url).pathname.match(/\/suite-([A-Za-z0-9-]+)\/?$/i)?.[1]??'';
+ }
+ if(source.id==='kijiji'){
+  const header=body.split('Description')[0],studio=header.match(/Bachelor\s*\/\s*Studio\s*Bedrooms/i),parking=header.match(/(\d+)\s+Parking Included/i);
+  if(studio){l.beds=0;l.evidence.bedrooms=studio[0];}else if(residence?.numberOfBedrooms===0||residence?.numberOfBedrooms==='0')l.beds=0;
+  if(parking){l.parkingCount=Number(parking[1]);l.parking=l.parkingCount===0?'unknown':'included';l.parkingCost=null;l.evidence.parking=l.parkingCount===0?'0 parking spaces are included; paid parking availability and monthly cost are unconfirmed.':parking[0];}
+  const description=typeof residence?.description==='string'?residence.description:body.split('Description').slice(1).join('Description');
+  const advertised=[...description.matchAll(/\$([\d,]+(?:\.\d{1,2})?)\s*(?:CAD\s*)?(?:\/\s*(?:mo(?:nth)?|mth)\b|per\s+month\b|monthly\b)/gi)]
+   .filter(m=>{const prefix=description.slice(0,m.index).split(/[.;\n•*]/).at(-1)??'';return !/\b(?:parking|utilities?|internet|water|hydro|heating|storage|deposit|fees?|other (?:units|suites)|furnished option)\b/i.test(prefix.slice(-100));})
+   .map(m=>n(m[1])).filter((amount):amount is number=>amount!==null);
+  const structured=n(residence?.offers?.price)??l.rent,amounts=[...new Set([...(structured===null?[]:[structured]),...advertised])];
+  if(amounts.length>1){l.rent=null;l.evidence.rent=`Listing header/structured rent: ${structured===null?'unknown':'$'+structured}; explicit description monthly rent: ${advertised.map(amount=>'$'+amount).join(' / ')}`;l.conflicts.push(`Monthly rent conflicts across the listing header and description: ${amounts.map(amount=>'$'+amount).join(' / ')}. Confirm current rent.`);}
+ }
+ if(source.id==='hollyburn'&&new URL(url).pathname.startsWith('/building/')){
+  // Expanded discovery can expose a building advertisement. It does not establish any specific suite.
+  l.offeringKind='building';l.unit='';l.beds=null;l.baths=null;l.sqft=null;
+  l.rent=null;l.laundry='unknown';l.furnished=null;l.workspace=null;l.modern=null;l.openPlan=null;l.gas=null;l.north=null;l.shortLease=null;l.parking='unknown';l.parkingCount=null;l.parkingCost=null;
+  l.description+=' Representative building advertisement; exact-unit provenance unverified. Unit prices, availability and included facilities require a specific suite advertisement.';
+  l.description=l.description.slice(0,50000);l.galleryComplete=false;l.expectedPhotos=null;
+  l.conflicts.push('Building inventory route is an unvalidated coverage trial; this record is not a confirmed available apartment.');
+ }
  return l;
 }

@@ -47,6 +47,19 @@ export function extractApartments(c:Capture){
  for(const image of [...c.images].sort((a,b)=>(b.width??0)-(a.width??0))){const p=new URL(image.url);const identity=p.pathname.match(/^\/i2\/([^/]+)\//)?.[1];if(p.protocol!=='https:'||!/^images\d+\.apartments\.com$/.test(p.hostname)||!identity||p.username||p.password)continue;if(!photos.has(identity))photos.set(identity,p.href);}
  const address=description.match(/Location:\s*([^]*?)(?=\s+Schools nearby:|$)/i)?.[1]??clean($('#profileHeaderWrapper h1').first().text()).replace(/\s+Unit\s+.*$/i,'');
  const unit=title.match(/\bUnit\s+(\d+[A-Za-z]?)(?=\s|,|$)/i)?.[1]??'';
+ // Community pages repeat pricing cards across tabs. Distinct plans, rather than
+ // repeated DOM rows or generic "rentals from" copy, identify a multi-offer ad.
+ const pricingPlans=new Set($('#pricingView .pricingGridItem').map((_,e)=>{
+  const row=$(e);return clean([row.find('.modelName').text(),row.find('.rentLabel').text(),row.find('.detailsLabel').text()].join(' '));
+ }).get().filter(Boolean));
+ const building=!unit&&!$('#unitDetailInfoWrapper').length&&pricingPlans.size>1;
  const location=/Downtown Vancouver|West End|Coal Harbour|Yaletown/.test(header)?'downtown':'unknown';
+ if(building){
+  return listingSchema.parse({source:'apartments',sourceId:u.pathname.split('/').filter(Boolean).at(-1),url:u.origin+u.pathname,title,address:address.slice(0,500),unit:'',offeringKind:'building',location,rent:null,beds:null,
+   description:('Representative photos of the building and advertised floorplans; exact-unit provenance unverified. '+description).slice(0,50000),
+   photos:[...photos].map(([identity,url])=>({id:createHash('sha256').update(identity).digest('hex').slice(0,16),url,unitCertain:false})),galleryComplete:false,expectedPhotos:c.advertisedPhotos,allOutlooksCovered:false,
+   evidence:{offering:`Building advertisement with ${pricingPlans.size} distinct pricing plans; exact suite, price, size, amenities, lease and availability require a specific offering.`,advertisedPlans:[...pricingPlans].join('; ')},
+   conflicts:['Building / floor-plan advertisement: exact suite and availability must be confirmed. Representative photos do not establish an actual unit view.']});
+ }
  return listingSchema.parse({source:'apartments',sourceId:u.pathname.split('/').filter(Boolean).at(-1),url:u.origin+u.pathname,title,address:address.slice(0,500),unit,location,rent,beds,baths,sqft,description:description.slice(0,50000),laundry,parking:noParking?'none':parking||optionalParking?'extra':'unknown',parkingCost:number(parking?.[1]),parkingCount:parking&&/\bone\b/i.test(parking[0])?1:null,furnished,gas,workspace,shortLease:leaseConflict?null:(minimumMonths??leaseMonths)!==null?(minimumMonths??leaseMonths)!<12:null,lease,available:[availabilityLabel,availabilityDescription].filter(Boolean).join('; ')||'Unknown',internet:/Utilities included:\s*internet/i.test(description)?'Internet advertised as included; speed and reliability unverified':'Unknown',photos:[...photos].map(([identity,url])=>({id:createHash('sha256').update(identity).digest('hex').slice(0,16),url})),galleryComplete:false,expectedPhotos:c.advertisedPhotos,allOutlooksCovered:false,evidence,conflicts});
 }

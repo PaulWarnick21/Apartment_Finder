@@ -1,5 +1,29 @@
 # Normal Chrome scanner
 
+Version 0.4.0 separates discovery pagination from listing links and makes
+Apartments.com gallery collection resumable under a small approved photo allowance.
+Reload the installed extension in `chrome://extensions`; existing pairing remains valid.
+The app checks fresh discovery even when older candidates remain queued. Optional
+expanded-coverage trials use already-advertised search routes and remain explicitly
+unvalidated until a separately approved live run establishes their behavior.
+
+A partially collected Apartments.com gallery can leave its scanner-created tab open,
+with its image references and position saved in trusted extension storage. At most
+three such tabs are retained. A later approved scan can continue from that position;
+the extension performs no navigation or gallery interactions while waiting. Completed,
+failed and cancelled jobs close their scanner tab. Closing a paused tab yourself is
+safe; the next approved run starts enumeration again and the app keeps its cached
+images. Site pages can generate their own background/subresource requests, which this
+bridge does not count individually. App image downloads and page allowances remain
+separately bounded.
+
+The app may review downloaded images in bounded batches while the rest of the gallery
+is pending. It keeps unavailable images and incomplete enumeration explicit; these
+states never establish that an unphotographed window has no nature view. Optional
+facts-only refresh jobs do not open the gallery or replace saved images.
+
+The version notes below describe earlier milestones.
+
 Version 0.3.0 adds Zillow search and individual rental pages to the same paired
 Chrome connection. Reload the installed extension once and approve Zillow site
 access in Chrome if prompted; pairing does not need to be repeated. Zillow jobs

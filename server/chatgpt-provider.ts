@@ -5,7 +5,7 @@ import {completedText} from './response-stream.ts';
 import {OpenAiVision,visionSchema,photoRequest,type VisionProvider} from './provider.ts';
 export class ChatGptVision implements VisionProvider{
  version:string;private stopped=false;
- constructor(private connection:ChatGptConnection,private profile:string,private model:string){this.version=`chatgpt:${model}:window-review-v2`;}
+ constructor(private connection:ChatGptConnection,private profile:string,private model:string){this.version=`chatgpt:${model}:window-review-v3`;}
  async review(photo:Photo,path:string){if(this.stopped)throw new Error('ChatGPT photo review is paused for this run.');try{const access=await this.connection.access(this.profile),data=await readFile(path);
  const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',signal:AbortSignal.timeout(120000),headers:{Authorization:`Bearer ${access.token}`,'Content-Type':'application/json'},body:JSON.stringify({...photoRequest(photo,data,this.model),stream:true})});return visionSchema.parse(JSON.parse(await completedText(response)));
  }catch(e){this.stopped=true;throw e;}}

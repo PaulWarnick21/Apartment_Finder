@@ -1,0 +1,46 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import sharp from 'sharp';
+import {Store} from '../server/db.ts';
+import {createPlan,approvePlan,getPlan,Budget} from '../server/plans.ts';
+import {ingestNewCandidate,validationSummary} from '../server/new-listing-validation.ts';
+import {extractSource,runRegularPlan,type ScanDependencies} from '../server/regular-worker.ts';
+import {sourceById} from '../server/sources.ts';
+import {extractApartments} from '../server/apartments-extraction.ts';
+import {runApartmentsSource} from '../server/apartments-worker.ts';
+import {extractZumperOfferings} from '../server/zumper-extraction.ts';
+import type {ChromeJobClient,ChromeSnapshot} from '../server/chrome-jobs.ts';
+const source=sourceById('craigslist'),fixture=readFileSync('tests/fixtures/craigslist.html','utf8');
+const url=(id:number)=>`https://vancouver.craigslist.org/van/apa/d/example/${1234567800+id}.html`;
+const caps={sources:['craigslist'],billingMode:'chatgpt',maxPages:5,maxListings:4,maxListingsPerSource:4,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0,newListingsOnly:true,targetNewListingsPerSource:2};
+function deps(pages:Record<string,string>,visited:string[]):ScanDependencies{return {session:(_s,b)=>({stopped:false,start:async()=>{},html:async u=>{b.reserve('pages');visited.push(u);if(!(u in pages))throw new Error('Unexpected fixture URL');return pages[u];},resource:async()=>'',image:async()=>{throw new Error('Unexpected media');},close:async()=>{}})};}
+async function run(db:Store,dependencies:ScanDependencies,options:Record<string,unknown>={}){const p=createPlan(db,{...caps,...options});approvePlan(db,p.id,'APPROVE ONE SCAN');await runRegularPlan(db,p.id,mkdtempSync(join(tmpdir(),'af-new-validation-')),undefined,dependencies);return getPlan(db,p.id);}
+
+test('generic rentals-from copy does not exclude an explicit unit, while non-rentals never count',()=>{
+ const db=new Store(':memory:');try{const p=createPlan(db,caps),b=new Budget(db,p.id,p.caps),listing=extractSource(source,fixture,url(1));listing.evidence.rent='Rentals from $2400';assert.ok(ingestNewCandidate(db,b,source.id,listing));const nonRental=extractSource(source,fixture.replaceAll('1204','1205'),url(2));nonRental.evidence.nonRental='true';assert.equal(ingestNewCandidate(db,b,source.id,nonRental),null);assert.equal(validationSummary(b,source.id).newListings,1);assert.equal(db.homes().length,1);}finally{db.close();}
+});
+
+test('failures and confirmed old duplicates do not fill the two-new target or modify old homes/media',async()=>{
+ const db=new Store(':memory:'),visited:string[]=[];try{const old=db.ingest(extractSource(source,fixture,url(0))),h=db.home(old.id)!;db.update(h.id,h.revision,{stage:'Interested',notes:'Retain my notes',followUp:'',viewing:'',rescued:false});db.set(`pendingGallery:${h.id}`,{source:'craigslist',homeId:h.id});const before=db.db.prepare('SELECT * FROM homes WHERE id=?').get(h.id);const pages={[source.search]:[1,2,3,4,5].map(n=>`<a href="${url(n)}">Home ${n}</a>`).join(''),[url(1)]:'<h1>Malformed</h1>',[url(2)]:fixture,[url(3)]:fixture.replaceAll('1204','1205'),[url(4)]:fixture.replaceAll('1204','1206')};const plan=await run(db,deps(pages,visited),{refreshActiveListings:true,maxRefreshListings:1});assert.equal(plan.sources[0].newListings,2);assert.equal(plan.sources[0].attemptedListings,4);assert.equal(plan.sources[0].skippedExisting,1);assert.equal(plan.sources[0].candidateFailures,1);assert.equal(plan.usage.pages,5);assert.equal(plan.usage.listings,4);assert.equal(db.homes().length,3);assert.deepEqual(db.db.prepare('SELECT * FROM homes WHERE id=?').get(h.id),before);assert.equal(db.db.prepare('SELECT count(*) n FROM postings WHERE home_id=?').get(h.id)!.n,1);assert.ok(!visited.includes(url(0))&&!visited.includes(url(5)));const audit=db.get<any>(`newListingValidation:${plan.id}`);assert.deepEqual(audit.baselineHomeIds,[h.id]);}finally{db.close();}
+});
+test('validation stops at two new homes even with unused attempt and page allowance',async()=>{
+ const db=new Store(':memory:'),visited:string[]=[];try{const pages={[source.search]:[1,2,3].map(n=>`<a href="${url(n)}">Home</a>`).join(''),[url(1)]:fixture,[url(2)]:fixture.replaceAll('1204','1205')};const plan=await run(db,deps(pages,visited));assert.equal(plan.sources[0].newListings,2);assert.equal(plan.usage.listings,2);assert.equal(plan.usage.pages,3);assert.ok(!visited.includes(url(3)));}finally{db.close();}
+});
+test('failed known building inventory preserves its older pending gallery marker',async()=>{
+ const db=new Store(':memory:'),visited:string[]=[],source=sourceById('zumper'),url='https://www.zumper.com/apartment-buildings/p10/example';const state={detail:{entity:{data:{building_id:10,name:'Example',address:'100 Example Street',floorplan_listings:[{listing_id:11,title:'One bed',min_price:2400,bedrooms:1}]}}}};
+ try{const old=db.ingest(extractZumperOfferings(`<script>window.__PRELOADED_STATE__ = ${JSON.stringify(state)};</script>`,url)[0]),marker={source:'zumper',homeId:old.id};db.set(`pendingGallery:${old.id}`,marker);const before=db.db.prepare('SELECT * FROM homes WHERE id=?').get(old.id);const plan=await run(db,deps({[source.search]:`<a href="${url}">Building</a>`,[url]:'<h1>Changed inventory</h1>'},visited),{sources:['zumper']});assert.equal(plan.sources[0].newListings,0);assert.equal(plan.sources[0].candidateFailures,1);assert.deepEqual(db.get(`pendingGallery:${old.id}`),marker);assert.deepEqual(db.db.prepare('SELECT * FROM homes WHERE id=?').get(old.id),before);}finally{db.close();}
+});
+test('an exhausted attempt allowance reports an unmet new target without exceeding it',async()=>{
+ const db=new Store(':memory:'),visited:string[]=[];try{const plan=await run(db,deps({[source.search]:`<a href="${url(1)}">Bad</a><a href="${url(2)}">Also bad</a><a href="${url(3)}">Later</a>`,[url(1)]:'<h1>Changed</h1>',[url(2)]:'<h1>Changed</h1>'},visited),{maxListings:2,maxListingsPerSource:2});assert.equal(plan.sources[0].newListings,0);assert.equal(plan.sources[0].candidateFailures,2);assert.equal(plan.usage.listings,2);assert.equal(plan.state,'partial');assert.ok(!visited.includes(url(3)));}finally{db.close();}
+});
+test('a local daily image cap defers remaining downloads and still reviews downloaded evidence',async()=>{
+ const db=new Store(':memory:'),visited:string[]=[];let images=0,reviews=0;const bytes=await sharp({create:{width:4,height:4,channels:3,background:'white'}}).jpeg().toBuffer();try{const dependencies=deps({[source.search]:`<a href="${url(1)}">Home</a>`,[url(1)]:fixture},visited),base=dependencies.session!;dependencies.session=(s,b,d)=>({...base(s,b,d),image:async()=>{images++;if(images>1)throw new Error('Daily image limit reached');b.reserve('photos');return bytes;}});dependencies.review=async(l,b)=>{b.reserveAi();reviews++;assert.equal(l.photos.filter(p=>p.local).length,1);for(const p of l.photos.filter(p=>p.local))p.status='reviewed';};const plan=await run(db,dependencies,{targetNewListingsPerSource:1,maxListings:1,maxListingsPerSource:1,maxPhotos:10,maxAiCalls:1});assert.equal(plan.sources[0].newListings,1);assert.equal(reviews,1);assert.equal(images,2);assert.equal(plan.usage.photos,1);assert.equal(plan.usage.aiCalls,1);assert.equal(plan.state,'partial');assert.ok(db.get(`pendingGallery:${db.homes()[0].id}`));}finally{db.close();}
+});
+test('Apartments validation checks identity before opening a gallery and preserves old duplicate evidence',async()=>{
+ const db=new Store(':memory:'),source=sourceById('apartments'),urls=['https://www.apartments.com/old/aaaaaaa/','https://www.apartments.com/duplicate/bbbbbbb/','https://www.apartments.com/new-one/ccccccc/','https://www.apartments.com/new-two/ddddddd/'],calls:{url:string;factsOnly?:boolean}[]=[];
+ const page=(url:string,unit:string):ChromeSnapshot=>({url,title:`Example Unit ${unit}`,text:'',html:`<header id="profileHeaderWrapper"><h1>100 Example Street Unit ${unit}</h1>$2400 Total Monthly Price Bedrooms 1 Bathrooms 1</header><section id="descriptionSection"><p>One apartment available.</p></section>`,images:[],advertisedPhotos:0,warning:null,truncated:false,galleryComplete:false,links:[]});
+ try{db.set('browserExtension',{});const old=db.ingest(extractApartments(page(urls[0],'1204'))),before=db.db.prepare('SELECT * FROM homes WHERE id=?').get(old.id);const jobs:ChromeJobClient={request:async(b,u,kind,_rent,_photos,_recovery,options)=>{b.reserve('pages');calls.push({url:u,factsOnly:options?.factsOnly});return kind==='discovery'?{...page(source.search,''),links:urls.slice(1)}:page(u,u===urls[1]?'1204':u===urls[2]?'1205':'1206');},fail:()=>{}};const plan=await run(db,{apartments:(s,b,d)=>runApartmentsSource(s,b,d,jobs)},{sources:['apartments'],maxPhotos:10});assert.equal(plan.sources[0].newListings,2);assert.equal(plan.sources[0].skippedExisting,1);assert.equal(plan.sources[0].attemptedListings,3);assert.equal(plan.usage.pages,5);assert.deepEqual(calls.filter(c=>c.url===urls[1]),[{url:urls[1],factsOnly:true}]);assert.deepEqual(db.db.prepare('SELECT * FROM homes WHERE id=?').get(old.id),before);assert.equal(db.homes().length,3);}finally{db.close();}
+});
