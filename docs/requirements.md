@@ -1,5 +1,83 @@
 # Requirements
 
+November 18 initial-move exception: the user confirmed that a nice, reasonably priced,
+furnished short-term apartment may score above 3.0 without a verified nature view.
+Implement a narrow alternative fit up to 3.5, requiring supported furnishing/short lease,
+complete photo review and modern actual-unit interiors, no confirmed cramped layout,
+and known rent plus known parking below the existing premium threshold. Preserve hard
+requirements and the 4.0+ elevated-nature-view gate. Missing/conflicting listing facts
+remain unresolved evidence; this preference clarification does not invent those facts.
+
+November 18 feedback-wait recovery: a selected apartment blocked before scoring by pending
+rating feedback must remain monitored and resume automatically when that feedback resolves.
+Show the specific feedback blocker and automatic-resume behavior. A cancelled/rejected
+home must never revive. This does not renew spent allowances or authorize work on startup.
+
+November 18 automatic duplicates: check saved addresses/units and photo fingerprints
+before full scoring, and again as gallery evidence becomes available. Confident duplicates
+keep the oldest home and its stage, score and review; newer references become recoverable
+aliases. Remember source IDs/URLs to skip repeat discovery. Respect explicit different-home
+decisions, conflicting unit facts and separate rating feedback. Use local indexed evidence,
+without extra source requests or model calls solely for duplicate detection.
+
+November 18 scan-area narrowing: future scans are Downtown Vancouver only (West End,
+Coal Harbour, Yaletown and Gastown included). Disable North/West Vancouver without deleting
+their saved routes; re-enable only on user request. No North/West fallback when Downtown
+inventory is exhausted. Preserve saved decisions and ranks, while applying the new scope
+to ordinary scan refreshes and pending gallery work as well as discovery.
+
+November 18 final-review stage: rename the former Ready to Apply stage to Serious
+Candidates and move all existing records in that stage there. Add a new Ready to Apply
+stage after it. Enforce Unreviewed → Interested → Serious Candidates → Ready to Apply
+→ In Progress in UI and backend, without skipping or going backwards. Not Interested
+remains available throughout review. Full assessment must finish before promotion out of
+Interested; the final Serious Candidates decision is the user's own thorough review.
+Scoring in Progress remains between Unreviewed and Interested on the desk: choosing
+Interested queues the full assessment there. Queued, running, paused or failed assessments
+remain in Scoring in Progress; completion moves them into Interested automatically.
+The new Serious Candidates stage does not bypass or replace this scoring section.
+
+November 18 mainland-only correction: homes off mainland BC are a hard exclusion,
+including existing Interested homes and records grandfathered under older area settings.
+Apartment #354's explicit Bowen Island description must be caught before photo collection
+or scoring. Read scoped description/title location statements as well as structured fields;
+do not confuse island outlooks or ferry destinations with the apartment's location.
+Retain saved notes, photos and historical ranks while applying current eligibility.
+
+November 18 source audit: investigate every retained source's ability to supply fresh,
+qualifying candidates. Distinguish access pauses, missing geographic filters, parsing or
+pagination defects, user-allocation deferrals and genuinely checked inventory with no new
+matches. Repair supported defects offline and validate source coverage in a separately
+approved bounded run. New-candidate guarantees must not override finite inventory, search
+criteria, geographic allocation or source warnings.
+
+November 18 desk simplification: scan planning is handled through Codex chats. Remove
+the scan-status banner, scan-status pill and scan-plan entry points from the Sorting Desk,
+including empty views. Keep the desk focused on apartment review and lifecycle counts.
+This presentation change does not start, stop or authorize any scan.
+
+November 18 furnishing clarification: use saved listing descriptions during scoring.
+When an available description does not advertise furniture inclusion, assume unfurnished
+and label that inference explicitly. Missing or visibly truncated descriptions remain
+unconfirmed; optional, partial, floor-plan-only and conflicting statements stay distinct.
+Furnishing shown in photos does not establish inclusion. Display and scoring share the
+same text assessment, retaining raw source facts and preserved quick ranks.
+
+November 18 detail-view cleanup: render each map, rating form, photo gallery and
+listing-conflict warning once, including after automatic refreshes. Interested cards
+omit completed-scoring notices, view-summary lines and score-warning chips. Show explicit
+furnishing status beside rent on Interested cards and in full details; unknown, optional
+and conflicting terms must stay distinct from unfurnished. Equal-view comparisons retain
+the existing affordability deduction and small confirmed-furnishing bonus, so otherwise
+comparable expensive unfurnished apartments score below cheaper unfurnished apartments.
+
+November 18 scan-throughput direction: after the current one-hour run ends, improve
+throughput using bounded overlap and measured pacing, without bypassing website warnings.
+Prepare a thirty-minute benchmark, but wait for the user's separate approval before
+starting it. Friday evening is a coverage target, not verified inventory exhaustion.
+Keep all selected-area rules, full-gallery collection, existing ranks and user decisions.
+Daily scans remain paused.
+
 ## Current workflow — November 18, 2026
 
 Future quick scans should target the user's configurable geographic distribution, tracked
@@ -366,8 +444,9 @@ workflow they do not filter Unreviewed, hide Interested apartments or replace ma
 - The desk is a lifecycle (state machine). Stages named so far:
   1. **Unreviewed**: quick-ranked automatically, not yet reviewed by the user.
   2. **Interested**: chosen by the user; full assessment is queued, running or completed.
-  3. **Ready to Apply**: full assessment completed and the user wants to proceed.
-  4. **Inquiry Sent** and existing later stages retain their historical workflow meaning.
+  3. **Serious Candidates**: full assessment completed; selected for the user's final review.
+  4. **Ready to Apply**: the user has completed that final review and wants to proceed.
+  5. **In Progress**, including Inquiry Sent and existing later stages.
   - **Not Interested**: terminal. Kept so the same listing is never re-scored or re-shown.
 - Proposals for additional stages are welcome.
 

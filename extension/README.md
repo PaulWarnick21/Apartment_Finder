@@ -1,5 +1,23 @@
 # Normal Chrome scanner
 
+Version 0.5.1 fixes Apartments.com availability-text false positives: an ordinary
+“temporarily unavailable” amenity/unit does not establish a site access warning.
+Explicit security challenges and service-outage headings still stop. The bridge retains
+the matched warning and a bounded visible-text excerpt for local diagnosis. Restart the
+backend and reload the existing extension to activate both halves of this update.
+The chat-controlled `/api/browser/recover-apartments` endpoint supports a separately
+approved five-minute, one-search-page check with zero photo downloads, AI or imports.
+It retains existing inventory and clears the pause only after recognizing rental results.
+
+Version 0.5.0 receives approved jobs promptly through authenticated localhost long
+polling during a run. The 30-second alarm remains an idle wakeup only. Page start
+times persist across service-worker restarts; new adaptive quick plans gradually
+reduce healthy-source navigation gaps from ten to five seconds. Reload the existing
+extension once in `chrome://extensions`; pairing and permissions are unchanged.
+No approved job means no listing-site navigation, even while localhost is polled.
+
+The following notes describe earlier milestones.
+
 Version 0.4.0 separates discovery pagination from listing links and makes
 Apartments.com gallery collection resumable under a small approved photo allowance.
 Reload the installed extension in `chrome://extensions`; existing pairing remains valid.

@@ -1,5 +1,84 @@
 # Design
 
+`initialMoveShortTermException` opts into a narrow, 3.5-capped alternative to the nature
+view preference. The alternative uses non-view fit less the existing view-compromise
+deduction. It requires confirmed furnishing and short lease, supported modern interiors,
+complete reviewed photos with unit attribution, no known cramped layout or conflicting
+price/lease/furnishing/interior facts, and known recurring cost below `premiumRentThreshold`.
+Ordinary nature scoring can still win. Location, laundry, parking, floor and other hard
+requirements apply afterward. The feedback interpreter knows this rule, preventing the
+resolved preference from becoming a recurring global feedback blocker.
+
+Full-review preflight feedback waits carry `waitingForFeedback` and keep the existing queue
+timer alive. Each tick checks local feedback state, updates actionable blocker details, and
+queues the assessment once all latest feedback is resolved. Account/usage checks and plan
+authorization still run before any work. Only unstarted preflight waits auto-resume;
+partial/completed plans cannot acquire fresh allowances from this mechanism. Restart clears
+automatic-wait markers and retains evidence without starting network work.
+
+Current scan policy selects only Downtown Vancouver; inactive North/West routes remain
+stored for future re-enablement. `scanAreaExclusion` applies current source scope to regular
+scan refreshes and pending galleries without the saved-home exemption used by the desk.
+
+The review stages are Unreviewed, Interested, Serious Candidates, Ready to Apply, then
+In Progress. Shared transition rules and server validation prevent skipping stages.
+The one-time Serious Candidates migration renames existing Ready to Apply records,
+historical stage labels and merge-restoration snapshots, increments affected revisions
+to reject stale decisions, and preserves notes, scores, grades, photos and entry dates.
+Later Ready to Apply decisions are never remigrated. These promotions do not start scans
+or repeat the completed full assessment.
+
+Mainland-only location gate: `mainland-location.ts` recognizes advertised island locations
+in location fields and explicit rental-location prose. The gate runs before grandfathered
+area exemptions, in discovery filtering, quick eligibility and full scoring. Desk exclusion
+overrides preserved ranks and Interested display without rewriting historical decisions.
+No address lookup, live source request or AI call is needed for explicit location evidence.
+
+Source continuity audit (November 18): scoped VADA empty-result messages are recognized
+without treating unrelated FAQs as inventory. EasyRent inventory walks its advertised
+FacetWP Next buttons, preserving the actual selected-area URL and shared page/request
+allowances. A visible unsupported pager cannot establish exhaustion. Austeville permits
+its observed Google Maps rendering dependencies and waits briefly for its search app;
+timeout remains incomplete discovery. No broad REST fallback is enabled. Source status
+uses current geographic scope and separates saved-home reviews from discovery attempts.
+Read-only audit snapshots are available through `scripts/audit-sources.ts`.
+
+The Sorting Desk no longer renders scan status or a scan-plan dialog. Its summary shows
+active, Interested and Serious Candidates apartment counts; decision-save status still appears
+when needed. Scan coordination stays available through the existing backend for Codex.
+
+Furnishing follow-up: `furnishingForListing` distinguishes explicit advertised terms
+from an assumed-unfurnished default when saved description text is silent. Missing or
+visibly truncated descriptions do not trigger that assumption. `scoringFacts` uses the
+same resolution for descriptions and explicit terms, so stale furnishing booleans cannot
+override available listing text. Raw records and preserved quick ranks are unchanged.
+
+November 18 detail-view cleanup: key the apartment dialog by home ID and let its distinct
+child components retain their own identities. Rating, map and gallery siblings must not
+reuse the same React key. Listing conflicts have one display location. Furnishing badges
+reuse explicit listing-text evidence beside price; completed assessment notices and the
+view/warning card strip are omitted from Interested. Existing affordability arithmetic
+and furnishing bonuses remain unchanged and have an equal-view comparison regression.
+
+November 18 throughput upgrade: new session quick plans snapshot adaptive pacing.
+Page gaps warm from 10 to 7.5 to 5 seconds after five and ten successful responses;
+photo gaps warm from 1 to 0.75 to 0.5 seconds after twenty and forty successes.
+State is per source/kind and persists across batches; thirty idle minutes resets it.
+Slow successful responses or transport failures reset warmup and slow access for five
+minutes. Two photo downloads may overlap per source, sharing one paced request clock;
+all siblings settle before gallery progress is saved. Existing approvals without the
+policy retain conservative pacing. An optional persisted stopAt deadline is checked
+before every budget reservation, independently of the supervisor.
+
+Chrome bridge 0.5.0 uses authenticated localhost long polling during active work,
+with the existing alarm only waking idle workers. Source navigation remains serial
+and its actual start times persist in extension storage. Photo transport failures get
+one accounted retry in adaptive mode, then a five-minute pause. Real access warnings
+still stop immediately for at least 24 hours, honor longer Retry-After values, and
+retain manual-attention flags. No warning is retried or cleared by this upgrade.
+REW's advertised /page/N continuation now preserves the exact configured area;
+unscoped continuation is rejected before fetching. See scan-throughput.md.
+
 Updated 2026-11-18 for quick intake and interested-apartment assessments. This document
 describes the implemented local architecture and explicitly identifies remaining work.
 The user's requirements remain in [requirements.md](requirements.md), private preferences
@@ -9,7 +88,8 @@ model-quality trial.
 
 November 18 workflow update: intake uses deterministic letter grades with no AI requests.
 Only confirmed hard failures exclude a candidate from Unreviewed. Marking Interested queues
-a bounded, resumable full assessment; the user then chooses Ready to Apply or Not Interested.
+a bounded, resumable full assessment; the user then chooses Serious Candidates or Not Interested,
+and later promotes a Serious Candidate to Ready to Apply after a final personal review.
 The source allocator favors supported yield for three phases, then reserves one phase for
 other available sources. The existing daily automation remains paused. Offline implementation
 does not establish complete market coverage or a guaranteed two-day catch-up.
@@ -126,7 +206,8 @@ does not establish complete market coverage or a guaranteed two-day catch-up.
   desk category is Scoring in Progress, including queued, running, paused and failed jobs. This
   section sits between Unreviewed and Interested and defaults to oldest entry first. Completion
   moves the home automatically into Interested without changing the saved user stage or notes.
-  Ready to Apply is a distinct stage, allowed only after full-assessment completion. Scanner
+  Serious Candidates requires completed full assessment; Ready to Apply requires the subsequent
+  explicit user decision from Serious Candidates. Scanner
   refreshes cannot overwrite these decisions.
 - Full-review jobs persist per home and use the existing shared worker lock, bounded plans,
   source cooldowns and per-call usage guard. A new Interested decision authorizes one job.
@@ -288,11 +369,12 @@ never reused or renumbered according to score.
 | Evidence | Implemented handling |
 | --- | --- |
 | Same source/listing ID | Update its posting and preserve the home reference. |
-| Same normalized address/unit with compatible facts | Combine source links and evidence. |
+| Same normalized address/unit with compatible facts | Automatically keep the oldest home and remember the newer posting. |
 | Matching address/unit but incompatible room count, size, or price evidence | Keep separate for review. |
-| Same address with a missing unit | Show possible-duplicate candidates; do not merge automatically. |
+| Same address with a missing unit | Require at least four distinct matching photos, 80% gallery overlap, and two interiors with unit attribution; otherwise leave separate. |
 | Same building with distinct explicit units | Keep separate. |
-| Similar text or matching photos alone | Do not merge automatically. |
+| Missing addresses on both listings | Require four matching unit-attributed interiors and 80% gallery overlap. |
+| Similar text, stock images, amenities or repeated photo slots | Insufficient for automatic merging. |
 
 `posting_details` retains each source's facts, capture time, and gallery manifest.
 Aggregation uses the latest posting snapshots, so a resolved price or laundry conflict
@@ -307,6 +389,21 @@ Incomplete same-source captures union with previous images; a complete manifest 
 authoritative. A merged gallery does not by itself establish exact-unit provenance.
 
 The user can explicitly mark candidates different or confirm the same apartment.
+Automatic merges retain the oldest listing/assessment and stage; newer source postings
+remain in the database but are excluded from future assessment/refresh aggregation.
+Newer notes are appended with their apartment reference. Separate rating feedback and
+conflicting saved dates prevent automatic merging. Splitting marks the pair different,
+including when either record later becomes an alias. The existing manual merge retains
+its explicit conflict checks and combines evidence as before.
+
+`automatic-duplicates.ts` uses normalized street/unit keys and saved content hashes,
+original-image fingerprints and exact image URLs. SQLite triggers mark changed listings
+for incremental indexing; source/URL lookup is indexed too. Intake remembers confirmed
+cross-posts before gallery collection. Full review checks before queue admission, after
+downloads and on completion, without extra network or AI work. The offline
+`scripts/deduplicate-saved.ts` previews cleanup on a snapshot; `--apply` backs up first
+and refuses cleanup while scans are approved or running.
+
 A merge keeps the chosen reference, records the other as an alias, combines notes,
 links and evidence, and retains feedback and a merge snapshot. Conflicting saved stages
 or dates require reconciliation. A split restores the original records only while it

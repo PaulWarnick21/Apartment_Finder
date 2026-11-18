@@ -1,5 +1,80 @@
 # Listing sources
 
+## Source continuity audit — November 18, 2026, afternoon
+
+The user requested a source-by-source investigation after simplifying the desk. This audit
+used a read-only database snapshot, saved search captures and offline replay. It made no
+new source requests, cleared no pauses, and changed no apartments, decisions or routes.
+The latest completed thirty-minute benchmark reported 62 new eligible homes with complete
+galleries: 60 REW and two Zumper. One additional REW home retained an incomplete gallery
+after the final worker save. That benchmark's approval is expired.
+
+| Source | Current evidence and cause of shortfall | Next action |
+| --- | --- | --- |
+| REW | Producing new homes; 101 scoped candidates remained queued at the audit snapshot. Downtown and West End pagination remains unfinished. | Continue the saved frontier under a new approved allowance. |
+| Zumper | Produced two completed new homes in the benchmark; scoped queue currently empty. Dynamic search coverage is unverified. | Check fresh results and validate whether the source exposes additional scoped pagination. |
+| Craigslist | Produced earlier today; 48 scoped candidates remain. North/West intake is deferred by the configured Downtown share. | Preserve the user's mix, obtain more validated Downtown coverage, and recheck the retained queue in approved runs. Do not weaken the mix silently. |
+| Apartments.com | Four new records in the preceding run, then a generic warning at November 18 18:33 UTC stopped intake; 285 scoped candidates remain. The 24-hour cooldown/manual-attention flag is imposed by this app, not a verified server Retry-After. The rejected capture was discarded, so the warning's exact cause is unknown. | Fixed overly broad availability-text detection and added retained warning evidence plus an explicitly approved single-page recovery check. Current pause is preserved pending live validation. |
+| Zillow | Produced earlier today; the latest scoped pages returned only saved candidates. Further dynamic coverage is not established. | Validate selected-area pagination and other source-advertised selected-area routes. |
+| VADA | Both selected North/West searches explicitly say “More Rentals Coming Soon” inside their results containers. Long FAQs prevented the old generic empty-page detector from recognizing this. | Scoped empty-result handling repaired offline; recheck for actual new vacancies in later approved cycles. Downtown remains outside its configured searches. |
+| EasyRent | Both selected-area pages have href-less FacetWP Next buttons. North Vancouver advertises five pages/98 rows; West Vancouver four pages/68 rows. Only the first 20 rows in each search were visited, all marked rented. | Browser continuation now clicks the advertised Next control, retains its actual scoped URL, and accounts each page. Unsupported continuation remains incomplete rather than exhausted. Later pages and current availability still need live validation. |
+| Austeville | All three saved selected-area captures remain at the search app's Loading spinner. The page advertises Google Maps, but its hosts were blocked by the transport's rendering allowlist. | Add the observed rendering dependencies and a bounded readiness wait. This repairs a plausible loading cause; a live test must establish whether it resolves the source. Broad REST inventory remains prohibited in filtered intake. |
+| Facebook Marketplace | No supported selected-area route is configured. Earlier broad intake and saved assessments are not current geographic coverage. | Validate explicit source location controls, session access and scoped pagination before enabling new intake. |
+| Kijiji | No supported selected-area route; 92 old broad-search candidates cannot establish current geographic provenance. | Validate source-advertised geographic filters and result scope, then configure only supported routes. |
+| Hollyburn | No supported selected-area route; neighbourhood guides and map-centred searches are not proof of filtered unit inventory. Existing discovery primarily supports furnished ads and building pages. | Validate city/area controls and actual available-suite extraction; do not count a building advertisement as a new apartment. |
+| Sunstar | Latest Downtown capture: 165 links, 160 rented, three already saved and two failing intake filters. No new qualifying candidate in that checked scope. | Fresh checks during approved cycles; additional selected-area routes require source evidence and validation. |
+
+The Sources view now distinguishes missing geographic setup from runnable adapters, excludes
+unscoped backlog from its queue count, limits inventory reporting to configured searches,
+and does not present a completed saved-home assessment as a successful discovery scan.
+`scripts/audit-sources.ts` provides a repeatable read-only snapshot; record/photo counts
+are explicitly different from eligible-apartment admissions.
+
+Private evidence is retained in `data/live/source-audit-2026-11-18/`: the baseline, selected
+capture index, replay outcomes, final audit and test log. Eighty-two focused offline tests
+passed, covering source scope, pagination, warning stops, pacing, queues and persistence.
+Offline repairs are not new live coverage claims. Freshness and correct parsing can keep
+sources useful; they cannot guarantee that every source has a new qualifying apartment.
+
+### Proposed validation — separate approval required
+
+Apartments.com follow-up: extension 0.5.1 no longer treats ordinary unit/amenity
+“temporarily unavailable” text as a source-wide challenge. Explicit security/rate-limit
+messages and whole-page outage headings still stop. ChromeJobs now retains the rejected
+URL (without query), title, exact warning and up to 2,000 visible-text characters locally
+in a ten-entry diagnostic history. Previously rejection happened before worker capture
+storage, so no saved evidence establishes the cause of the November 18 warning. This is
+a confirmed detector defect, not proof that this particular stop was a false positive.
+
+The previously Zillow-only recovery workflow now supports Apartments.com through
+`POST /api/browser/recover-apartments` with confirmation `APPROVE ONE APARTMENTS RECOVERY`.
+Its plan allows one configured-area search page, five minutes, zero photo downloads,
+zero AI, zero address lookups and zero imports. Recognition of rental links in a complete,
+unchallenged capture is required before clearing only that source's pause. Failure,
+truncation or cancellation retains the pause; saved inventory is never replaced. It does
+not resume a listing scan. This check has been verified offline, not run against the site.
+
+One 45-minute session across the 11 currently unpaused retained sources, with up to three
+independent source workers and the existing shared Chrome lane. Aggregate caps: 120 page
+visits (including filter setup), 80 candidate attempts, 600 photo attempts, zero AI and zero
+address lookups. Target up to two new eligible, photo-collected apartments per available
+source; shortfalls remain explicit. First validate missing geographic controls and dynamic
+pagination; admit candidates only from proven selected-area searches. Retain the current
+geographic allocation, all user decisions and existing grades. Do not refresh old homes,
+replenish old galleries, bypass warnings, or enable recurring scans. Apartments.com stays
+excluded while paused. Stop on the deadline or any aggregate allowance; report incomplete
+galleries separately. A zero-new result with valid exhausted inventory is a valid outcome.
+
+November 18 throughput follow-up: the one-hour quick run encountered an Apartments.com
+access warning and retained its pause. A discovered REW defect rejected its advertised
+/page/2 links as unscoped; the corrected matcher accepts positive numbered pages only
+beneath the exact configured area, with no query-based area override. Offline regression
+coverage is not live validation. New quick plans can gradually accelerate healthy sources
+and overlap two photo downloads; actual warnings still stop the source. Transport-only
+failures use one bounded retry and a short backoff rather than automatically treating a
+network timeout as a day-long access warning. Existing pauses are never rewritten.
+The separately approved thirty-minute benchmark subsequently completed; see the audit above.
+
 November 18 restricted intake: website geographic searches replace individual address
 verification. Configured routes are stored in private source-search-filters.json. Broad saved
 queues do not establish geographic scope. The current route set uses source-advertised REW,

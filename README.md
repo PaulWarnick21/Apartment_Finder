@@ -11,7 +11,8 @@ independently of a coding assistant or chat session.
 
 The November 18 workflow uses fast local letter grades for Unreviewed apartments.
 Only confirmed hard intake failures are excluded. Marking Interested queues a bounded
-full assessment; after it completes, choose Ready to Apply or Not Interested. Full
+full assessment; after it completes, choose Serious Candidates or Not Interested.
+Review Serious Candidates thoroughly, then choose Ready to Apply or Not Interested. Full
 reviews retain the connected-account usage reserve and never use paid fallback.
 Source allocation favors useful results while reserving exploration for other sites.
 Quick scans overlap up to three independent sources, while fully downloaded galleries can
@@ -196,7 +197,7 @@ scan budget. Install the local `extension` folder using Chrome's **Load unpacked
 then pair through **Preferences → Normal Chrome connection**. The optional connection
 test is a separate single-page read. Normal scans require the local app and Chrome to
 remain running; recurring scans are disabled. Reload the unpacked extension after updating to
-version 0.4.0. An interrupted gallery may retain a tab for a later separately approved run;
+version 0.5.0. An interrupted gallery may retain a tab for a later separately approved run;
 retained tabs do not continue scanning in the background.
 
 - [Requirements](docs/requirements.md): intended behavior.
