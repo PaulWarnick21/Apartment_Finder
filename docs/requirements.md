@@ -1,5 +1,149 @@
 # Requirements
 
+## Current workflow — November 18, 2026
+
+Future quick scans should target the user's configurable geographic distribution, tracked
+using distinct newly admitted apartments with saved photos rather than request counts.
+Prioritize the preferred area and retain deferred candidates for later capacity. Allow
+other selected areas to fill capacity when checked preferred-area inventory is exhausted;
+failed or unverified discovery does not establish exhaustion. The setting applies to future
+intake only, preserves existing ranks and decisions, and does not enable scanning.
+
+Photo navigation should feel immediate on desktop and mobile. Preload nearby saved photos,
+use appropriately sized display copies, and retain the current image until the next one is
+decoded. Bound background downloads and decoded memory; retain original files for zoom and
+the existing scoring evidence. This does not authorize source downloads or AI calls.
+
+Standing performance preference: use bounded parallel processing for future scans and
+assessments wherever independent work can safely overlap. Default to three scan sources,
+one shared Chrome lane, and up to two independent saved-gallery assessments. Preserve every
+photo review, fresh per-call account checks and the weekly reserve. Source/browser work that
+cannot safely overlap remains serialized. Quick ranks stay local and cached; existing ranks
+and user decisions remain unchanged. This preference does not enable daily scans or authorize
+AI assessments without the existing Interested/retry or explicit bounded approval.
+
+The user requested parallel execution where possible for the active five-per-source test.
+Use at most three independent source workers, keeping the shared Chrome lane serial and
+all per-source/aggregate limits unchanged. Preserve completed sequential measurements and
+label the parallel portion separately. Do not increase request rate within a source.
+
+Latest bounded test authorization: investigate source latency, then compare five **new,
+desk-eligible, photo-collected** apartments per retained source. Use selected website areas,
+zero AI and zero address lookups. The comparison records first-result and per-source elapsed
+times, exclusions and failures. Limits: twelve minutes, sixty pages, forty candidate attempts
+and four hundred photo attempts per source; three hours overall. Preserve source pauses and
+all existing ranks/decisions. Unsupported geographic filters or insufficient accessible new
+inventory are explicit shortfalls, not successful five-apartment results. Daily scans remain off.
+
+Latest intake direction: use the websites' geographic search filters, without individual
+address verification. Carry the selected source area into new listings as search provenance,
+not an independently verified address. Continue rejecting explicit outside-area facts and
+the existing bedroom, rent, whole-apartment and collected-photo failures. Keep old ranks and
+decisions. Broad legacy queues cannot acquire area provenance retroactively. Sources lacking
+a configured geographic search stay out of restricted intake until their filters are supported.
+The current one-off test remains capped at 30 new qualifying apartments under its original
+aggregate/time limits; this change does not enable scheduled scans.
+
+Future searches must respect the user's selected geographic areas in private configuration.
+Apply the restriction to new candidates and queued discovery without changing existing
+apartments or ranks. Filter clear location mismatches early; unresolved locations remain
+outside the active desk until supported within the selected area. Preserve paused scans.
+
+Studio apartments must fail the configured bedroom requirement before photo collection or
+assessment. Use the advertised unit facts; sample tours and building inventory cannot supply
+a bedroom count. Apply the current bedroom gate to saved apartments independently of their
+preserved ranks, retaining original records, notes and user decisions.
+
+Exclude apartments with zero collected photos from the active desk automatically, including
+existing records. Attached URLs and advertised gallery counts do not satisfy this requirement.
+Keep the saved record, rank, notes and user stage; closed decisions remain closed. Pending
+photo collection remains resumable only in an approved scan, and the photo exclusion clears
+once a listing photo is saved. Do not trigger a full assessment from a photo-less card.
+
+Interested / Not Interested decisions must update the desk immediately, allowing rapid
+successive clicks while saves and assessments continue in the background. Show pending
+saves and recoverable errors, protect against stale refreshes and duplicate writes, and
+preserve other apartments' decisions when one save fails.
+
+Latest quick-ranking refinement: preserve every existing apartment's letter grade and
+ordering value. Apply stricter grades only to future apartments. S is reserved for an
+exceptional, high-confidence overall match, supported by a verified address, convincing
+actual-unit nature-view evidence and no major unresolved concerns. Advertising bonuses
+alone cannot earn S. New intake performs a quick bounded public address lookup instead of
+leaving an available street address uninvestigated; ambiguous or failed matches remain
+explicitly unverified. This authorizes implementation, not a new listing scan or AI review.
+
+Latest user instruction: do not restart scans automatically after implementation. First run
+only separately approved, bounded tests with real apartment listings. Full inventory scans
+must wait until the user is satisfied with those tests and explicitly authorizes expansion.
+The proposed 48-hour catch-up has not been approved; daily scanning remains paused.
+
+The user replaced full assessment during intake with **quick ranking → user interest →
+full assessment → application readiness**. This section supersedes older score-based desk
+exclusions and the earlier Unreviewed → Interested → In Progress workflow below.
+
+- Intake collects apartment facts and attached photos, then computes a local, deterministic
+  letter grade: S, A, B, C, D, E or F. S is a particularly promising preliminary match, A is decent,
+  and F is unlikely to interest the user. A grade is an ordering aid, not a completed visual
+  assessment or a conversion of the full numeric score. Intake makes no AI calls.
+- Apply only established hard failures before admitting a candidate: an actual whole-apartment
+  rental, configured inclusive advertised-rent bounds, permitted bedroom counts, minimum distinct
+  attached-photo count, confirmed laundry requirements and the Vancouver search region. Personal
+  values live in `private/` and runtime criteria. Conflicting or missing facts remain flagged;
+  an incompletely enumerated gallery is not proof that the listing has too few photos.
+- Keep every hard-eligible candidate in Unreviewed regardless of grade, missing view confirmation,
+  or a low historical numeric score. Distance from downtown reduces the grade. Use saved supported
+  features and clearly labelled advertising claims for priority, without claiming newly verified
+  views. Only the bounded address lookup described above runs during quick intake; deeper
+  research waits for interest. Never silently mark a deferred candidate Not Interested.
+- Unreviewed defaults to highest grade first: S → A → B → C → D → E → F. Within a grade,
+  show the higher quick-rank value first; low grades remain available at the bottom.
+- Recalculate source priority from the user's recent Interested / Not Interested decisions before
+  each catch-up batch. A source with stronger recent interest should receive more intake work;
+  the lead must shift as preferences and source results change. Older decisions carry less weight.
+  Temper small samples and count each distinct apartment once on its primary discovery source.
+  Unreviewed apartments and unfinished assessments are not negative decisions; model scores never
+  override recorded user feedback. Use saved assessments only before any user feedback exists.
+- Give the leading available source three bounded catch-up phases, then rotate one phase among
+  the other sources. Remove drained sources from work selection, so all remaining inventory can
+  be collected regardless of past yield. With no supported positives, rotate among available
+  sources. Once checked inventory is caught up, each maintenance cycle checks every available
+  source for new listings before favoring a newly discovered backlog. Access/coverage gaps remain
+  explicit; exhausted checked searches do not establish that every Vancouver listing is known.
+- The Unreviewed detail view focuses on price, location, photos, quick grade and Interested /
+  Not Interested actions. Existing notes, ratings, source links, IDs and duplicate decisions persist.
+- Marking Interested authorizes and queues one bounded full assessment of that apartment,
+  automatically and durably. Put it in **Scoring in Progress**, between Unreviewed and Interested,
+  until its full assessment completes; then move it automatically into Interested. Show queued,
+  running, paused and failed status in Scoring in Progress, retaining interrupted jobs there with
+  retry controls. The process continues when the detail view closes. Retain completed evidence across interruptions.
+  New listing scans remain a separate bounded authorization, and startup never starts a scan.
+- Full assessment retains the established numeric score, every-accessible-photo review,
+  actual-unit attribution, uncertainty and evidence requirements. Reuse compatible saved findings.
+  Source pauses, shared budgets, fresh account-usage checks and the 95% weekly stop still apply.
+  A low full score does not remove an apartment the user marked Interested; the user makes the
+  next decision in Interested: Ready to Apply or Not Interested. Ready to Apply requires a
+  completed full assessment, and does not send an inquiry or application.
+- An app restart pauses unfinished full-assessment jobs for explicit resumption; it never silently
+  starts source or AI work. Failed jobs retain their errors and saved evidence.
+- The user's goal is broad intake within two days. This is a target, not a verified coverage or
+  completion guarantee: unfinished pagination, source access failures, unknown inventory and
+  photo-collection gaps must remain visible. Preserve the existing daily-scan pause until a new
+  bounded run or an explicit schedule change is approved. Do not redeem account reset credits.
+
+Historical scan authorization (November 16): catch up on current listings across all 12 retained
+sources, aiming for November 21, then scan once daily in the morning. On November 16 the user
+explicitly lifted the previous 88% stop for today's catch-up, permitting up to 100% of the
+current weekly allowance until local midnight. The user then set a recurring 95% stop from
+Wednesday November 18's weekly reset (07:36:11 America/Toronto), leaving 5% thereafter.
+The user subsequently reduced today's stop to 99% and paused the daily 08:00 automation
+pending a review of scan efficiency, saved results and remaining inventory. Stop the current
+run safely at 99%; do not restart daily scans until the user re-enables them after that review.
+The future 95% stop remains configured for resumed scans. The previous 88% policy remains
+between today's exception and that reset, but does not override the requested pause. See
+[catchup-scans.md](catchup-scans.md) for explicit bounds and execution requirements. This
+supersedes historical notes below that scheduled scans were still off.
+
 Captured on 2026-11-10; direction updated on 2026-11-11. This file covers what the program must do. The user's
 personal search criteria (budget, areas, must-haves) are kept out of git in `private/criteria.md`.
 
@@ -30,10 +174,26 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
   apartments without requiring the user to gather their details.
 - Refresh known listings selectively for material changes or availability; avoid repeating a
   full assessment when relevant content is unchanged.
+- Prefer recent or undated postings over ads older than the configured posting-age threshold,
+  before detail visits and expensive gallery review. Use source posting dates, never the date
+  the app discovered an ad, a move-in date, or a last-update timestamp. Age is a scan priority,
+  not a score penalty, availability claim or automatic exclusion. Retain lower-priority work.
+- Allocate more intake effort to sources that produce more recent user interest, following
+  the current workflow above. Model-assessed strong matches supply a starting point only before
+  user feedback exists. Show hits and
+  sample sizes, distinguishing completed assessments, factual exclusions and unfinished work.
+  Compare results per assessed unit and per measured time/AI effort; AI-call counts are not
+  exact account-credit costs. Treat small samples cautiously, keep some exploration of other
+  sources, and continue cheap inventory coverage across retained sources. Duplicate postings,
+  floorplan/building ads, provisional scores and access failures must not inflate or masquerade
+  as assessed-apartment outcomes. A source's priority changes work allocation, never its
+  listings' scores, evidence requirements or access cooldowns.
 - Use conservative per-source page/request budgets and pacing, one source at a time by default,
   and persistent browser sessions where needed. Share limits across manual and scheduled runs.
-  Cache unchanged content and spread initial discovery over multiple runs rather than crawling
-  dozens of results pages. Report coverage limits instead of silently increasing traffic.
+  Cache unchanged content and size a bounded session for the explicitly requested target.
+  Normal approved sessions must not inherit hidden trial-sized page or daily-image quotas.
+  Report coverage limits and distinguish candidate attempts, new apartments, floor-plan offers,
+  hard-filter scores and complete photo assessments.
 - Pause a source at the first access warning, rate limit, unexpected error page, or abnormal
   slowdown; record the cause and notify the user in the app. Persist the pause across restarts
   and manual scans. See the source plan for cooldown and recovery rules.
@@ -52,9 +212,40 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 
 ## R4 Automatic scoring
 
+The following numeric-score rules apply to full assessments. In the November 18 quick-first
+workflow they do not filter Unreviewed, hide Interested apartments or replace manual stages.
+
+- Latest view-first preference supersedes the earlier interior tradeoff and permissive
+  partial/unverified-view desk rules below. When `requireNiceViewForDesk` is enabled,
+  require a reviewed actual-unit window nature view of quality >=4 with resolved attribution
+  and no conflicting view evidence. Otherwise cap at 2.9 and place in Excluded, preserving
+  manual access, original personal scores, notes and stages. Distinguish insufficient
+  confirmation from a known poor view. Neither bonuses nor learned ratings can bypass this.
+
+- Scale the extra-bedroom benefit down as monthly cost rises. Premium-priced apartments
+  need an exceptional verified elevated nature view and photo-supported modern, spacious
+  interiors to escape the affordability ceiling. Unknown quality and luxury marketing do
+  not qualify. Apply the ceiling to all bedroom counts and preserve it through calibration.
+
+- Reserve 4.0 and above for a good, photo-confirmed nature outlook through the actual
+  unit's windows from floor 3 or higher. Require a complete gallery review, nature-dominant
+  view quality (at least 4/5), resolved unit attribution and nonconflicting floor/view facts.
+  Otherwise cap at 3.9, retaining any stricter existing limits. Unknown floor or marketing
+  claims cannot qualify. Bonuses, interior tradeoffs and personal calibration cannot bypass
+  this gate. A qualifying view permits, but does not guarantee, a high overall score.
+
+- Parking penalties distinguish confirmed unavailability from strong or moderate negative
+  evidence. Apply them after score ceilings, retain the score floor, and prevent positive
+  learned calibration from undoing them. Missing information alone is not negative evidence;
+  no included parking does not prove paid parking is unavailable. Weights live in private criteria.
+
 - Every apartment detail view supports a personal score and a short reason. Keep the app's
   score at submission, listing/criteria snapshots, all feedback, and review outcomes.
   Review each explicit submission through the connected ChatGPT plan, with no paid API fallback.
+  Queue its review immediately on submission, without a separate review click, scan or chat
+  request. The server continues when the apartment detail view closes; queued reviews run
+  in order. Show review progress and its outcome beside the rating, including any failure
+  or clarification needed. Each submission authorizes one review; retries remain explicit.
   General preference changes must improve agreement across saved examples, preserve correct
   interest bands, and remain small and reversible. One-off exceptions and uncertain listing facts
   must not silently become global rules. Failed reviews retain feedback and require an explicit retry.
@@ -119,6 +310,9 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 - Apply the expanded private criteria and user-provided example scores when calibrating price,
   location, view quality, unit type, workspace, parking, furnishing, and lease preferences. Exact weights remain
   provisional; personal values and example prices stay in private configuration.
+- Show a separate Outside Downtown Core deduction for confirmed non-downtown locations,
+  enforce the configured minimum, and retain any larger distance deduction without counting it
+  twice. Nearby transit does not erase the location cost; unknown locations remain flagged.
 - Support an explicitly enabled interior tradeoff: a sufficiently supported combination of
   furnishing, open layout, modern interiors, and usable workspace can make an apartment worth
   reviewing despite a poor or absent nature outlook. Require a known advertised rent and reviewed actual-unit interiors;
@@ -163,12 +357,17 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 
 ## R5 Sorting Desk (private web app)
 
-- Listings scored 3.0 or above go to a "Sorting Desk" web app where the user works through them.
-  Uncertain listings remain active only when their headline score is at least 3.0.
+- Cap pinned apartment titles at two lines so long source text cannot cover the mobile
+  detail view. Keep the full title available in expandable, scrollable content and the
+  close button visible at the top.
+
+- In the current quick-first workflow, hard-eligible listings enter Unreviewed with letter grades.
+  Numeric-score thresholds from earlier versions no longer decide their desk visibility.
 - The desk is a lifecycle (state machine). Stages named so far:
-  1. **Unreviewed**: scored automatically, not yet reviewed by the user.
-  2. **Interested**: reviewed, and the user wants to seriously consider it.
-  3. **Inquiry Sent**: the user has contacted the landlord for details or to start an application.
+  1. **Unreviewed**: quick-ranked automatically, not yet reviewed by the user.
+  2. **Interested**: chosen by the user; full assessment is queued, running or completed.
+  3. **Ready to Apply**: full assessment completed and the user wants to proceed.
+  4. **Inquiry Sent** and existing later stages retain their historical workflow meaning.
   - **Not Interested**: terminal. Kept so the same listing is never re-scored or re-shown.
 - Proposals for additional stages are welcome.
 
@@ -210,6 +409,10 @@ personal search criteria (budget, areas, must-haves) are kept out of git in `pri
 ## How the program is used
 
 - Open a private, responsive web app to review listings, update stages, and keep notes.
+- Support Chrome on iPhone through a private Tailscale connection to the Windows PC.
+  Keep one shared database and restrict remote access to the owner's configured account.
+  This uses the free Personal plan and is separate from the user's existing Codex remote
+  connection. The PC and app remain running; enabling phone access does not approve scanning.
 - A background worker scans on a schedule and updates the desk's persistent database.
   The user can also start a scan from the app.
 - Operation does not depend on keeping a coding assistant or chat session open.

@@ -9,6 +9,17 @@ independently of a coding assistant or chat session.
 
 ## Status
 
+The November 18 workflow uses fast local letter grades for Unreviewed apartments.
+Only confirmed hard intake failures are excluded. Marking Interested queues a bounded
+full assessment; after it completes, choose Ready to Apply or Not Interested. Full
+reviews retain the connected-account usage reserve and never use paid fallback.
+Source allocation favors useful results while reserving exploration for other sites.
+Quick scans overlap up to three independent sources, while fully downloaded galleries can
+receive two independent assessments concurrently. Configurable geographic intake targets
+prioritize selected areas with checked-inventory fallback. Cards support photo arrows and
+mobile swipes, preload nearby images, and save Interested / Not Interested decisions promptly.
+See `docs/requirements.md` for the current workflow; the trial notes below are historical.
+
 The local application has completed bounded live source and photo-review trials. Startup and
 demo mode never scan. Each live run requires explicit approval of a single bounded plan;
 recurring scans remain disabled. The November 14 final validation found 15 new rental
@@ -28,6 +39,10 @@ Closing the browser leaves the local app running. Double-click `Stop Apartment F
 to stop it when finished; saved data is retained. The stop button refuses to interrupt an active
 scan. Logs are in the gitignored `data/launcher/` directory. Nothing starts automatically when
 Windows starts. The commands below are for development or a fresh installation.
+
+For private access from Chrome on iPhone, see [Phone access](docs/mobile-access.md).
+Tailscale Serve connects the phone to this PC's existing app and database. The PC must
+remain awake and online; this is separate from the ChatGPT/Codex remote connection.
 
 Requires Node 24. Dependencies are pinned in `package-lock.json`.
 
@@ -128,8 +143,9 @@ approve a new plan to continue. Access challenges require manual resolution, nev
 
 `private/settings.json` is imported on the live database's first startup. Later changes are
 saved in SQLite through Preferences. `private/criteria.md` remains the detailed reference.
-Both are gitignored, as are `.env`, `data/` and cached browser sessions. Only localhost is bound;
-do not expose this unauthenticated single-user application publicly.
+Both are gitignored, as are `.env`, `data/` and cached browser sessions. Only localhost is bound.
+Optional Tailscale Serve access requires the exact configured HTTPS address and verified
+Tailscale account. Do not expose the app publicly or use Tailscale Funnel.
 
 Preferences can export the desk or create a complete backup; `npm run backup` creates the same
 kind of bundle. It contains a consistent SQLite snapshot, referenced local media (including

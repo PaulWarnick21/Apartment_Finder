@@ -1,5 +1,50 @@
 # Listing sources
 
+November 18 restricted intake: website geographic searches replace individual address
+verification. Configured routes are stored in private source-search-filters.json. Broad saved
+queues do not establish geographic scope. The current route set uses source-advertised REW,
+Apartments.com and Sunstar routes from saved pages, plus indexed Craigslist North/West Vancouver,
+Zumper Downtown/West Vancouver and Zillow Downtown pages. A route's existence is not successful
+live adapter validation or complete coverage. Sources without supported area filters are held
+out of restricted intake. Apartments.com was deferred during the earlier thirty-apartment
+test and was included in the subsequent source-speed comparison.
+
+The completed November 18 comparison collected twenty-four qualifying new apartments with
+complete saved galleries and zero AI or address-lookup calls: five each from Craigslist,
+REW, Zumper and Apartments.com, and four from Zillow. The other seven sources had geographic
+filter, discovery or checked-inventory shortfalls. The first two sources ran sequentially;
+subsequent work used up to three source workers with one shared Chrome lane. Per-source times
+were approximately two, three, three, ten and six minutes respectively. Private run artifacts
+retain exact timings, source outcomes and apartment IDs; this bounded result does not establish
+complete market coverage.
+
+Future discovery is restricted by the user's private search-area policy. Broad catalogues
+may still be needed to find permitted listings, but clearly outside-area routes and cards
+are skipped, and a candidate's location is checked before photo downloads. This filter
+does not establish new source coverage or authorize resuming paused scans.
+
+November 18 update: the current intake workflow collects facts/photos and computes quick
+letter grades without AI. Source selection allocates three bounded phases to the leading
+supported source, then one phase to another available source, rotating exploration across
+the alternatives. Recalculate the leader from recent user Interested / Not Interested choices
+before each batch, with older choices carrying less weight. These choices take precedence over
+model scores; saved assessments are a starting point only before user feedback exists. No
+supported positives means ordinary rotation. Count distinct homes on their primary discovery
+source and retain sample sizes; unreviewed homes are not rejections. Drained sources leave work
+selection, giving the remaining inventory all available work. After checked inventory is caught
+up, maintenance checks every available source for new listings before favoring any new backlog.
+This prioritization never changes apartment scores, source pacing, cooldowns or coverage
+claims. Full-gallery assessment follows a user's Interested decision. The daily automation
+remains paused and a new collection run still requires bounded authorization. The two-day
+inventory target does not establish that dynamic searches can be fully traversed. Existing
+retained/deferred source choices and historical access evidence below remain in effect.
+
+November 16 update: the user authorized catch-up and daily morning scans across the 12
+retained sources, within the weekly credit reserve. See [catchup-scans.md](catchup-scans.md).
+Historical statements below that recurring scans were disabled describe earlier approvals.
+The new inventory traversal records each route and exposes incomplete/dynamic coverage;
+implementation alone does not establish successful live coverage.
+
 Updated 2026-11-14. Apartment Finder discovers rentals directly from listing websites and
 collects their details for filtering, scoring, and the Sorting Desk.
 
@@ -526,3 +571,98 @@ regression coverage:
 Verified corrections were applied only to new test records and their source
 manifests, preserving saved photos and model findings. These results establish the
 tested routes and their current limits; they do not authorize recurring scanning.
+
+## Discovery and limit audit — 2026-11-15
+
+The user requested an investigation after the twenty-per-source attempt fell short.
+This audit used the retained search/detail captures, the pre-run database backup,
+plan outcomes and the current code. It made no source requests, AI calls or changes
+to the live database. Private reproducible evidence is in
+`data/live/source-audit-2026-11-15/replay.ts` and its `report.json`.
+
+### Why sources returned zero or few new records
+
+| Source | Evidence and cause | Correction or remaining work |
+| --- | --- | --- |
+| Apartments.com | The extension found 41 profile links. Backend discovery also accepted 16 `/building/.../.../` directory links because its URL pattern matched a suffix rather than the whole path. All four attempted details were directory pages, each lacking the unit-profile description/header expected by the extractor. Each directory linked to an actual profile. The search page had 23 unseen profiles that survived the search-card filters, plus pagination; these are candidates, not confirmed qualifying apartments. | Anchor profile routing and reject invalid legacy queue entries during fresh discovery. Preserve the stricter unit extractor. Offline replay and a worker regression verify the fix. |
+| EasyRent | The saved page contained 24 distinct listing links: 15 explicitly rented cards, five cards with advertised availability and four additional links with unknown availability. Discovery ignored the rented labels, wasting all four attempted detail visits. Against the pre-run criteria and saved postings, the corrected queue retains three unseen candidates, whose current availability is unknown. | Read the scoped `Available:` field and remove rented candidates from both fresh discovery and the old backlog before spending detail visits. A word such as “rented” in the title alone is not a rejection. |
+| Sunstar | Its downtown page contained 165 links: 159 rented, four within the search-card filters already saved, and two over budget. No unseen qualifying candidate remained in that scope. | Zero was a valid incremental result, not evidence of broken access. Other area portfolio links exist but are outside the implemented downtown route. Broader coverage needs adapter work and validation. |
+| Hollyburn | The run made no new source request. The preceding test had already consumed the 100-image daily allowance, partly on one 153-image representative gallery. | This was a local capacity stop. The furnished route has worked; unfurnished inventory remains unvalidated. Do not report zero as an access failure. |
+| Facebook / REW | The local 500-request cap aborted their browser sessions after two and one new candidates respectively. The counter includes scripts, styles and XHR/fetch calls, not just visited listings. | This was a local guard, not a site-issued block. Review request accounting and the fixed threshold before another larger run. |
+| Craigslist / VADA / Zillow / Kijiji | These returned new listings; page or media allowances prevented reaching twenty. Craigslist reached the rolling daily page limit; the others reached media limits. | Scale approved session allowances to the requested work and distinguish intake from completed photo review. |
+| Austeville | Eight candidates were retained. Earlier response-size and attribution-request errors interrupted passes; saved-photo continuations subsequently completed the outstanding assessments. The helper's three-pass bound then ended intake. | The attribution request was fixed and smaller batches addressed response size. The three-pass helper is historical run orchestration, not a source coverage rule. |
+| Zumper | Twenty distinct floor-plan offers were retained and reviewed. | Report these separately from confirmed physical apartments; they do not establish twenty independently identified units. |
+
+Earlier tests established working samples and routes. The November 15 final
+validation already recorded partial results for Apartments.com, EasyRent, Sunstar,
+REW and Hollyburn. Coordinator integration and a successful small trial did not
+establish complete incremental discovery or capacity for twenty apartments per
+source. The Sources view now includes the latest recorded scan attempt and future
+discovery breakdowns, alongside historical test evidence. Discovery counts refer to
+the last page; the queue count includes older pages and is not a count of scored homes.
+
+### Which limits are necessary
+
+The fixed quantities below are application defaults, not measured website allowances.
+The weekly usage reading moved from 70% to 72% during the completed scan. Neither
+the user's 90% ceiling nor the supervisor's earlier 88% stop ended that scan.
+
+| Current rule | Effect | Assessment |
+| --- | --- | --- |
+| Five top-level pages per source per pass, enforced in both source allocation and browser transport | Usually one discovery plus four details. Apartments.com may need separate facts and gallery jobs. | A trial-sized ceiling conflicts with a twenty-apartment request. Replace it with an explicit session allowance derived from the target and route. |
+| Fifteen page visits in a rolling 24 hours, shared with earlier tests | A new plan can immediately inherit an almost exhausted allowance. | No evidence establishes fifteen as a website-required limit. Remove this fixed trial quota from normal approved sessions; keep pacing, accounting and persisted actual access warnings. |
+| Usually 100 downloaded images per source per day; 150 for Zumper and the Apartments downloader | A single 153-image gallery cannot finish, even with credit and a larger approved photo allowance remaining. The historical helper also incorrectly assumed 100 for Apartments.com. | Replace the fixed daily image bucket with a disclosed session media allowance and full-gallery progress. Reuse unchanged images and assessments. |
+| 500 requests per source; total 500 times the selected-source count | Script-heavy browser pages exhaust it after very few listings. Normal-Chrome jobs and dedicated-browser sessions count different kinds of traffic. | This is not a consistent proxy for browsing intensity. Separate explicit scanner requests from normal page subresources. Count and diagnose both; use pacing and a transparent runaway/stall guard rather than this small shared count. |
+| Plan schema: 60 pages and 120 candidate attempts maximum | A single plan cannot accommodate 240 new records, even before failed or duplicate attempts. The UI calls attempts an “Apartment limit.” | Increase/configure session capacity, use accurate labels and preflight target feasibility before presenting approval. Target counts and maximum attempts are different quantities. |
+| Historical supervisor: three passes; skip further intake after certain zero-result or cap outcomes | A partial slice becomes a premature stopping condition, including after recoverable discovery defects. | Do not reuse these rules as evidence of exhausted inventory. Continue within the same approved aggregate session until target, explicit budget, true exhaustion, cancellation or access warning. |
+| A failed/timed-out image can trigger the same 24-hour pause used for access warnings | A transient local/network failure can suppress a whole source on the next run. | Distinguish transient transport failures, local limits and real access warnings. Keep incomplete work and bounded retries/backoff; do not clear or bypass an actual challenge. |
+
+Keep the user's credit reserve, a bounded approved session, cancellation, one active
+source/navigation at a time, navigation/media pacing, persistent sessions, cache
+reuse, and stops on actual rate limits or verification challenges. Keep response
+size and job time limits as reliability guards; batch or resume within them instead
+of letting a stalled page or malformed response consume unlimited resources.
+
+Ordinary Chrome is not exempt from server rate limits. HTTP 429 can be based on a
+session, cookie, user or IP, and can carry a `Retry-After` instruction; the fixed
+application thresholds above do not come from that standard. See
+[MDN's HTTP 429 reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429).
+Also, only Apartments.com and Zillow currently use the user's paired ordinary
+Chrome session. The other adapters use separate persistent browser profiles;
+Craigslist, Facebook and REW are visible Chrome, while the others are headless.
+
+The recommended normal-scan policy is target-led work under one visible approved
+session and a monitored credit reserve, with source pacing and reactive pauses.
+The source quotas have not been changed in this investigation. Replacing them is
+a coordinated change to schema, coordinator, transports, Chrome jobs, supervisor
+and plan UI; changing only the UI or five-page constant would leave other hidden
+limits in force. Broader discovery routes likewise remain separate from this fix.
+
+Validation: the full 240-test offline suite passed, including new discovery and
+stale-queue regressions. API tests used temporary localhost servers. TypeScript and
+the production frontend build passed. Saved evidence confirms the parsing fixes;
+it does not certify current live access. The live database and source pauses were
+not rewritten, and no new scan was started.
+
+### Approved follow-up implementation
+
+The user subsequently authorized another twenty-new-apartments-per-source attempt.
+New plans now use the session policy described in `credit-limited-scans.md`: approved
+aggregate allowances replace the old trial quotas, browser subresources are tracked
+separately, and candidate attempts are labeled accurately. Pacing and real access
+warnings still stop source work. The prior audit above describes the earlier state.
+
+Continuation phases rotate through at most five new apartments per source until
+the cumulative target, credit reserve, session allowance or accessible inventory is
+exhausted. A phase is not a new twenty-apartment authorization. Only homes added by
+this attempt can have interrupted gallery work resumed; prior user decisions and
+photo assessments are outside its scope. Cached photo continuations make no source
+requests. Private per-phase evidence and cumulative counts are retained with the run.
+
+Live continuation found a second Zumper discovery defect: individual-unit cards
+use `/listings/<id>p/...` URLs in `currentSearch.listables.listables`, while the
+earlier extractor recognized building anchors and older unit routes. Safe JSON
+parsing of that current-results list now recovers unit cards as well. Six saved
+search pages contained nineteen unit URLs, fifteen within the discovery filters;
+those candidates were recovered without another request. The corrected runner
+then fetched individual-unit details and completed photo assessment successfully.
