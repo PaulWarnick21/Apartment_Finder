@@ -2,15 +2,18 @@ import {capturePage} from './capture.js';
 import {captureZillow} from './zillow-capture.js';
 import {captureApartmentDiscovery} from './discovery.js';
 const api='http://127.0.0.1:4317/api/browser-bridge/';
-let busy=false,lastPage=0;
+let busy=false;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-async function call(path,body,token){const r=await fetch(api+path,{method:'POST',credentials:'omit',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json','X-AF-Extension-Id':chrome.runtime.id,Authorization:`Bearer ${token}`},body:JSON.stringify(body)});const value=await r.json();if(!r.ok)throw new Error(value.error??'Local app unavailable');return value;}
+async function call(path,body,token){const r=await fetch(api+path,{method:'POST',credentials:'omit',signal:AbortSignal.timeout(path==='jobs/poll'?25000:15000),headers:{'Content-Type':'application/json','X-AF-Extension-Id':chrome.runtime.id,Authorization:`Bearer ${token}`},body:JSON.stringify(body)});const value=await r.json();if(!r.ok)throw new Error(value.error??'Local app unavailable');return value;}
 async function snapshot(tabId,zillow=false){return (await chrome.scripting.executeScript({target:{tabId},func:zillow?captureZillow:capturePage}))[0].result;}
 async function collect(job,token){
  const check=async()=>{if(Date.now()>job.expires||!(await call('jobs/check',{id:job.id},token)).active)throw new Error('Scan cancelled or expired');};
  const u=new URL(job.url);if(!['https://www.apartments.com','https://www.zillow.com'].includes(u.origin)||u.username||u.password||u.hash)throw new Error('Job URL not permitted');
  const zillow=u.origin==='https://www.zillow.com';
- await sleep(Math.max(0,10000-(Date.now()-lastPage)));lastPage=Date.now();
+ const pageClock=(await chrome.storage.local.get('sourcePageClock')).sourcePageClock??{};
+ const gap=Math.max(5000,Math.min(20000,job.pageGapMs??10000));
+ await sleep(Math.max(0,gap-(Date.now()-(pageClock[u.origin]??0))));
+ await check();pageClock[u.origin]=Date.now();await chrome.storage.local.set({sourcePageClock:pageClock});
  await check();
  const progress=(await chrome.storage.local.get('galleryProgress')).galleryProgress??{};
  let saved=!zillow&&job.kind==='listing'&&!job.factsOnly?progress[job.url]:null,tab;
@@ -53,11 +56,17 @@ async function collect(job,token){
   return await retain();
  }finally{if(!retained){if(progress[job.url]?.tabId===tab.id)delete progress[job.url];await chrome.storage.local.set({galleryProgress:progress});await chrome.tabs.remove(tab.id).catch(()=>{});}}
 }
-async function tick(){if(busy)return;busy=true;let job,token;try{
+async function tick(){if(busy)return;busy=true;let token;try{
  await chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'});token=(await chrome.storage.local.get('token')).token;if(!token)return;
- ({job}=await call('jobs/poll',{},token));if(!job)return;
- try{const result=await collect(job,token);await call('jobs/result',{id:job.id,snapshot:result},token);}catch(e){await call('jobs/result',{id:job.id,error:String(e.message??e).slice(0,2000)},token);}
- }catch{/* App may be stopped. Never navigate or retry a claimed job after an error. */}finally{busy=false;}}
+ // The existing alarm wakes an idle worker. During a run, a bounded localhost
+ // long poll delivers the next approved job immediately without polling sources.
+ while(true){
+  const {job,watch}=await call('jobs/poll',{waitMs:20000},token);
+  if(!job){if(watch)continue;break;}
+  try{const result=await collect(job,token);await call('jobs/result',{id:job.id,snapshot:result},token);}
+  catch(e){await call('jobs/result',{id:job.id,error:String(e.message??e).slice(0,2000)},token);}
+ }
+ }catch{/* App may be stopped. Never replay a claimed job after an error. */}finally{busy=false;}}
 chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==='apartment-finder')void tick();});
 chrome.runtime.onInstalled.addListener(()=>{chrome.alarms.create('apartment-finder',{periodInMinutes:.5});void tick();});
 chrome.runtime.onStartup.addListener(()=>{chrome.alarms.create('apartment-finder',{periodInMinutes:.5});void tick();});

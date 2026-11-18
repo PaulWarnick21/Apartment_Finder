@@ -22,18 +22,18 @@ test('quick view keeps grade F reviewable and does not expose a provisional full
  assert.equal(quickPresentation(h),true);assert.equal(reviewLabel(h),'Quick rank F');
 });
 
-test('full score and Ready to Apply are gated on completed assessment, not user stage',()=>{
+test('full score and Serious Candidates are gated on completed assessment, not user stage',()=>{
  for(const status of ['queued','running','paused','failed','cancelled'] as const){
   const h=home({stage:'Interested',reviewMode:'full',fullReview:{status,detail:'Saved work retained',updatedAt:'2026-11-18T13:00:00Z'}});
   assert.equal(fullReviewComplete(h),false);assert.equal(quickPresentation(h),true);assert.equal(reviewLabel(h),'Quick rank F');
   assert.equal(deskCategory(h),'Scoring in Progress');assert.equal(deskCategory({...h,stage:'Not Interested'}),'Closed');
-  const ready=reviewDecisions(h).find(d=>d.stage==='Ready to Apply');assert.equal(ready?.disabled,true);
-  const html=renderToStaticMarkup(createElement(ReviewActions,{home:h,busy:false,onDecision:()=>{}}));assert.match(html,/<button disabled=""[^>]*>Ready to Apply/);assert.match(html,/>Not Interested<\/button>/);
+  const ready=reviewDecisions(h).find(d=>d.stage==='Serious Candidates');assert.equal(ready?.disabled,true);
+  const html=renderToStaticMarkup(createElement(ReviewActions,{home:h,busy:false,onDecision:()=>{}}));assert.match(html,/<button disabled=""[^>]*>Serious Candidates/);assert.match(html,/>Not Interested<\/button>/);
  }
  const done=home({stage:'Interested',reviewMode:'full',fullReview:{status:'complete',detail:'All accessible photos reviewed',updatedAt:'2026-11-18T13:00:00Z'}});
  assert.equal(fullReviewComplete(done),true);assert.equal(quickPresentation(done),false);assert.equal(reviewLabel(done),'Score 4.9 / 5');
  assert.equal(deskCategory(done),'Interested');
- assert.equal(reviewDecisions(done).find(d=>d.stage==='Ready to Apply')?.disabled,false);
+ assert.equal(reviewDecisions(done).find(d=>d.stage==='Serious Candidates')?.disabled,false);
 });
 
 test('Interested without a review stays in Scoring in Progress and offers recovery; legacy completed homes stay Interested',()=>{
@@ -59,6 +59,13 @@ test('failed review offers explicit retry while closed choices do not',()=>{
  assert.doesNotMatch(render({...h,stage:'Not Interested'}),/Retry full scoring/);
 });
 
+test('completed assessments do not repeat completion notices on Interested cards',()=>{
+ const h=home({stage:'Interested',reviewMode:'full',fullReview:{status:'complete',detail:'Full scoring complete',updatedAt:'2026-11-18T13:00:00Z'}});
+ assert.equal(renderToStaticMarkup(createElement(FullReviewStatus,{home:h})), '');
+ assert.equal(reviewLabel(h),'Score 4.9 / 5');
+ assert.equal(reviewDecisions(h).find(d=>d.stage==='Serious Candidates')?.disabled,false);
+});
+
 test('reopened quick review retains a letter even when old complete evidence is reusable',()=>{
  const h=home({fullReview:{status:'complete',detail:'Earlier assessment',updatedAt:'2026-11-16T13:00:00Z'}});
  assert.equal(quickPresentation(h),true);assert.equal(reviewLabel(h),'Quick rank F');
@@ -69,7 +76,7 @@ test('reopened quick review retains a letter even when old complete evidence is 
 test('Unreviewed sort follows quick rank even when numeric full scores disagree',()=>{
  const best=home({id:1,quickRank:{grade:'S',rankValue:90,eligible:true,reasons:[],flags:[]},score:{...home().score,value:.1}}),last=home({id:2});
  assert.deepEqual([last,best].sort((a,b)=>compareHomes(a,b,'Unreviewed','score')).map(h=>h.id),[1,2]);
- assert.equal(reviewDecisions(home({reviewMode:undefined,quickRank:undefined,stage:'Interested'}))[0].stage,'In Progress');
+ assert.equal(reviewDecisions(home({reviewMode:undefined,quickRank:undefined,stage:'Interested'}))[0].stage,'Serious Candidates');
 });
 
 test('external listing strings render as text in the quick decision view',()=>{

@@ -1,6 +1,6 @@
 import type {Listing} from './domain';
 
-export type Furnishing = {value:boolean|null;label:string;statement:string;note:string};
+export type Furnishing = {value:boolean|null;label:string;statement:string;note:string;assumed?:boolean};
 /** Only explicit, scoped listing text establishes inclusion. Photos never do. */
 export function extractFurnishing(raw:string):Furnishing {
  let text=raw.replace(/\s+/g,' ').trim();
@@ -30,7 +30,15 @@ export function furnishingForListing(l:Pick<Listing,'title'|'description'|'evide
  // Structured yes/no is accepted only when an extractor recorded that exact field.
  const field=/^Furnished\s*:\s*(?:Yes|No)$/i.test(l.evidence.furnished??'')?l.evidence.furnished:'';
  const found=extractFurnishing(`${l.title}\n${l.description}\n${field}\n${l.evidence.furnishingStatement??''}`);
- found.note=found.value===null?'':'Based on the saved listing text; confirm included items before signing.';
+ // Silence in a saved description is a user-selected default, not a verified claim.
+ // Keep missing descriptions and explicit optional/partial/conflicting terms unresolved.
+ const description=l.description.trim();
+ const usableDescription=description.length>0&&l.description.length<50000&&!/(?:\.\.\.|…)\s*$/.test(description);
+ if(found.label==='Not confirmed'&&usableDescription){
+  found.value=false;found.assumed=true;found.label='Assumed unfurnished';
+  found.note='The saved listing description does not say furniture is included; treated as unfurnished for scoring.';
+ }
+ else found.note=found.value===null?'':'Based on the saved listing text; confirm included items before signing.';
  if(/floor.?plan|display.?suite|representative/i.test(l.conflicts.join(' ')+' '+(l.evidence.gallery??'')))found.note+=' This listing uses representative or display information; confirm the terms for the specific unit.';
  return found;
 }

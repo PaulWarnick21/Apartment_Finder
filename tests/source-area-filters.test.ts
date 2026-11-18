@@ -6,16 +6,36 @@ import {join} from 'node:path';
 import sharp from 'sharp';
 import {Store} from '../server/db.ts';
 import {criteriaSchema,listingSchema} from '../src/domain.ts';
-import {areaSearchRoute,searchAreaExclusion,applySearchArea,type SearchAreaPolicy} from '../server/search-area.ts';
+import {areaSearchRoute,searchAreaExclusion,scanAreaExclusion,applySearchArea,intakeSearchUrls,type SearchAreaPolicy} from '../server/search-area.ts';
 import {mergeDiscovery,readQueue,saveQueue} from '../server/discovery-queue.ts';
 import {createPlan,approvePlan,getPlan} from '../server/plans.ts';
-import {runRegularPlan} from '../server/regular-worker.ts';
+import {runRegularPlan,pendingHomes,refreshCandidates} from '../server/regular-worker.ts';
+import {Budget} from '../server/plans.ts';
 import {inventoryRoutes} from '../server/inventory-discovery.ts';
 import {sourceById} from '../server/sources.ts';
 const search='https://www.craigslist.org/search/city/north-vancouver-bc?cat=apa';
 const url='https://vancouver.craigslist.org/van/apa/d/example/1234567890.html';
 const policy:SearchAreaPolicy={regions:['north-vancouver'],mode:'source-filters',existingHomeIds:[],configuredAt:'2026-11-18',sourceRoutes:{craigslist:[{url:search,region:'north-vancouver'}]}};
 function setup(){const s=new Store(':memory:');s.set('reviewWorkflow',{mode:'quick-first'});s.set('criteria',criteriaSchema.parse({requireLaundry:false,quickIntake:{minRent:1000,maxRent:3500,minPhotos:0,allowedBeds:[1,2]}}));s.set('searchAreaPolicy',policy);return s;}
+
+test('downtown-only scans exclude disabled routes, queued candidates, pending galleries and saved-home refreshes',()=>{
+ const s=setup(),downtown='https://www.craigslist.org/search/downtown?cat=apa';
+ try{
+  const north=applySearchArea(s,listingSchema.parse({source:'craigslist',sourceId:'north',url,title:'North apartment',address:'123 Example St, North Vancouver',area:'North Vancouver',rent:2400,beds:1}),{searchUrl:search,searchRegion:'north-vancouver'});
+  const id=s.ingest(north).id;s.db.prepare("UPDATE homes SET stage='Interested',notes='Saved note' WHERE id=?").run(id);s.set(`pendingGallery:${id}`,{source:'craigslist'});
+  s.set('searchAreaPolicy',{...policy,regions:['downtown-vancouver'],existingHomeIds:[id],sourceRoutes:{craigslist:[...policy.sourceRoutes!.craigslist,{url:downtown,region:'downtown-vancouver'}]}});
+  assert.deepEqual(intakeSearchUrls(s,sourceById('craigslist')),[downtown]);assert.equal(areaSearchRoute(s,'craigslist',search),undefined);
+  const saved=s.home(id)!;assert.equal(searchAreaExclusion(s,saved.listing),undefined);assert.match(scanAreaExclusion(s,saved.listing)!,/Outside/);
+  assert.deepEqual(pendingHomes(s,'craigslist'),[]);
+  const plan=createPlan(s,{sources:['craigslist'],billingMode:'chatgpt',assessmentMode:'quick',maxPages:2,maxListings:2,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0,refreshActiveListings:true,maxRefreshListings:1});
+  assert.deepEqual(refreshCandidates(s,'craigslist',new Budget(s,plan.id,plan.caps)),[]);
+  saveQueue(s,'craigslist',{urls:[url],cards:{[url]:{url,searchUrl:search,searchRegion:'north-vancouver'}},next:search});
+  assert.deepEqual(readQueue(s,'craigslist').urls,[]);assert.equal(readQueue(s,'craigslist').next,null);
+  assert.equal(s.home(id)!.notes,'Saved note');assert.equal(s.home(id)!.stage,'Interested');
+  s.set('searchAreaPolicy',{...s.get<SearchAreaPolicy>('searchAreaPolicy')!,regions:['downtown-vancouver','north-vancouver']});
+  assert.ok(areaSearchRoute(s,'craigslist',search));assert.deepEqual(readQueue(s,'craigslist').urls,[url]);
+ }finally{s.close();}
+});
 test('website scope accepts pagination, rejects broad searches, and keeps old unscoped backlog out',()=>{
  const s=setup();try{
   assert.ok(areaSearchRoute(s,'craigslist',search+'&page=2'));assert.equal(areaSearchRoute(s,'craigslist',search.replace('cat=apa','cat=roo')),undefined);

@@ -8,12 +8,13 @@ export function GradeBadge({home}:{home:Home}){
 
 export function FullReviewStatus({home,busy=false,retry}:{home:Home;busy?:boolean;retry?:()=>void}){
  const job=home.fullReview;
+ if(job?.status==='complete')return null;
  if(!job)return home.reviewMode==='quick'&&home.stage==='Interested'?<div className="full-review-status" role="status"><strong>Full scoring not started</strong><p>This apartment is waiting for a full assessment.</p>{retry&&<button disabled={busy} onClick={retry}>Start full scoring</button>}</div>:null;
- return <div className={`full-review-status full-review-${job.status}`} role="status"><strong>{fullReviewLabels[job.status]}</strong>{job.detail&&<p>{job.detail}</p>}{retry&&['failed','paused','cancelled'].includes(job.status)&&home.stage==='Interested'&&<button disabled={busy} onClick={retry}>Retry full scoring</button>}</div>;
+ return <div className={`full-review-status full-review-${job.status}`} role="status"><strong>{job.waitingForFeedback?'Waiting for feedback resolution':fullReviewLabels[job.status]}</strong>{job.detail&&<p>{job.detail}</p>}{retry&&!job.waitingForFeedback&&['failed','paused','cancelled'].includes(job.status)&&home.stage==='Interested'&&<button disabled={busy} onClick={retry}>Retry full scoring</button>}</div>;
 }
 
 export function ReviewActions({home,busy,onDecision}:{home:Home;busy:boolean;onDecision:(stage:Home['stage'])=>void}){
- return <div className="interest-actions">{reviewDecisions(home).map(({stage,label,disabled})=><button key={stage} disabled={busy||disabled} className={stage==='Interested'||stage==='Ready to Apply'?'primary':''} onClick={()=>onDecision(stage)}>{label}</button>)}</div>;
+ return <div className="interest-actions">{reviewDecisions(home).map(({stage,label,disabled})=><button key={stage} disabled={busy||disabled} className={['Interested','Serious Candidates','Ready to Apply','In Progress'].includes(stage)?'primary':''} onClick={()=>onDecision(stage)}>{label}</button>)}</div>;
 }
 
 export function QuickReviewContent({home:h,busy,onDecision,onRetry}:{home:Home;busy:boolean;onDecision:(stage:Home['stage'])=>void;onRetry:()=>void}){

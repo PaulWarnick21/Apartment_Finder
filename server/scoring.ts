@@ -4,6 +4,7 @@ import {listingUnavailable} from './listing-availability.ts';
 import {sharedRoomEvidence} from './listing-rental-scope.ts';
 import {parkingAssessment} from './parking-assessment.ts';
 import {quickRank} from './quick-rank.ts';
+import {mainlandExclusion} from './mainland-location.ts';
 const clamp=(n:number)=>Math.min(5,Math.max(.1,n));
 const round=(n:number)=>Math.round(n*10)/10;
 export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
@@ -12,6 +13,7 @@ export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
   // Full scoring explains the same configured hard requirements as quick intake.
   // The grade itself never contributes to the detailed numerical score.
   if(c.quickIntake){const intake=quickRank(l,c,homeId);if(!intake.eligible)reasons.push(...intake.reasons);flags.push(...intake.flags);}
+  const mainlandFailure=mainlandExclusion(input,c.mainlandOnly);if(mainlandFailure&&!reasons.includes(mainlandFailure))reasons.push(mainlandFailure);
   if(l.offeringKind==='building')reasons.push('Building advertisement; an individual apartment offering is required');
   if(sharedRoomEvidence(l))reasons.push('Shared accommodation; a whole apartment is required');
   if(listingUnavailable(l))reasons.push('Source explicitly marks this rental unavailable');
@@ -35,6 +37,14 @@ export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
   const noNature=complete&&l.allOutlooksCovered&&!views.length&&reviewed.some(p=>p.kind==='interior'&&p.unitCertain&&p.scenery==='buildings');
   let base=c.baseScore,spread=0;
   const cost=l.rent===null?null:l.rent+(l.parking==='extra'?(l.parkingCost??0):0);
+  // The initial-move exception is narrower than the general interior trade-off.
+  // Use supported lease/furnishing, reviewed interiors and an advertised non-premium
+  // price. It never supplies missing facts or relaxes the 4.0+ nature-view gate.
+  const initialMoveException=c.initialMoveShortTermException&&l.offeringKind==='unit'
+    &&l.furnished===true&&l.shortLease===true&&l.modern===true&&l.cramped!==true
+    &&!!l.evidence.interiorAssessment&&complete&&reviewed.some(p=>p.kind==='interior'&&p.unitCertain&&!p.attributionPending)
+    &&!reviewed.some(p=>p.attributionPending)&&cost!==null&&cost>1&&cost<c.premiumRentThreshold
+    &&!l.conflicts.some(text=>/\b(?:rent|price|furnish\w*|lease|term|interior|condition|photo attribution)\b/i.test(text));
   const bedroomValue=cost===null?0:Math.max(0,Math.min(1,(c.secondBedroomZeroBonusRent-cost)/Math.max(1,c.secondBedroomZeroBonusRent-c.secondBedroomFullBonusRent)));
   const secondBedroomBonus=c.bonuses.secondBedroom*bedroomValue;
   if(l.rent!==null) base+=(c.priceAnchor-(cost??l.rent))*c.priceSlope;
@@ -56,7 +66,7 @@ export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
   else {flags.push('View Unverified');spread+=.8;}
   if(views.some(p=>(p.quality??0)>=4&&!p.attributionPending&&p.natureTypes?.includes('mountains')))add('Confirmed mountain outlook',c.mountainViewBonus);
   if(!complete) flags.push('Photo review pending');
-  if(noNature&&!interiorTradeoff)reasons.push('Confirmed absence of a qualifying nature outlook');
+  if(noNature&&!interiorTradeoff&&!initialMoveException)reasons.push('Confirmed absence of a qualifying nature outlook');
   if(c.requireLaundry && ['shared-only','none'].includes(l.laundry)&&(!c.quickIntake||!l.conflicts.some(text=>/laundry|washer/i.test(text))))reasons.push('In-unit laundry is required');
   if(c.requireLaundry && ['unknown','hookups'].includes(l.laundry))flags.push('Laundry Unsure');
   if(l.parking==='unknown' || l.parking==='extra'&&l.parkingCost===null) {flags.push('Parking Unsure');spread+=.15;}
@@ -116,26 +126,27 @@ export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
     flags.push('Representative windows face buildings; exact-unit view unverified');
     if(value>2.9){add('Poor representative views; not a promising match',Math.round((2.9-raw)*100)/100);value=2.9;low=Math.min(low,2.9);}
   }
-  if(interiorTradeoff){
+  if(interiorTradeoff||initialMoveException){
     // A second, deliberately modest valuation of the same supported facts. Keep
     // it available as views improve so a better view can never lower this score.
     // All costs, location/condition deductions and subsequent hard caps still apply.
-    const ceiling=c.interiorTradeoff.ceiling,alternative=nonViewRaw-c.interiorTradeoff.viewPenalty;
+    const ceiling=initialMoveException?3.5:c.interiorTradeoff.ceiling,alternative=nonViewRaw-c.interiorTradeoff.viewPenalty;
     limit=Math.max(limit,ceiling);
     const candidate=Math.min(ceiling,clamp(alternative));
     if(candidate>value){
-      add('Interior strengths offset weak outlook',Math.round((candidate-value)*100)/100);
+      add(initialMoveException?'Furnished short-term initial-move fit':'Interior strengths offset weak outlook',Math.round((candidate-value)*100)/100);
       value=candidate;
       low=Math.min(value,Math.max(low,Math.min(ceiling,clamp(alternative-spread))));
       high=Math.max(high,Math.min(ceiling,clamp(alternative+spread)));
       flags.push(noNature?'No qualifying nature outlook; interior trade-off':'Worth a look for interior strengths; view remains a compromise');
     }
   }
+  if(initialMoveException&&(quality===null||quality<4))flags.push('Initial-move furnished short-term exception; nature view remains a compromise');
   const cap=(ceiling:number,label:string)=>{limit=Math.min(limit,ceiling);if(value>ceiling){add(label,Math.round((ceiling-value)*100)/100);value=ceiling;}low=Math.min(low,value);high=Math.min(high,ceiling);};
   if(c.requireNiceViewForDesk){
     const niceView=views.some(p=>p.quality!>=4&&!p.attributionPending)
       &&!l.conflicts.some(text=>/\b(?:view|outlook|photo attribution)\b/i.test(text));
-    if(!niceView){
+    if(!niceView&&!initialMoveException){
       const label=quality!==null&&quality<4?'View below the nice-nature standard':'Nice actual-unit nature view not confirmed';
       cap(2.9,label);
       reasons.push(label+(c.quickIntake?'; full-score preference not met':'; review manually in Excluded'));

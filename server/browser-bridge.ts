@@ -13,7 +13,7 @@ export function extensionOrigin(origin:string|undefined,id:string){
 }
 export function listingUrl(value:string){const u=new URL(value);if(u.origin!=='https://www.apartments.com'||u.username||u.password||!/^\/[a-z0-9-]+\/[a-z0-9]{7}\/$/.test(u.pathname))throw new Error('Choose an Apartments.com listing URL');return u.origin+u.pathname;}
 const imageSchema=z.object({url:z.string().url().max(3000),alt:z.string().max(1000),width:z.number().int().min(0).max(100000),height:z.number().int().min(0).max(100000)}).strict();
-export const captureSchema=z.object({id:z.string().uuid(),url:z.string().max(3000),title:z.string().max(1000),text:z.string().max(150000),html:z.string().max(1000000),images:z.array(imageSchema).max(500),advertisedPhotos:z.number().int().min(0).max(10000).nullable(),galleryComplete:z.literal(false),warning:z.string().max(1000).nullable(),truncated:z.boolean()}).strict();
+export const captureSchema=z.object({id:z.string().uuid(),url:z.string().max(3000),title:z.string().max(1000),text:z.string().max(150000),html:z.string().max(1000000),images:z.array(imageSchema).max(500),advertisedPhotos:z.number().int().min(0).max(10000).nullable(),galleryComplete:z.literal(false),warning:z.string().max(1000).nullable(),warningEvidence:z.string().max(2000).optional(),truncated:z.boolean()}).strict();
 type Pair={id:string;tokenHash:string};
 type Probe={id:string;url:string;state:'approved'|'claimed'|'saved'|'failed';expires:number;message?:string;imageCount?:number;advertisedPhotos?:number|null};
 export class BrowserBridge {

@@ -72,7 +72,10 @@ export function rebuildLearning(store:Store,base=store.criteria){
  const postings=store.db.prepare('SELECT home_id,source,source_id FROM postings').all() as {home_id:number;source:string;source_id:string}[];
  return learningFromRows(rows,base,postings);
 }
+export function feedbackBlocker(store:Store){
+ return store.db.prepare("SELECT id,home_id,status,error FROM rating_feedback WHERE origin='app' AND status IN ('pending','reviewing','failed','needs-attention') AND id IN (SELECT MAX(id) FROM rating_feedback WHERE status!='reverted' GROUP BY home_id) ORDER BY id LIMIT 1").get() as {id:number;home_id:number;status:string;error:string}|undefined;
+}
 export function assertFeedbackReady(store:Store){
- const row=store.db.prepare("SELECT home_id,status FROM rating_feedback WHERE origin='app' AND status IN ('pending','reviewing','failed','needs-attention') AND id IN (SELECT MAX(id) FROM rating_feedback WHERE status!='reverted' GROUP BY home_id) ORDER BY id LIMIT 1").get() as {home_id:number;status:string}|undefined;
+ const row=feedbackBlocker(store);
  if(row)throw new Error(`Finish the feedback review for apartment #${row.home_id} before scanning so new apartments use your latest preferences (${row.status}).`);
 }

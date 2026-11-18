@@ -3,7 +3,15 @@
 export function capturePage(){
  if(location.origin!=='https://www.apartments.com')throw new Error('Open the Apartments.com listing first');
  const visibleText=document.body?.innerText??'';
- const warning=/access denied|unusual traffic|verify (?:that )?you are human|too many requests|temporarily unavailable|press (?:and|&) hold/i.test(visibleText)?'The page shows an access warning. Stop and check it manually.':null;
+ // Availability text inside a listing is not evidence that website access failed.
+ // Explicit security/rate-limit challenges still stop, including overlays on a listing.
+ const challenge=visibleText.match(/access denied|unusual traffic|verify (?:that )?you are human|too many requests|press (?:and|&) hold/i);
+ const outageHeading=/^(?:(?:the |this )?(?:site|website|service) (?:is )?)?(?:temporarily unavailable|service unavailable)[.!\s]*$/i;
+ const outage=[document.title,document.querySelector('h1')?.textContent??'',visibleText.trim().split('\n')[0]??''].find(t=>outageHeading.test(t.trim()));
+ const matched=challenge?.[0]??outage;
+ const warning=matched?`Apartments.com access warning: ${matched.trim().slice(0,160)}. Page evidence retained for diagnosis.`:null;
+ const warningAt=challenge?.index??(outage?Math.max(0,visibleText.indexOf(outage)):0);
+ const warningEvidence=warning?visibleText.slice(Math.max(0,warningAt-200),warningAt+1800):undefined;
  const root=document.querySelector('#profileApp')??document.querySelector('main')??document.body;
  const clone=root.cloneNode(true);
  // A listing's own header contains its price and core facts: preserve it.
@@ -34,5 +42,5 @@ export function capturePage(){
  const gallery=document.querySelector('#carouselPillPhotosLink')?.textContent??'';
  const count=gallery.match(/(\d+)\s*photos?/i);
  const text=clone.textContent??'',html=clone.outerHTML;
- return {url:location.origin+location.pathname,title:document.title.slice(0,1000),text:text.slice(0,150000),html:html.slice(0,1000000),images:[...imageMap.values()].slice(0,500),advertisedPhotos:count?Number(count[1]):null,galleryComplete:false,warning,truncated:text.length>150000||html.length>1000000||imageMap.size>500};
+ return {url:location.origin+location.pathname,title:document.title.slice(0,1000),text:text.slice(0,150000),html:html.slice(0,1000000),images:[...imageMap.values()].slice(0,500),advertisedPhotos:count?Number(count[1]):null,galleryComplete:false,warning,...(warningEvidence?{warningEvidence}:{}),truncated:text.length>150000||html.length>1000000||imageMap.size>500};
 }

@@ -9,6 +9,7 @@ import {deskCategory} from '../src/desk-category.ts';
 import {releaseScan} from '../server/scan-concurrency.ts';
 
 const usage=(usedPercent=4)=>({ordinaryUsageAllowed:true,accountId:'fixture-account',rateLimits:{primary:{usedPercent,windowDurationMins:10080,resetsAt:2000000000},secondary:null,spendControlReached:false},rateLimitsByLimitId:null});
+function feedbackBlock(store:Store,homeId:number){const h=store.home(homeId)!;return Number(store.db.prepare("INSERT INTO rating_feedback(request_id,home_id,at,user_score,reason,listing_json,score_json,criteria_json,status,error) VALUES (?,?,?,?,?,?,?,?,?,?)").run('feedback-fixture',homeId,new Date().toISOString(),3.5,'Prefer furnished short leases',JSON.stringify(h.listing),JSON.stringify(h.score),JSON.stringify(store.criteria),'reviewing','').lastInsertRowid);}
 function setup(){
  const store=new Store(':memory:');store.set('reviewWorkflow',{mode:'quick-first'});store.set('criteria',criteriaSchema.parse({requireNiceViewForDesk:true,quickIntake:{minRent:1000,maxRent:3500,minPhotos:2,allowedBeds:[1,2]}}));
  store.set('fullReviewPolicy',{accountId:'fixture-account',profileId:'fixture-profile',stopAt:95,maxPages:24,maxPhotos:240,maxAiCalls:120});
@@ -29,11 +30,11 @@ test('Interested queues one bounded job in Scoring in Progress, then completed l
   await f.service.tick();assert.equal(f.starts(),1);const h=f.store.home(f.id)!;assert.equal(h.fullReview!.status,'running');
   assert.equal(deskCategory(h),'Scoring in Progress');assert.equal(h.categoryEnteredAt,queued.categoryEnteredAt);
   const plan=getPlan(f.store,h.fullReview!.planId!);assert.deepEqual(plan.caps.fullReviewHomeIds,[f.id]);assert.equal(plan.caps.maxAiCalls,120);assert.equal(plan.caps.billingMode,'chatgpt');assert.equal(plan.caps.maxReservedUsd,0);
-  assert.throws(()=>f.change('Ready to Apply'),/Wait for the full assessment/);
-  assert.throws(()=>f.change('In Progress'),/mark Ready to Apply first/);
+  assert.throws(()=>f.change('Serious Candidates'),/Wait for the full assessment/);
+  assert.throws(()=>f.change('In Progress'),/without skipping/);
   f.finish(true);await f.service.tick();assert.equal(f.store.home(f.id)!.fullReview!.status,'complete');assert.equal(f.store.home(f.id)!.reviewMode,'full');assert.equal(deskCategory(f.store.home(f.id)!),'Interested');assert.equal(f.research(),1);
   assert.equal(f.store.db.prepare('SELECT category FROM desk_membership WHERE home_id=?').get(f.id)!.category,'Interested');
-  await f.service.tick();assert.equal(f.starts(),1);assert.equal(f.research(),1);assert.equal(f.store.home(f.id)!.notes,'Updated note');f.change('Ready to Apply');assert.equal(deskCategory(f.store.home(f.id)!),'Ready to Apply');
+  await f.service.tick();assert.equal(f.starts(),1);assert.equal(f.research(),1);assert.equal(f.store.home(f.id)!.notes,'Updated note');f.change('Serious Candidates');assert.equal(deskCategory(f.store.home(f.id)!),'Serious Candidates');f.change('Ready to Apply');assert.equal(deskCategory(f.store.home(f.id)!),'Ready to Apply');
  }finally{await f.service.close();f.store.close();}
 });
 
@@ -56,4 +57,31 @@ test('usage must be ordinary included usage on the bound account and below every
  assert.throws(()=>validateAccountUsage({...usage(),ordinaryUsageAllowed:null},'fixture-account',95),/unavailable/);
  assert.throws(()=>validateAccountUsage({...usage(),rateLimits:{primary:null,secondary:null}},'fixture-account',95),/Weekly/);
  assert.throws(()=>validateAccountUsage({...usage(),rateLimits:{...usage().rateLimits,secondary:{usedPercent:100,windowDurationMins:300,resetsAt:null}}},'fixture-account',95),/exhausted/);
+});
+
+test('feedback waits remain monitored and automatically resume once resolved, without repeated plans',async()=>{
+ const f=setup();try{
+  const feedbackId=feedbackBlock(f.store,f.id);f.change('Interested');await f.service.tick();
+  assert.equal(f.starts(),0);assert.equal(f.store.home(f.id)!.fullReview!.waitingForFeedback,feedbackId);
+  assert.equal(deskCategory(f.store.home(f.id)!),'Scoring in Progress');
+  f.store.db.prepare("UPDATE rating_feedback SET status='needs-attention',error='Choose the preference priority' WHERE id=?").run(feedbackId);await f.service.tick();
+  assert.match(f.store.home(f.id)!.fullReview!.detail,/Choose the preference priority/);assert.equal(f.starts(),0);
+  assert.equal(f.store.db.prepare('SELECT count(*) n FROM plans').get()!.n,0);
+  f.store.db.prepare("UPDATE rating_feedback SET status='applied',error='' WHERE id=?").run(feedbackId);await f.service.tick();
+  assert.equal(f.starts(),1);assert.equal(f.store.home(f.id)!.fullReview!.status,'running');assert.equal(f.store.home(f.id)!.fullReview!.waitingForFeedback,undefined);
+  await f.service.tick();assert.equal(f.starts(),1);
+ }finally{await f.service.close();f.store.close();}
+});
+
+test('closing an apartment cancels its feedback wait; resolving feedback never revives it',async()=>{
+ const f=setup();try{const feedbackId=feedbackBlock(f.store,f.id);f.change('Interested');await f.service.tick();f.change('Not Interested');f.store.db.prepare("UPDATE rating_feedback SET status='applied' WHERE id=?").run(feedbackId);await f.service.tick();assert.equal(f.starts(),0);assert.equal(f.store.home(f.id)!.stage,'Not Interested');}finally{await f.service.close();f.store.close();}
+});
+
+test('startup and an already spent partial assessment do not gain a fresh scan allowance from feedback resolution',async()=>{
+ const f=setup();try{
+  const feedbackId=feedbackBlock(f.store,f.id);f.change('Interested');await f.service.tick();
+  const restarted=new FullReviewService(f.store,'.',{hasActive:false,start(){assert.fail('Startup must remain offline');}});
+  try{f.store.db.prepare("UPDATE rating_feedback SET status='applied' WHERE id=?").run(feedbackId);await restarted.tick();assert.equal(f.store.home(f.id)!.fullReview!.waitingForFeedback,undefined);assert.equal(f.store.home(f.id)!.fullReview!.status,'paused');}finally{await restarted.close();}
+  f.service.retry(f.id,f.store.home(f.id)!.revision);await f.service.tick();assert.equal(f.starts(),1);f.finish(false);await f.service.tick();await f.service.tick();assert.equal(f.starts(),1);assert.equal(f.store.home(f.id)!.fullReview!.status,'paused');
+ }finally{await f.service.close();f.store.close();}
 });

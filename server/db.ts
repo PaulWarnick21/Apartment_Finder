@@ -1,4 +1,6 @@
 import {categoryEntry} from './desk-membership.ts';
+import {migrateSeriousCandidates} from './stage-migration.ts';
+import {initializeDuplicateIndex} from './automatic-duplicates.ts';
 import {DatabaseSync,backup} from 'node:sqlite';
 import {mkdirSync} from 'node:fs';
 import {dirname} from 'node:path';
@@ -53,6 +55,8 @@ export class Store {
   for(const row of rows)this.set(`preservedQuickRank:${row.id}`,legacyQuickRank(listingSchema.parse(JSON.parse(row.listing)),criteria,row.id));
   this.set('quickRankPolicyV2',{activatedAt:new Date().toISOString(),preserved:rows.length});
  });
+ migrateSeriousCandidates(this);
+ initializeDuplicateIndex(this);
  }
  close(){this.db.close();}
  get<T=unknown>(key:string):T|undefined {const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get(key) as {value:string}|undefined;return row?JSON.parse(row.value):undefined;}
@@ -66,6 +70,7 @@ export class Store {
  postingDetails(id:number){return (this.db.prepare('SELECT source,source_id,listing,captured_at FROM posting_details WHERE home_id=? ORDER BY captured_at DESC').all(this.resolveHomeId(id)) as any[]).map(r=>({source:r.source,sourceId:r.source_id,listing:listingSchema.parse(JSON.parse(r.listing)),capturedAt:r.captured_at}));}
  ingest(input:Listing,options:{preservePhotos?:boolean}={}){let l=enrichListingContext(listingSchema.parse(input));const locationKey=verifiedLocationKey(l);l=applyVerifiedLocation(l,locationKey?this.get<VerifiedLocation>(locationKey):undefined);const raw=JSON.stringify(l),fingerprint=hash(raw);return this.transaction(()=>{
    const post=this.db.prepare('SELECT * FROM postings WHERE source=? AND source_id=?').get(l.source,l.sourceId) as any;
+   if(post&&this.get(`duplicatePosting:${l.source}:${l.sourceId}`))return {id:this.resolveHomeId(post.home_id),changed:false};
    const now=new Date().toISOString();
    if(post?.fingerprint===fingerprint){this.db.prepare('INSERT INTO posting_details VALUES (?,?,?,?,?) ON CONFLICT(source,source_id) DO UPDATE SET captured_at=excluded.captured_at').run(l.source,l.sourceId,post.home_id,raw,now);return {id:this.resolveHomeId(post.home_id),changed:false};}
    let identity=unitIdentity(l);
@@ -79,7 +84,7 @@ export class Store {
      const priorManifest=this.db.prepare('SELECT listing FROM posting_details WHERE source=? AND source_id=?').get(posting.source,posting.sourceId) as {listing:string}|undefined;
      if(options.preservePhotos&&priorManifest)manifest=reconcileListing(listingSchema.parse(JSON.parse(priorManifest.listing)),l,{preservePhotos:true});
      this.db.prepare('INSERT INTO posting_details VALUES (?,?,?,?,?) ON CONFLICT(source,source_id) DO UPDATE SET home_id=excluded.home_id,listing=excluded.listing,captured_at=excluded.captured_at').run(posting.source,posting.sourceId,row.id,JSON.stringify(manifest),now);
-     const manifests=this.postingDetails(row.id).map(p=>p.listing).sort((a,b)=>Number(b.source===prev.source&&b.sourceId===prev.sourceId)-Number(a.source===prev.source&&a.sourceId===prev.sourceId));
+     const manifests=this.postingDetails(row.id).filter(p=>!this.get(`duplicatePosting:${p.source}:${p.sourceId}`)).map(p=>p.listing).sort((a,b)=>Number(b.source===prev.source&&b.sourceId===prev.sourceId)-Number(a.source===prev.source&&a.sourceId===prev.sourceId));
      const combined=manifests.slice(1).reduce((result,item)=>reconcileListing(result,item,{crossPosting:true}),manifests[0]);
      l=reconcileListing(prev,combined,{preservePhotos:options.preservePhotos});
      this.db.prepare('INSERT INTO history(home_id,at,event,before_json,after_json) VALUES (?,?,?,?,?)').run(row.id,now,'Listing updated',row.listing,JSON.stringify(l));
@@ -113,11 +118,10 @@ export class Store {
  home(id:number){id=this.resolveHomeId(id);const row=this.db.prepare('SELECT * FROM homes WHERE id=?').get(id) as any;if(!row)return undefined;const criteria=this.criteria,key=JSON.stringify(criteria),l=this.cached(row,criteria,key).listing;const peers=l.address?this.db.prepare("SELECT id,listing FROM homes WHERE lower(trim(json_extract(listing,'$.address')))=? AND id!=? AND id NOT IN (SELECT alias FROM home_aliases)").all(addressKey(l.address),id) as any[]:[];const duplicates=peers.filter(o=>{const unit=JSON.parse(o.listing).unit;return (!l.unit||!unit||l.unit===unit)&&!this.db.prepare('SELECT 1 FROM duplicate_decisions WHERE a=? AND b=?').get(Math.min(id,o.id),Math.max(id,o.id));}).map(o=>o.id);return this.materialize(row,criteria,key,duplicates,this.db.prepare('SELECT source,url FROM postings WHERE home_id=?').all(id) as Home['postings']);}
  update(id:number,revision:number,changes:{stage:string;notes:string;followUp:string;viewing:string;rescued:boolean},reopen=false){id=this.resolveHomeId(id);return this.transaction(()=>{
   const prev=this.db.prepare('SELECT * FROM homes WHERE id=?').get(id) as any;if(!prev)throw new Error('Apartment not found');if(prev.revision!==revision)throw new Error('This apartment changed. Refresh before saving.');
-  if(!(reopen&&stageGroup(prev.stage)==='Closed'&&changes.stage==='Unreviewed')&&!canTransition(prev.stage,changes.stage as Home['stage']))throw new Error('Move apartments through Unreviewed → Interested → Ready to Apply without skipping or going backwards.');
+  if(!(reopen&&stageGroup(prev.stage)==='Closed'&&changes.stage==='Unreviewed')&&!canTransition(prev.stage,changes.stage as Home['stage']))throw new Error('Move apartments through Unreviewed → Interested → Serious Candidates → Ready to Apply → In Progress without skipping or going backwards.');
   const workflow=this.get<{mode:string}>('reviewWorkflow')?.mode==='quick-first',review=this.get<Home['fullReview']>(`fullReview:${id}`),now=new Date().toISOString();
-  if(workflow&&prev.stage==='Interested'&&stageGroup(changes.stage as Home['stage'])==='In Progress')throw new Error('Complete the full assessment and mark Ready to Apply first.');
-  if(changes.stage==='Ready to Apply'&&review?.status!=='complete')throw new Error('Wait for the full assessment before marking Ready to Apply.');
-  if(['Interested','Ready to Apply'].includes(changes.stage)&&prev.stage!==changes.stage){
+  if(['Serious Candidates','Ready to Apply'].includes(changes.stage)&&prev.stage!==changes.stage&&(workflow||review)&&review?.status!=='complete')throw new Error(`Wait for the full assessment before marking ${changes.stage}.`);
+  if(['Interested','Serious Candidates','Ready to Apply'].includes(changes.stage)&&prev.stage!==changes.stage){
    const listing={...listingSchema.parse(JSON.parse(prev.listing)),homeId:id},failure=searchAreaExclusion(this,listing,true)??bedroomIntakeExclusion(listing,this.criteria,id)??photoCollectionExclusion(listing);if(failure)throw new Error(failure);
   }
   if(workflow&&changes.stage==='Interested'&&prev.stage!==changes.stage){
@@ -133,19 +137,20 @@ export class Store {
  reopen(id:number,revision:number){const h=this.home(id);if(!h||stageGroup(h.stage)!=='Closed')throw new Error('Only closed apartments can be reopened');return this.update(id,revision,{stage:'Unreviewed',notes:h.notes,followUp:h.followUp,viewing:h.viewing,rescued:h.rescued},true);}
  undo(id:number){const row=this.db.prepare("SELECT * FROM history WHERE home_id=? AND event='Decision saved' ORDER BY id DESC LIMIT 1").get(id) as any;if(!row)throw new Error('No decision to undo');const before=JSON.parse(row.before_json),current=this.home(id)!;this.update(id,current.revision,before);this.db.prepare("UPDATE history SET event='Decision undone' WHERE id=? OR id=(SELECT max(id) FROM history WHERE home_id=?)").run(row.id,id);}
  mergeHistory(id:number){return this.db.prepare('SELECT id,at,keep_id,duplicate_id,split FROM home_merges WHERE keep_id=? OR duplicate_id=? ORDER BY id DESC').all(id,id);}
- mergeHomes(keepId:number,duplicateId:number,revisions?:{keep:number;duplicate:number}){
+ mergeHomes(keepId:number,duplicateId:number,revisions?:{keep:number;duplicate:number},options:{preserveCanonical?:boolean}={}){
   return this.transaction(()=>{
    if(keepId===duplicateId||this.resolveHomeId(keepId)!==keepId||this.resolveHomeId(duplicateId)!==duplicateId)throw new Error('Choose two separate apartments');
    const keep=this.db.prepare('SELECT * FROM homes WHERE id=?').get(keepId) as any,duplicate=this.db.prepare('SELECT * FROM homes WHERE id=?').get(duplicateId) as any;
    if(!keep||!duplicate)throw new Error('Apartment not found');
    if(revisions&&(keep.revision!==revisions.keep||duplicate.revision!==revisions.duplicate))throw new Error('Apartment changed; refresh before merging');
-   if(duplicate.stage!=='Unreviewed'&&duplicate.stage!==keep.stage)throw new Error('Different saved stages need reconciliation before merging; no decisions were changed');
+   if(!options.preserveCanonical&&duplicate.stage!=='Unreviewed'&&duplicate.stage!==keep.stage)throw new Error('Different saved stages need reconciliation before merging; no decisions were changed');
    for(const key of ['follow_up','viewing'])if(keep[key]&&duplicate[key]&&keep[key]!==duplicate[key])throw new Error('Different saved dates need reconciliation before merging');
    const ratings=this.db.prepare('SELECT id,home_id FROM rating_feedback WHERE home_id IN (?,?)').all(keepId,duplicateId);
-   const snapshot={keep,duplicate,postings:this.db.prepare('SELECT * FROM postings WHERE home_id=?').all(duplicateId),details:this.db.prepare('SELECT * FROM posting_details WHERE home_id=?').all(duplicateId),aliases:this.aliases(duplicateId),ratings,ratingMax:(this.db.prepare('SELECT coalesce(max(id),0) AS n FROM rating_feedback').get() as any).n};
-   const merged=reconcileListing(listingSchema.parse(JSON.parse(keep.listing)),listingSchema.parse(JSON.parse(duplicate.listing)),{crossPosting:true});
+   const duplicatePostingMarkers=(this.db.prepare('SELECT source,source_id FROM postings WHERE home_id=?').all(duplicateId) as {source:string;source_id:string}[]).map(p=>({key:`duplicatePosting:${p.source}:${p.source_id}`,value:this.get(`duplicatePosting:${p.source}:${p.source_id}`)}));
+   const snapshot={keep,duplicate,duplicatePostingMarkers,postings:this.db.prepare('SELECT * FROM postings WHERE home_id=?').all(duplicateId),details:this.db.prepare('SELECT * FROM posting_details WHERE home_id=?').all(duplicateId),aliases:this.aliases(duplicateId),ratings,ratingMax:(this.db.prepare('SELECT coalesce(max(id),0) AS n FROM rating_feedback').get() as any).n};
+   const merged=options.preserveCanonical?JSON.parse(keep.listing):reconcileListing(listingSchema.parse(JSON.parse(keep.listing)),listingSchema.parse(JSON.parse(duplicate.listing)),{crossPosting:true});
    const notes=[keep.notes,duplicate.notes&&duplicate.notes!==keep.notes?`[Apartment #${duplicateId}]\n${duplicate.notes}`:''].filter(Boolean).join('\n\n');
-   this.db.prepare('UPDATE homes SET listing=?,notes=?,follow_up=?,viewing=?,rescued=?,revision=revision+1 WHERE id=?').run(JSON.stringify(merged),notes,keep.follow_up||duplicate.follow_up,keep.viewing||duplicate.viewing,Number(!!keep.rescued||!!duplicate.rescued),keepId);
+   this.db.prepare('UPDATE homes SET listing=?,notes=?,follow_up=?,viewing=?,rescued=?,revision=revision+1 WHERE id=?').run(JSON.stringify(merged),notes,options.preserveCanonical?keep.follow_up:keep.follow_up||duplicate.follow_up,options.preserveCanonical?keep.viewing:keep.viewing||duplicate.viewing,options.preserveCanonical?keep.rescued:Number(!!keep.rescued||!!duplicate.rescued),keepId);
    for(const table of ['postings','posting_details','rating_feedback'])this.db.prepare(`UPDATE ${table} SET home_id=? WHERE home_id=?`).run(keepId,duplicateId);
    this.db.prepare('UPDATE home_aliases SET canonical=? WHERE canonical=?').run(keepId,duplicateId);
    this.db.prepare('INSERT INTO home_aliases VALUES (?,?)').run(duplicateId,keepId);
@@ -170,9 +175,13 @@ export class Store {
   const before=snapshot.keep;this.db.prepare('UPDATE homes SET listing=?,notes=?,follow_up=?,viewing=?,rescued=?,revision=revision+1 WHERE id=?').run(before.listing,before.notes,before.follow_up,before.viewing,before.rescued,merge.keep_id);
   for(const p of snapshot.postings)this.db.prepare('UPDATE postings SET home_id=? WHERE source=? AND source_id=?').run(merge.duplicate_id,p.source,p.source_id);
   for(const p of snapshot.details)this.db.prepare('UPDATE posting_details SET home_id=? WHERE source=? AND source_id=?').run(merge.duplicate_id,p.source,p.source_id);
+  for(const p of snapshot.postings)if(this.get<{mergeId:number}>(`duplicatePosting:${p.source}:${p.source_id}`)?.mergeId===mergeId)this.db.prepare('DELETE FROM meta WHERE key=?').run(`duplicatePosting:${p.source}:${p.source_id}`);
+  for(const marker of snapshot.duplicatePostingMarkers??[])if(marker.value!==undefined)this.set(marker.key,marker.value);
   for(const r of snapshot.ratings)this.db.prepare('UPDATE rating_feedback SET home_id=? WHERE id=?').run(r.home_id,r.id);
   this.db.prepare('DELETE FROM home_aliases WHERE alias=?').run(merge.duplicate_id);for(const alias of snapshot.aliases)this.db.prepare('UPDATE home_aliases SET canonical=? WHERE alias=?').run(merge.duplicate_id,alias);
-  this.db.prepare('UPDATE home_merges SET split=1 WHERE id=?').run(mergeId);this.event(`Split duplicate merge ${mergeId}; apartment references #${merge.keep_id} and #${merge.duplicate_id} retained.`);return {ids:[merge.keep_id,merge.duplicate_id]};
+  this.db.prepare('UPDATE home_merges SET split=1 WHERE id=?').run(mergeId);
+  this.db.prepare('INSERT OR REPLACE INTO duplicate_decisions VALUES (?,?,?)').run(Math.min(merge.keep_id,merge.duplicate_id),Math.max(merge.keep_id,merge.duplicate_id),'different');
+  this.event(`Split duplicate merge ${mergeId}; apartment references #${merge.keep_id} and #${merge.duplicate_id} retained.`);return {ids:[merge.keep_id,merge.duplicate_id]};
  });}
  health(){return this.db.prepare('SELECT * FROM source_health').all() as any[];}
  pause(source:string,reason:string,attention=false,until=Date.now()+86400000){this.db.prepare('INSERT INTO source_health(source,paused_until,reason,needs_attention) VALUES (?,?,?,?) ON CONFLICT(source) DO UPDATE SET paused_until=excluded.paused_until,reason=excluded.reason,needs_attention=excluded.needs_attention').run(source,new Date(until).toISOString(),reason,Number(attention));this.event(`${source} paused: ${reason}`);}

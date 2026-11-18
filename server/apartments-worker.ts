@@ -1,9 +1,9 @@
+import {collectGalleryPhotos} from './gallery-collection.ts';
+import {fetchSourcePhoto,pauseAccess} from './source-failures.ts';
 import {searchAreaExclusion,intakeSearchUrls,applySearchArea,searchRegion} from './search-area.ts';
 import {tryReserveAreaCandidate,settleAreaCandidate,areaMixBucket} from './area-mix.ts';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {storePhoto,EmptyPhotoError} from './photo-storage.ts';
-import {reusedDownload,rememberDownload} from './gallery-downloads.ts';
 import {validationAttempt,validationOutcome,validationTargetReached,ingestNewCandidate} from './new-listing-validation.ts';
 import {Store,hash} from './db.ts';
 import {Budget,getPlan} from './plans.ts';
@@ -15,26 +15,19 @@ import {sourceById,allowedUrl,type Source} from './sources.ts';
 import {discoveryCards,nextDiscovery,listingUrl} from './source-discovery.ts';
 import {readQueue,saveQueue,mergeDiscovery,removeCandidate,recordCandidateFailure,prioritizeQueue,hasCurrentQueuedWork} from './discovery-queue.ts';
 import {applyPostingDate,detailPostingDate,postingAgeRank} from './listing-age.ts';
-import {recordSourceAccess} from './traffic-policy.ts';
 import {resolveQuickLocation} from './quick-location.ts';
-import {waitForSourceAccess} from './source-pacing.ts';
 type ApartmentDependencies={resumeSourcePhase?:boolean;addressLookup?:typeof fetch;image?:(url:string,budget:Budget)=>Promise<Buffer>;review?:typeof reviewGallery;source?:Source};
 export async function downloadApartmentImage(url:string,budget:Budget){
  const store=budget.store;budget.check();store.checkSource('apartments');
  const u=new URL(url);if(u.protocol!=='https:'||!/^images\d+\.apartments\.com$/.test(u.hostname)||u.username||u.password||u.port&&u.port!=='443')throw new Error('Untrusted photo host');
- await waitForSourceAccess(budget,'apartments','image');
- budget.reserve('photos');budget.reserve('requests');recordSourceAccess(budget,sourceById('apartments'),'image');
- const response=await fetch(url,{signal:AbortSignal.timeout(20000),redirect:'error'}).catch(e=>{
-  const safeCode=(value:unknown)=>typeof value==='string'&&/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(value)?value:undefined;
-  // Retain diagnostic categories without logging signed URLs, headers or error payloads.
-  const diagnostic={at:new Date().toISOString(),host:u.hostname,photoUrlHash:hash(url),name:safeCode(e?.name),causeName:safeCode(e?.cause?.name),causeCode:safeCode(e?.cause?.code),redirectRefused:e?.cause?.message==='unexpected redirect'};
-  store.set(`photoTransportFailure:${budget.id}:apartments`,diagnostic);
-  store.pause('apartments','Photo request failed or exceeded its time limit');throw e;
+ return fetchSourcePhoto(budget,sourceById('apartments'),async()=>{
+ const response=await fetch(url,{signal:AbortSignal.timeout(20000),redirect:'error'});
+ if([404,410].includes(response.status)){await response.body?.cancel();throw new Error('Image unavailable: '+response.status);}
+ if(!response.ok){pauseAccess(budget,'apartments','Photo server returned HTTP '+response.status,response.status===403,response.headers.get('retry-after'));await response.body?.cancel();throw new Error('Photo access warning; source paused');}
+ const chunks:Uint8Array[]=[];let size=0;const reader=response.body!.getReader();
+ try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>15000000)throw new Error('Photo too large');chunks.push(value);}}finally{await reader.cancel();}
+ return Buffer.concat(chunks);
  });
- if([404,410].includes(response.status))throw new Error(`Image unavailable: ${response.status}`);
- if(!response.ok){store.pause('apartments',`Photo server returned HTTP ${response.status}`,response.status===403);throw new Error('Photo access warning; source paused');}
- const chunks:Uint8Array[]=[];let size=0;const reader=response.body!.getReader();try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>15000000)throw new Error('Photo too large');chunks.push(value);}}finally{await reader.cancel();}
- await new Promise(r=>setTimeout(r,1000));return Buffer.concat(chunks);
 }
 export async function runApartmentsSource(store:Store,budget:Budget,dataDir:string,jobs?:ChromeJobClient,deps:ApartmentDependencies={}):Promise<SourceResult>{
  const id=budget.id,plan=getPlan(store,id);let partial=false,failed=0,processed=0,areaDeferred=false,areaReason='';
@@ -94,7 +87,7 @@ export async function runApartmentsSource(store:Store,budget:Budget,dataDir:stri
     if(quickIntake(store,budget.caps))await resolveQuickLocation(store,budget,listing,home.id,deps.addressLookup);
     const areaFailure=searchAreaExclusion(store,listing,true);if(areaFailure){validationOutcome(budget,'apartments',{url:listing.url,result:areaFailure.startsWith('Location')?'area-unconfirmed':'outside-area',homeId:home.id,reason:areaFailure});if(areaFailure.startsWith('Location'))partial=true;continue;}
     if(postingAgeRank(listing.postedAt,months)&&hasCurrentQueuedWork(store)){partial=true;continue;}
-    for(const photo of listing.photos){budget.check();store.checkSource('apartments');if(photo.local||photo.status==='unavailable'||!/^https:\/\/images\d+\.apartments\.com\//.test(photo.url))continue;const cached=reusedDownload(budget,photo.url,dataDir);if(cached){Object.assign(photo,cached,{status:'downloaded'});continue;}if(!budget.remaining('photos')){partial=true;break;}try{const downloaded=await storePhoto(await(deps.image??downloadApartmentImage)(photo.url,budget),dataDir);Object.assign(photo,downloaded,{status:'downloaded'});rememberDownload(budget,photo.url,downloaded);}catch(e){if(/Daily (?:image|photo) (?:cap|limit) reached/i.test(String(e))){partial=true;break;}if(!(e instanceof EmptyPhotoError)&&!/Image unavailable: (404|410)/.test(String(e)))throw e;photo.status='unavailable';photo.note=e instanceof EmptyPhotoError?'Source returned an empty image response; retained as an explicit gallery gap.':'Source image is no longer available; the gallery gap remains recorded.';}}
+    partial=await collectGalleryPhotos(listing,budget,sourceById('apartments'),dataDir,url=>(deps.image??downloadApartmentImage)(url,budget))||partial;
     if(!quickIntake(store,budget.caps)&&listing.photos.some(p=>p.local&&(p.status!=='reviewed'||p.attributionPending))&&budget.remaining('aiCalls'))await(deps.review??reviewGallery)(listing,budget,dataDir);
    }}finally{partial=saveGalleryProgress(store,home,listing,budget,'apartments')||partial;}
    }finally{settleAreaCandidate(store,budget,areaToken,home?.id);}

@@ -23,7 +23,9 @@ test('Chrome warnings pause the source and fail the job without fallback navigat
  const {db,p,jobs,budget}=setup();try{
   approvePlan(db,p.id,'APPROVE ONE SCAN');claimPlan(db,p.id);
   const done=jobs.request(budget,url,'listing',3000,0),failed=assert.rejects(done,/Access denied/),job=jobs.poll().job!;
-  jobs.result({id:job.id,snapshot:{...page,warning:'Access denied'}});await failed;
+  jobs.result({id:job.id,snapshot:{...page,url:url+'?tracking=private',warning:'Access denied',warningEvidence:'Access denied. Reference 123.'}});await failed;
+  const warnings=db.get<Array<{url:string;planId:string;excerpt:string;html?:string}>>('chromeAccessWarnings:apartments')!;
+  assert.equal(warnings.length,1);assert.equal(warnings[0].url,url);assert.equal(warnings[0].planId,p.id);assert.equal(warnings[0].excerpt,'Access denied. Reference 123.');assert.equal(warnings[0].html,undefined);
   assert.throws(()=>db.checkSource('apartments'),/Access denied/);assert.equal(jobs.poll().job,null);
   assert.equal(allowedChromeJobUrl('https://www.apartments.com.evil.example/a'),false);
   assert.equal(allowedChromeJobUrl('https://user@www.apartments.com/a'),false);

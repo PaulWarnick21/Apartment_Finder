@@ -1,6 +1,7 @@
 import type {Listing} from '../src/domain.ts';
 import type {Store} from './db.ts';
 import {vancouverNeighbourhoodNames} from './geography.ts';
+import {mainlandExclusion,type MainlandLocationFields} from './mainland-location.ts';
 
 export type SearchRegion='downtown-vancouver'|'west-vancouver'|'north-vancouver';
 export type AreaSearchRoute={url:string;region:SearchRegion};
@@ -10,7 +11,7 @@ const normalize=(text:string)=>text.toLowerCase().replace(/[-_]/g,' ').replace(/
 const municipalities=/\b(?:north vancouver|west vancouver|port coquitlam|port moody|new westminster|vancouver|burnaby|richmond|coquitlam|surrey|delta|langley|white rock|ubc|victoria|kelowna|toronto|calgary|ottawa|edmonton)\b/gi;
 const downtown=new Set(['downtown','downtown vancouver','west end','coal harbour','coal harbor','yaletown','gastown']);
 const neighbourhoods=new Set(vancouverNeighbourhoodNames.map(normalize));
-type LocationFields={area?:string;city?:string;address?:string;evidence?:Record<string,string>};
+type LocationFields=MainlandLocationFields;
 
 export function sourceFilteredIntake(store:Store){return store.get<SearchAreaPolicy>('searchAreaPolicy')?.mode==='source-filters';}
 export function areaSearchRoutes(store:Store,source:string){const p=store.get<SearchAreaPolicy>('searchAreaPolicy');return (p?.sourceRoutes?.[source]??[]).filter(r=>p!.regions.includes(r.region));}
@@ -20,11 +21,11 @@ export function areaSearchRoute(store:Store,source:string,url:string){
   const root=new URL(route.url),path=root.pathname.replace(/\/$/,'');
   // Zillow advertises /2_p/, /3_p/, ... below the same geographic search path.
   // Do not accept another neighbourhood or an arbitrary descendant as pagination.
-  const page=source==='zillow'?'[1-9]\\d*_p':'[1-9]\\d*';
+  const page=source==='zillow'?'[1-9]\\d*_p':source==='rew'?'page/[1-9]\\d*':'[1-9]\\d*';
   const samePath=candidate.pathname.replace(/\/$/,'')===path||new RegExp('^'+path.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'/'+page+'/?$').test(candidate.pathname);
   // Zillow's searchQueryState can replace map bounds/region IDs despite an unchanged
   // pathname. Only plain source-advertised page URLs establish scope here.
-  const sameZillowQuery=source!=='zillow'||[...candidate.searchParams].every(([key,value])=>root.searchParams.get(key)===value);
+  const sameZillowQuery=!['zillow','rew'].includes(source)||[...candidate.searchParams].every(([key,value])=>root.searchParams.get(key)===value);
   return root.origin===candidate.origin&&samePath&&sameZillowQuery&&[...root.searchParams].every(([key,value])=>candidate.searchParams.get(key)===value);
  });}catch{return undefined;}
 }
@@ -57,7 +58,11 @@ export function searchRegion(fields:LocationFields):SearchRegion|'outside'|'unkn
 }
 
 export function searchAreaSummary(store:Store){const policy=store.get<SearchAreaPolicy>('searchAreaPolicy');return policy?.regions.length?policy.regions.map(region=>labels[region]).join(', '):undefined;}
+/** Saved desk decisions can be retained without granting future source visits outside
+ * the current scan scope. This applies to pending galleries and facts refreshes too. */
+export function scanAreaExclusion(store:Store,listing:Listing){return searchAreaExclusion(store,{...listing,homeId:undefined},sourceFilteredIntake(store));}
 export function searchAreaExclusion(store:Store,listing:Listing,requireKnown=false){
+ const mainlandFailure=mainlandExclusion(listing,store.criteria.mainlandOnly);if(mainlandFailure)return mainlandFailure;
  const policy=store.get<SearchAreaPolicy>('searchAreaPolicy');
  if(!policy?.regions.length||listing.homeId!==undefined&&policy.existingHomeIds.includes(listing.homeId))return undefined;
  const failure=areaFailure(policy,listing,false);if(failure)return failure;
@@ -72,7 +77,7 @@ function areaFailure(policy:SearchAreaPolicy,fields:LocationFields,requireKnown:
  if(region==='unknown')return requireKnown?'Location is not confirmed within your selected search areas; held out of the active list.':undefined;
  return region==='outside'||!policy.regions.includes(region)?'Outside your selected search areas.':undefined;
 }
-export function discoveryAreaFailure(store:Store,fields:LocationFields){const policy=store.get<SearchAreaPolicy>('searchAreaPolicy');return policy?.regions.length?areaFailure(policy,fields,false):undefined;}
+export function discoveryAreaFailure(store:Store,fields:LocationFields){const mainlandFailure=mainlandExclusion(fields,store.criteria.mainlandOnly);if(mainlandFailure)return mainlandFailure;const policy=store.get<SearchAreaPolicy>('searchAreaPolicy');return policy?.regions.length?areaFailure(policy,fields,false):undefined;}
 
 /** Broad Vancouver catalogues can still contain permitted homes; reject only clearly
  * out-of-area catalogue routes, retaining their saved progress for a later expansion. */

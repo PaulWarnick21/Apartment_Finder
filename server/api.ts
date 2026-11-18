@@ -17,7 +17,7 @@ import {providerReady} from './chatgpt-provider.ts';
 import {BrowserBridge,extensionOrigin} from './browser-bridge.ts';
 import {ChromeJobs} from './chrome-jobs.ts';
 import {LocationMaps} from './location-map.ts';
-import {recoverZillowChrome} from './chrome-recovery.ts';
+import {recoverChromeSource} from './chrome-recovery.ts';
 import {runApartmentsPlan} from './apartments-worker.ts';
 import {RatingFeedbackService,planFeedbackReviewer,type FeedbackReviewer} from './rating-feedback.ts';
 import {assertFeedbackReady,rebuildLearning} from './feedback-learning.ts';
@@ -66,7 +66,12 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
   extensionOrigin(origin,id);if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
   if(path==='/api/browser-bridge/pair')return send(200,browserBridge.pair(await body(req),origin));
   browserBridge.authenticate(id,req.headers.authorization??'',origin);
-  if(path==='/api/browser-bridge/jobs/poll')return send(200,chromeJobs.poll());
+  if(path==='/api/browser-bridge/jobs/poll'){
+   const {waitMs}=z.object({waitMs:z.number().int().min(0).max(20000).optional()}).strict().parse(await body(req));
+   const controller=new AbortController(),closed=()=>controller.abort();res.once('close',closed);
+   try{const result=await chromeJobs.waitForJob(waitMs??0,controller.signal);if(!res.destroyed)return send(200,{...result,watch:chromeJobs.watching});}
+   finally{res.removeListener('close',closed);}return;
+  }
   if(path==='/api/browser-bridge/jobs/check')return send(200,chromeJobs.check(await body(req)));
   if(path==='/api/browser-bridge/jobs/result')return send(200,chromeJobs.result(await body(req,4000000)));
   if(path==='/api/browser-bridge/claim')return send(200,browserBridge.claim(await body(req)));
@@ -86,12 +91,13 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  }
  if(path==='/api/browser/state'&&req.method==='GET')return send(200,browserBridge.state());
  if(path==='/api/area-mix'&&req.method==='PATCH')return send(200,updateAreaMixSettings(store,await body(req)));
- if(path==='/api/browser/recover-zillow'&&req.method==='POST'){
+ if((path==='/api/browser/recover-zillow'||path==='/api/browser/recover-apartments')&&req.method==='POST'){
   if(demo)throw new Error('Live access checks are disabled in demo mode');
-  z.object({confirmation:z.literal('APPROVE ONE ZILLOW RECOVERY')}).strict().parse(await body(req));
+  const source=path.endsWith('recover-apartments')?'apartments':'zillow';
+  z.object({confirmation:z.literal(source==='apartments'?'APPROVE ONE APARTMENTS RECOVERY':'APPROVE ONE ZILLOW RECOVERY')}).strict().parse(await body(req));
   if(scanProcesses.hasActive||store.db.prepare('SELECT 1 FROM scan_lock WHERE id=1').get())throw new Error('Another scan is running');
-  const plan=createPlan(store,{purpose:'access-check',sources:['zillow'],billingMode:'chatgpt',maxPages:1,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0},{accessRecovery:true});
-  approvePlan(store,plan.id,'APPROVE ONE SCAN');void recoverZillowChrome(store,plan.id,dataDir,chromeJobs).catch(e=>store.event(String(e)));return send(202,{id:plan.id});
+  const plan=createPlan(store,{purpose:'access-check',sources:[source],billingMode:'chatgpt',maxPages:1,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0,maxAddressLookups:0,stopAt:new Date(Date.now()+300000).toISOString()},{accessRecovery:true});
+  approvePlan(store,plan.id,'APPROVE ONE SCAN');void recoverChromeSource(store,plan.id,dataDir,chromeJobs).catch(e=>store.event(String(e)));return send(202,{id:plan.id});
  }
  if(path==='/api/browser/prepare'&&req.method==='POST')return send(200,browserBridge.prepare());
  if(path==='/api/browser/disconnect'&&req.method==='POST'){chromeJobs.fail('Chrome disconnected');browserBridge.disconnect();return send(200,{ok:true});}

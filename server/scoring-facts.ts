@@ -1,4 +1,5 @@
 import type {Listing,Criteria} from '../src/domain.ts';
+import {furnishingForListing} from '../src/furnishing.ts';
 export function assessedFacts(input:Listing,c:Criteria,homeId=input.homeId):Listing{
  const assessment=(homeId===undefined?undefined:c.userAssessments[`home:${homeId}`])??c.userAssessments[input.source+':'+input.sourceId];
  if(!assessment)return scoringFacts(input);
@@ -8,6 +9,17 @@ export function assessedFacts(input:Listing,c:Criteria,homeId=input.homeId):List
 /** Scoped neighbourhood names and explicit unit-floor statements, never suite-number guesses. */
 export function scoringFacts(input:Listing):Listing{
  const l={...input,evidence:{...input.evidence},conflicts:[...input.conflicts]};
+ const furnishing=furnishingForListing(l);
+ if(l.description.trim()||furnishing.label!=='Not confirmed'){
+  l.furnished=furnishing.value;
+  l.evidence.furnishingBasis=furnishing.assumed?'Assumed unfurnished: furniture inclusion is not stated in the saved description.':furnishing.statement||furnishing.label;
+ }
+ // Explicit lease statements, not the word "sublease" alone or a calendar guess.
+ const leaseText=l.lease+'\n'+l.description;
+ const short=/\bmonth[ -]to[ -]month\b|\b(?:short[ -]term|monthly)\s+(?:rental|lease|rental options)\b/i.test(leaseText);
+ const long=/\b(?:no|not|without)\s+(?:available\s+)?(?:for\s+)?(?:short[ -]term|monthly)\b|\b(?:minimum|min\.?|at least)\s+(?:one|1)\s*(?:year|yr)\b|\b(?:one|1)[ -]year\s+(?:minimum|lease required)|\b12[ -]month\s+(?:minimum|lease required)\b|\b(?:minimum|min\.?|at least)\s*12\s*months?\b/i.test(leaseText);
+ if(short&&l.shortLease!==false&&!long){l.shortLease=true;l.evidence.shortLease='Saved listing explicitly offers month-to-month, monthly or short-term rental.';}
+ else if(short&&(long||l.shortLease===false)||long&&l.shortLease===true){l.shortLease=null;if(!l.conflicts.includes('Conflicting short-term lease statements'))l.conflicts.push('Conflicting short-term lease statements');}
  // This source's unit header precedes generic building inventory and amenities.
  if(l.source==='austeville'){
   const header=l.description.split('About the building')[0];

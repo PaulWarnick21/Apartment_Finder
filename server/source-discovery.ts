@@ -44,6 +44,29 @@ export function discoveryCards(html:string,source:Source,base=source.search,now=
  return [...found.values()];
 }
 export function discoverSource(html:string,source:Source,base=source.search){return discoveryCards(html,source,base).filter(card=>card.availability!=='unavailable').map(card=>card.url);}
+
+/** An empty result area is evidence; unrelated marketing copy is not. */
+export function discoveryEmpty(html:string,source:Source,url=source.search){
+ const $=load(html);$('script,style,template,noscript,[hidden],[aria-hidden="true"]').remove();
+ if(source.id==='vada'){
+  const form=$('form#search-filters-for-rent-form'),results=$('.c-search-results__main');
+  try{if(form.length&&new URL(form.attr('action')??'',url).pathname===new URL(url).pathname&&results.find('h3').text().trim()==='More Rentals Coming Soon'&&!results.find('a[href]').toArray().some(a=>listingUrl($(a).attr('href')!,source,url)))return true;}catch{}
+ }
+ const text=$('body').text().replace(/\s+/g,' ').trim();
+ return text.split(/\s+/).length<80&&/\b(?:no (?:matching |available )?(?:rentals|listings|results|vacancies)|0 results|no properties found)\b/i.test(text);
+}
+
+/** EasyRent advertises clickable FacetWP pages without href attributes. */
+export function facetPagination(html:string,source:Source){
+ if(source.id!=='easyrent')return null;
+ const $=load(html),pager=$('.facetwp-pager').first();
+ if(!$('.facetwp-template').length||!pager.length)return null;
+ const current=Number(pager.find('.facetwp-page.active').attr('data-page'));
+ const pages=pager.find('.facetwp-page[data-page]').map((_,el)=>Number($(el).attr('data-page'))).get();
+ if(!Number.isSafeInteger(current)||current<1||pages.some(n=>!Number.isSafeInteger(n)||n<1))return null;
+ const last=Math.max(current,...pages),next=Number(pager.find('.facetwp-page.next').attr('data-page'));
+ return {current,last,next:Number.isSafeInteger(next)&&next>current?next:null,exhausted:current===last&&!pager.find('.facetwp-page.next').length};
+}
 export function nextDiscovery(html:string,source:Source,base=source.search){const $=load(html);const next=$('a[rel="next"],a[aria-label="Next page"],a[title="Next page"],a.next');const href=next.first().attr('href')??$('a[href]').filter((_,e)=>/^next(?:\s+page)?\s*[›»→]?$/i.test($(e).text().trim())).first().attr('href');if(!href)return null;try{const u=new URL(href,base);return allowedUrl(u.href,source.hosts)&&u.href!==base&&!listingUrl(u.href,source)?u.href:null;}catch{return null;}}
 /** Definite advertised failures only; absent/ranged prices and unknown places remain candidates. */
 export function discoveryFailure(card:DiscoveryCard,maxRent:number|null){if(card.availability==='unavailable')return 'Search card explicitly marks this rental unavailable: '+(card.availabilityEvidence??'unavailable');if(maxRent!==null&&card.rent!=null&&card.rent>=maxRent)return 'Advertised rent reaches or exceeds the configured ceiling';if(card.city&&/^(Calgary|Toronto|Ottawa|Edmonton|Victoria|Kelowna)$/i.test(card.city))return 'Advertised city is outside the Vancouver search region';return null;}

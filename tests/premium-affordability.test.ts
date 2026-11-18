@@ -6,6 +6,15 @@ import {learningFromRows} from '../server/feedback-learning.ts';
 const fixture=(extra:Partial<Listing>={})=>listingSchema.parse({source:'fixture',sourceId:'premium',url:'https://example.test/premium',title:'Apartment',address:'',rent:3495,beds:2,location:'downtown',floorLevel:10,parking:'included',modern:true,cramped:false,openPlan:true,gas:true,furnished:true,workspace:true,photos:[{id:'one',url:'https://example.test/photo',status:'reviewed',kind:'interior',scenery:'nature',quality:5,unitCertain:true}],expectedPhotos:1,galleryComplete:true,evidence:{interiorAssessment:'Photos one: Updated kitchen and bathroom; spacious rooms.'},...extra});
 const c=criteriaSchema.parse({priceAnchor:3500,priceSlope:.0006});
 const bonus=(l:Listing)=>scoreBase(l,c).adjustments.find(a=>a.label==='Second bedroom')?.value??0;
+test('equal-view unfurnished apartments lose value as rent rises, with a modest bonus for included furniture',()=>{
+ const comparable=(rent:number,furnished:boolean)=>fixture({rent,furnished,beds:1,workspace:false,gas:false,openPlan:false,modern:null});
+ const cheap=scoreListing(comparable(2800,false),c),expensive=scoreListing(comparable(3200,false),c);
+ assert.ok(expensive.value<cheap.value,`${expensive.value} must be below ${cheap.value}`);
+ const furnished=scoreListing(comparable(3200,true),c);
+ assert.ok(furnished.value>expensive.value);
+ assert.equal(furnished.adjustments.find(a=>a.label==='Furnished')?.value,c.bonuses.furnished);
+ assert.ok(!expensive.adjustments.some(a=>a.label==='Furnished'));
+});
 test('second-bedroom value tapers with cost and never stacks with workspace',()=>{
  assert.equal(bonus(fixture({rent:3000})),.15);assert.equal(bonus(fixture({rent:3250})),.08);assert.equal(bonus(fixture({rent:3500})),0);
  assert.equal(bonus(fixture({rent:3350,parking:'extra',parkingCost:150})),0);

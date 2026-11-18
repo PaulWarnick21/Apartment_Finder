@@ -5,6 +5,7 @@ import type {Budget} from './plans.ts';
 import {unitIdentity,compatibleUnit} from './listing-integrity.ts';
 import {listingUnavailable} from './listing-availability.ts';
 import {sharedRoomEvidence} from './listing-rental-scope.ts';
+import {rememberDuplicatePosting} from './automatic-duplicates.ts';
 type Outcome={url:string;result:'created'|'existing'|'parse-failure'|'unavailable'|'building'|'floorplan'|'room'|'outside-area'|'area-unconfirmed';homeId?:number;reason?:string};
 type SourceProgress={attempts:number;newHomeIds:number[];outcomes:Outcome[]};
 type Progress={baselineHomeIds:number[];sources:Record<string,SourceProgress>};
@@ -21,6 +22,7 @@ function existingHome(store:Store,listing:Listing){const post=store.db.prepare('
 /** New-only validation never mutates or reprocesses a known apartment, including confirmed cross-posts. */
 export function ingestNewCandidate(store:Store,budget:Budget,source:string,listing:Listing){
  const areaFailure=searchAreaExclusion(store,listing);if(areaFailure){validationOutcome(budget,source,{url:listing.url,result:'outside-area',reason:areaFailure});return null;}
+ const duplicate=rememberDuplicatePosting(store,listing);if(duplicate!==undefined){validationOutcome(budget,source,{url:listing.url,result:'existing',homeId:duplicate});return null;}
  if(!budget.caps.newListingsOnly)return store.ingest(listing);
  if(listingUnavailable(listing)){validationOutcome(budget,source,{url:listing.url,result:'unavailable',reason:'Source explicitly marks this rental unavailable'});return null;}
  if(listing.offeringKind==='building'||listing.evidence.nonRental==='true'){validationOutcome(budget,source,{url:listing.url,result:'building',reason:listing.evidence.nonRental==='true'?'Record is explicitly not an apartment rental':'Building advertisement is not a specific apartment offering'});return null;}

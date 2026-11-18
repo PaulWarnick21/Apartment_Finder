@@ -13,6 +13,31 @@ function runningBudget(store:Store){
  return new Budget(store,plan.id,plan.caps);
 }
 
+test('real browser transport records adaptive success for both pages and downloaded photos',async t=>{
+ t.mock.timers.enable({apis:['Date','setTimeout'],now:100000});
+ const store=new Store(':memory:');try{
+  const budget=runningBudget(store),session=new SourceSession(sourceById('vada'),budget,'.');
+  session.page={goto:async()=>({status:()=>200}),content:async()=>'<main>Apartment details</main>',locator:()=>({innerText:async()=>'Apartment details'})} as any;
+  session.context={request:{get:async()=>({status:()=>200,ok:()=>true,body:async()=>Buffer.from('saved-photo-bytes')})}} as any;
+  const page=session.html('https://vadapm.com/example');
+  for(let i=0;i<10;i++)await Promise.resolve();t.mock.timers.tick(4000);await page;
+  assert.equal(store.get<{successes:number}>('sourcePace:vada:page')?.successes,1);
+  await session.image('https://vadapm.com/example.jpg');
+  assert.equal(store.get<{successes:number}>('sourcePace:vada:image')?.successes,1);
+  assert.equal(store.db.prepare('SELECT count(*) n FROM requests').get()!.n,2);
+ }finally{store.close();}
+});
+
+test('browser photo warning honors Retry-After without retrying or warming adaptive pacing',async()=>{
+ const store=new Store(':memory:');try{
+  const budget=runningBudget(store),session=new SourceSession(sourceById('vada'),budget,'.');let calls=0;
+  session.context={request:{get:async()=>{calls++;return {status:()=>429,headers:()=>({'retry-after':'172800'}),ok:()=>false};}}} as any;
+  const now=Date.now();await assert.rejects(session.image('https://vadapm.com/example.jpg'),/paused/);
+  assert.equal(calls,1);assert.ok(Date.parse(store.health()[0].paused_until!)>=now+172800000);
+  assert.equal(store.get<{successes:number}>('sourcePace:vada:image')?.successes,0);
+ }finally{store.close();}
+});
+
 test('recreated source sessions retain page and image pacing while other sources proceed independently',async t=>{
  t.mock.timers.enable({apis:['Date','setTimeout'],now:100000});
  const store=new Store(':memory:');try{

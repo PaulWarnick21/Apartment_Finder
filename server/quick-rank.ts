@@ -4,6 +4,7 @@ import {quickRank as legacyQuickRank} from './quick-rank-v1.ts';
 import {correctStudioBedrooms} from '../src/bedrooms.ts';
 import {bedroomIntakeExclusion} from './bedroom-intake.ts';
 import {parkingAssessment} from './parking-assessment.ts';
+import {mainlandExclusion} from './mainland-location.ts';
 export {quickIntakeLimits} from './quick-rank-v1.ts';
 
 /** Future intake only. Arithmetic remains local; address lookup is a separate bounded step. */
@@ -11,6 +12,7 @@ export function quickRank(input:Listing,criteria:Criteria,homeId=input.homeId):Q
  input=correctStudioBedrooms(input);
  const rank=legacyQuickRank(input,criteria,homeId),l=assessedFacts(input,criteria,homeId),bedroomFailure=bedroomIntakeExclusion(input,criteria,homeId);
  if(bedroomFailure){rank.eligible=false;rank.reasons=[bedroomFailure,...rank.reasons.filter(reason=>!/Bedroom count is outside/.test(reason))];}
+ const mainlandFailure=mainlandExclusion(input,criteria.mainlandOnly);if(mainlandFailure){rank.eligible=false;rank.reasons=[mainlandFailure,...rank.reasons];}
  const flags=[...rank.flags];
  const locationVerified=l.evidence.addressLookupStatus==='verified'&&l.downtownDistance!=='unknown';
  if(!locationVerified)flags.push(l.evidence.addressLookupDetail||'Exact address location has not been verified');

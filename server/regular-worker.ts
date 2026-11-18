@@ -1,4 +1,5 @@
-import {searchAreaExclusion,intakeSearchUrls,applySearchArea,sourceFilteredIntake,areaSearchRoutes} from './search-area.ts';
+import {collectGalleryPhotos} from './gallery-collection.ts';
+import {searchAreaExclusion,scanAreaExclusion,intakeSearchUrls,applySearchArea,sourceFilteredIntake,areaSearchRoutes} from './search-area.ts';
 import {mixEnabled,areaMixBucket,preferredAreaBucket,tryReserveAreaCandidate,settleAreaCandidate,releaseAreaClaims,areaMixRevision} from './area-mix.ts';
 import {releaseScan} from './scan-concurrency.ts';
 import {mkdir,writeFile} from 'node:fs/promises';
@@ -12,15 +13,13 @@ import {Budget,claimPlan,getPlan} from './plans.ts';
 import {SourceBudget,concurrentSourceBudgets} from './source-budget.ts';
 import {SourceSession} from './transport.ts';
 import {sourceById,expandedSource,allowedUrl,type Source} from './sources.ts';
-import {discoveryCards,inventoryEndpoint,inventoryUrls,nextDiscovery} from './source-discovery.ts';
+import {discoveryCards,inventoryEndpoint,inventoryUrls,nextDiscovery,discoveryEmpty} from './source-discovery.ts';
 import {readQueue,saveQueue,mergeDiscovery,removeCandidate,recordCandidateFailure,hasOffering,hasPosting,inventoryCheckKey,type DiscoveryQueue} from './discovery-queue.ts';
 import {parseListing} from './parsers.ts';
 import {extractTrial} from './trial-extraction.ts';
 import {extractRemaining,NonRentalPropertyError} from './remaining-extraction.ts';
 import {extractZumperOfferings} from './zumper-extraction.ts';
 import {reviewGallery} from './gallery-review.ts';
-import {storePhoto,EmptyPhotoError} from './photo-storage.ts';
-import {reusedDownload,rememberDownload} from './gallery-downloads.ts';
 import {initializeNewValidation,validationAttempt,validationOutcome,validationTargetReached,ingestNewCandidate,validationSummary} from './new-listing-validation.ts';
 import type {Listing,Criteria,Home} from '../src/domain.ts';
 import type {ChromeJobClient} from './chrome-jobs.ts';
@@ -40,7 +39,7 @@ export function hardFailure(l:Listing,c:Criteria){return l.offeringKind==='build
 export function quickIntake(store:Store,caps:Caps){return caps.assessmentMode==='quick'||!caps.assessmentMode&&!caps.fullReviewHomeIds?.length&&store.get<{mode:string}>('reviewWorkflow')?.mode==='quick-first';}
 export function intakeFailure(store:Store,budget:Budget,listing:Listing){if(searchAreaExclusion(store,listing))return true;return quickIntake(store,budget.caps)||budget.caps.fullReviewHomeIds?.length?!quickRank(listing,store.criteria,listing.homeId).eligible:hardFailure(listing,store.criteria);}
 export const knownUrl=hasPosting;
-export function pendingHomes(store:Store,source:string){return store.homes().filter(h=>{const marker=store.get<{source:string;sources?:string[]}>(`pendingGallery:${h.id}`);return h.postings.some(p=>p.source===source)&&!!marker&&(marker.sources??[marker.source]).includes(source)&&!['Closed','Leased','Not Interested'].includes(h.stage);});}
+export function pendingHomes(store:Store,source:string){return store.homes().filter(h=>{const marker=store.get<{source:string;sources?:string[]}>(`pendingGallery:${h.id}`);return !scanAreaExclusion(store,h.listing)&&h.postings.some(p=>p.source===source)&&!!marker&&(marker.sources??[marker.source]).includes(source)&&!['Closed','Leased','Not Interested'].includes(h.stage);});}
 /** Quick intake resumes collection only; downloaded photographs wait for an Interested decision. */
 export function pendingCollectionHomes(store:Store,source:string){return pendingHomes(store,source).filter(h=>!searchAreaExclusion(store,h.listing)&&quickRank(h.listing,store.criteria,h.id).eligible&&(!postingForSource(store,h,source).galleryComplete||h.listing.photos.some(p=>!p.local&&p.status!=='unavailable'&&allowedUrl(p.url,sourceById(source).mediaHosts))));}
 export function postingForSource(store:Store,home:Home,source:string){return store.postingDetails(home.id).find(p=>p.source===source)?.listing??home.listing;}
@@ -60,8 +59,8 @@ export function prioritizeAreaCandidates(store:Store,source:string,budget:Budget
  queue.urls.sort((a,b)=>rank(queue.cards?.[a]??{})-rank(queue.cards?.[b]??{}));
  queue.offerings?.sort((a,b)=>rank(a)-rank(b));pending.sort((a,b)=>rank(a.listing)-rank(b.listing));return preferred;
 }
-const activeRefreshStages=new Set(['Interested','In Progress','Inquiry Sent','Viewing Booked','Applied']);
-export function refreshCandidates(store:Store,source:string,budget:Budget){if(budget.caps.newListingsOnly||!budget.caps.refreshActiveListings||!budget.caps.maxRefreshListings)return [];const used=store.get<number>(`refreshCount:${budget.id}`)??0;if(used>=budget.caps.maxRefreshListings)return [];return store.homes().filter(h=>activeRefreshStages.has(h.stage)&&h.postings.some(p=>p.source===source)).sort((a,b)=>String(store.get(`factsChecked:${a.id}:${source}`)??'').localeCompare(String(store.get(`factsChecked:${b.id}:${source}`)??''))).slice(0,budget.caps.maxRefreshListings-used);}
+const activeRefreshStages=new Set(['Interested','Serious Candidates','Ready to Apply','In Progress','Inquiry Sent','Viewing Booked','Applied']);
+export function refreshCandidates(store:Store,source:string,budget:Budget){if(budget.caps.newListingsOnly||!budget.caps.refreshActiveListings||!budget.caps.maxRefreshListings)return [];const used=store.get<number>(`refreshCount:${budget.id}`)??0;if(used>=budget.caps.maxRefreshListings)return [];return store.homes().filter(h=>!scanAreaExclusion(store,h.listing)&&activeRefreshStages.has(h.stage)&&h.postings.some(p=>p.source===source)).sort((a,b)=>String(store.get(`factsChecked:${a.id}:${source}`)??'').localeCompare(String(store.get(`factsChecked:${b.id}:${source}`)??''))).slice(0,budget.caps.maxRefreshListings-used);}
 export function reserveRefresh(store:Store,budget:Budget){budget.reserve('listings');store.set(`refreshCount:${budget.id}`,(store.get<number>(`refreshCount:${budget.id}`)??0)+1);}
 export function saveGalleryProgress(store:Store,home:Home,listing:Listing,budget:Budget,source=listing.source){
  if(budget.caps.resumeHomeIds?.includes(home.id))store.set(`galleryResumeAttempt:${budget.id}:${home.id}`,{source,at:new Date().toISOString()});
@@ -81,7 +80,7 @@ export async function runWebSource(store:Store,source:Source,budget:Budget,dataD
  };
  trimUnitDiscovery();
  const snapshot=async(url:string,html:string)=>{const dir=join(dataDir,'snapshots',budget.id);await mkdir(dir,{recursive:true});await writeFile(join(dir,hash(url)+'.html'),html.slice(0,5_000_000));};
- const discover=async(url:string,fresh:boolean)=>{const html=await session.html(url);if(!html)throw new Error('Discovery page unavailable');await snapshot(url,html);let cards=discoveryCards(html,source,url);const endpoint=inventoryEndpoint(html,source);if(endpoint&&!sourceFilteredIntake(store))cards=[...cards,...inventoryUrls(await session.resource(endpoint),source).map(url=>({url}))];if(!cards.length)throw new Error('No rental links recognized; discovery requires attention');const next=nextDiscovery(html,source,url);if(!fresh||!queue.next)queue.next=next;if(fresh)queue.freshCheckedAt=new Date().toISOString();mergeDiscovery(store,source.id,queue,cards,url);trimUnitDiscovery();};
+ const discover=async(url:string,fresh:boolean)=>{const html=await session.html(url);if(!html)throw new Error('Discovery page unavailable');await snapshot(url,html);let cards=discoveryCards(html,source,url);const endpoint=inventoryEndpoint(html,source);if(endpoint&&!sourceFilteredIntake(store))cards=[...cards,...inventoryUrls(await session.resource(endpoint),source).map(url=>({url}))];if(!cards.length&&!discoveryEmpty(html,source,url))throw new Error('No rental links recognized; discovery requires attention');const next=nextDiscovery(html,source,url);if(!fresh||!queue.next)queue.next=next;if(fresh)queue.freshCheckedAt=new Date().toISOString();mergeDiscovery(store,source.id,queue,cards,url);trimUnitDiscovery();};
  try{
   await session.start();if(budget.caps.phase!=='assessment'&&!deps.resumeSourcePhase){const searches=intakeSearchUrls(store,source);if(!searches.length)throw Error('No supported geographic search filters configured for this source');let discovered=0,lastDiscoveryGap:Error|undefined;for(const url of searches){if(budget.remaining('pages')<2)break;try{await discover(url,true);discovered++;}catch(error){if(!(error instanceof Error)||error.message!=="No rental links recognized; discovery requires attention")throw error;lastDiscoveryGap=error;store.event(source.name+': no listing links recognized at '+url+'; trying the next configured geographic route. Empty inventory is not established.');}}if(!discovered&&lastDiscoveryGap)throw lastDiscoveryGap;}
   const months=store.criteria.listingAgePriorityMonths;
@@ -120,7 +119,7 @@ export async function runWebSource(store:Store,source:Source,budget:Budget,dataD
     if(quickIntake(store,budget.caps))await resolveQuickLocation(store,budget,listing,home.id,deps.addressLookup);
     const areaFailure=searchAreaExclusion(store,listing,true);if(areaFailure){validationOutcome(budget,source.id,{url:listing.url,result:areaFailure.startsWith('Location')?'area-unconfirmed':'outside-area',homeId:home.id,reason:areaFailure});if(areaFailure.startsWith('Location'))partial=true;continue;}
     if(postingAgeRank(listing.postedAt,months)&&hasCurrentQueuedWork(store)){partial=true;continue;}
-    for(const photo of listing.photos){if(photo.local||photo.status==='unavailable'||!allowedUrl(photo.url,source.mediaHosts))continue;const cached=reusedDownload(budget,photo.url,dataDir);if(cached){Object.assign(photo,cached,{status:'downloaded'});continue;}if(!budget.remaining('photos')){partial=true;break;}try{const downloaded=await storePhoto(await session.image(photo.url),dataDir);Object.assign(photo,downloaded,{status:'downloaded'});rememberDownload(budget,photo.url,downloaded);}catch(e){if(!session.stopped&&/Daily (?:image|photo) (?:cap|limit) reached/i.test(String(e))){partial=true;break;}if(session.stopped||!(e instanceof EmptyPhotoError)&&!/Image unavailable: (404|410)/.test(String(e)))throw e;photo.status='unavailable';photo.note=e instanceof EmptyPhotoError?'Source returned an empty image response; retained as an explicit gallery gap.':'Image no longer available from the source; retained as an explicit gallery gap.';}}
+    partial=await collectGalleryPhotos(listing,budget,source,dataDir,url=>session.image(url))||partial;
     if(!quickIntake(store,budget.caps)&&listing.photos.some(p=>p.local&&(p.status!=='reviewed'||p.attributionPending))&&budget.remaining('aiCalls'))await(deps.review??reviewGallery)(listing,budget,dataDir);
    }}finally{partial=saveGalleryProgress(store,home,listing,budget,source.id)||partial;}
    }finally{settleAreaCandidate(store,budget,areaToken,home?.id);}

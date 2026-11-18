@@ -18,6 +18,8 @@ sources.find(s=>s.id==='facebook')!.mediaHosts.push('*.fbcdn.net');
 // not expand allowed listing or photo hosts, or permit bypassing access challenges.
 sources.find(s=>s.id==='kijiji')!.assetHosts=['webapp-static.ca-kijiji-production.classifiedscloud.io'];
 sources.find(s=>s.id==='hollyburn')!.assetHosts=['cdnjs.cloudflare.com','maps.googleapis.com','maps.gstatic.com'];
+// The saved vacancies page includes Google Maps before its dynamic property-search app.
+sources.find(s=>s.id==='austeville')!.assetHosts=['maps.googleapis.com','maps.gstatic.com'];
 // These limitations are explicit. Broader routes are not silently enabled or claimed as tested.
 Object.assign(sources.find(s=>s.id==='apartments')!,{coverageScope:'Vancouver condo search; broader apartment categories require validation.',unvalidatedExpansion:['Vancouver apartment buildings and non-condo rentals','Exceptional nearby municipalities']});
 Object.assign(sources.find(s=>s.id==='hollyburn')!,{coverageScope:'Furnished inventory; advertised cities outside Metro Vancouver are filtered.',unvalidatedExpansion:['Vancouver unfurnished unit inventory']});

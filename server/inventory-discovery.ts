@@ -1,4 +1,4 @@
-import {searchRouteAllowed,intakeSearchUrls,sourceFilteredIntake} from './search-area.ts';
+import {searchRouteAllowed,intakeSearchUrls,sourceFilteredIntake,areaSearchRoute} from './search-area.ts';
 import {load} from 'cheerio';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -6,7 +6,7 @@ import {hash,type Store} from './db.ts';
 import {Budget} from './plans.ts';
 import {SourceSession} from './transport.ts';
 import {allowedUrl,expandedSource,type Source} from './sources.ts';
-import {discoveryCards,listingUrl,nextDiscovery,inventoryEndpoint,inventoryUrls,discoveryEnd} from './source-discovery.ts';
+import {discoveryCards,listingUrl,nextDiscovery,inventoryEndpoint,inventoryUrls,discoveryEnd,discoveryEmpty,facetPagination} from './source-discovery.ts';
 import {mergeDiscovery,readQueue} from './discovery-queue.ts';
 import type {ChromeJobClient} from './chrome-jobs.ts';
 import type {ScanDependencies,SourceResult} from './regular-worker.ts';
@@ -59,6 +59,7 @@ export async function runInventorySource(store:Store,source:Source,budget:Budget
    const refreshing=!!route.refreshNeeded,priorNext=route.next,url=refreshing?route.url:route.next!;
    if(!refreshing&&!route.dynamicPending&&route.visited.includes(url)){route.status='unverified';route.next=null;route.detail='Pagination repeated a visited page; coverage needs attention';save();continue;}
    try{
+    if(sourceFilteredIntake(store)&&!areaSearchRoute(store,source.id,url))throw Error('Geographically filtered source search required; no request made');
     const pagesBefore=budget.remaining('pages');
     const capture=chrome?await jobs!.request(budget,url,'discovery',store.criteria.maxRent,0):undefined;
     if(capture?.truncated)throw new Error('Inventory capture truncated');
@@ -67,10 +68,7 @@ export async function runInventorySource(store:Store,source:Source,budget:Budget
     let cards=discoveryCards(html,routeSource,url);
     for(const link of capture?.links??[]){const normalized=listingUrl(link,routeSource,url);if(normalized&&!cards.some(c=>c.url===normalized))cards.push({url:normalized});}
     const endpoint=inventoryEndpoint(html,source);if(endpoint&&session&&!sourceFilteredIntake(store))cards=[...cards,...inventoryUrls(await session.resource(endpoint),source).map(url=>({url}))];
-    const emptyDom=load(html);emptyDom('script,style,template,[hidden],[aria-hidden="true"]').remove();
-    const emptyText=emptyDom('body').text().replace(/\s+/g,' ').trim();
-    // Dynamic pages carry hidden "no results" templates even when extraction fails.
-    const explicitlyEmpty=!cards.length&&emptyText.split(/\s+/).length<80&&/\b(?:no (?:matching |available )?(?:rentals|listings|results|vacancies)|0 results|no properties found)\b/i.test(emptyText);
+    const explicitlyEmpty=!cards.length&&discoveryEmpty(html,source,url);
     if(!cards.length&&!explicitlyEmpty){
      const searches=directorySearchRoutes(html,source,url).filter(link=>searchRouteAllowed(store,link));
      if(searches.length){
@@ -81,7 +79,7 @@ export async function runInventorySource(store:Store,source:Source,budget:Budget
     }
     mergeDiscovery(store,source.id,queue,cards,url);
     for(const link of regionalRoutes(html,source,url).filter(link=>searchRouteAllowed(store,link)))if(!routes.some(r=>r.url===link))routes.push({url:link,next:link,visited:[],pages:0,recognized:0,status:'pending',detail:'Source-advertised regional inventory; awaiting validation'});
-    const continuation=session instanceof SourceSession&&source.id==='craigslist'&&!refreshing?await session.inventoryContinuation():null;
+    const continuation=session instanceof SourceSession&&['craigslist','easyrent'].includes(source.id)&&!refreshing?await session.inventoryContinuation():null;
     if(continuation?.html){const more=discoveryCards(continuation.html,routeSource,continuation.url);mergeDiscovery(store,source.id,queue,more,continuation.url);await writeFile(join(dir,hash(continuation.url)+'-scroll.html'),continuation.html);dynamicCapture={url:continuation.url,html:continuation.html};}
     const next=continuation?(continuation.end?null:continuation.url):capture?.next??nextDiscovery(html,source,url);
     const end=discoveryEnd(html,source,url);
@@ -89,7 +87,8 @@ export async function runInventorySource(store:Store,source:Source,budget:Budget
     if(!route.visited.includes(url))route.visited.push(url);route.pages+=pagesBefore-budget.remaining('pages');route.recognized+=cards.length;route.checkedAt=new Date().toISOString();queue.freshCheckedAt=route.checkedAt;
     route.next=refreshing&&priorNext?priorNext:next&&allowedUrl(next,source.hosts)&&!listingUrl(next,routeSource)?next:null;route.refreshNeeded=false;
     // No Next link on a dynamic search does not demonstrate full inventory coverage.
-    const finite=continuation?.end||end?.exhausted||['vada','austeville','easyrent','sunstar'].includes(source.id);
+    const facet=facetPagination(html,source);
+    const finite=continuation?.end||end?.exhausted||['vada','austeville','sunstar'].includes(source.id)||source.id==='easyrent'&&(facet?facet.exhausted:!load(html)('.facetwp-type-pager,.facetwp-pager').length);
     route.status=route.next?'partial':finite||explicitlyEmpty?'exhausted':'unverified';
     route.detail=route.next?'More search pages remain':finite||explicitlyEmpty?'Accessible catalogue traversed; freshness applies only to this check':'Visible results collected; further dynamic/paginated inventory is not verified';
     store.set(`discoveryQueue:${source.id}`,queue);save();

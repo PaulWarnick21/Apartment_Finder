@@ -5,7 +5,7 @@ export type SourceYieldStat={source:string;uniqueUnits:number;fullyReviewed:numb
 export type SourceDecision={homeId:number;interested:boolean;at:string};
 export const sourceFeedbackHalfLifeDays=14;
 export const sourceFeedbackMaxAgeDays=90;
-const interested=new Set(['Interested','Ready to Apply','In Progress','Inquiry Sent','Viewing Booked','Applied','Leased']);
+const interested=new Set(['Interested','Serious Candidates','Ready to Apply','In Progress','Inquiry Sent','Viewing Booked','Applied','Leased']);
 const closedNegative=new Set(['Not Interested','Closed']);
 export const sourceInterestOutcome=(stage:string):boolean|null=>interested.has(stage)?true:stage==='Not Interested'?false:null;
 const complete=(h:Home)=>h.listing.galleryComplete&&h.listing.photos.length>0&&(h.listing.expectedPhotos===null||h.listing.photos.length>=h.listing.expectedPhotos)&&h.listing.photos.every(p=>p.status==='reviewed'&&!p.attributionPending);

@@ -64,6 +64,6 @@ test('quick workflow preserves user decisions even when full score is low',()=>{
  assert.equal(deskCategory(home),'Interested');
  assert.equal(deskCategory({...home,stage:'Not Interested'}),'Closed');
  assert.equal(deskCategory({...home,stage:'Ready to Apply'}),'Ready to Apply');
- assert.equal(canTransition('Interested','Ready to Apply'),true);assert.equal(canTransition('Unreviewed','Ready to Apply'),false);
+ assert.equal(canTransition('Interested','Ready to Apply'),false);assert.equal(canTransition('Unreviewed','Ready to Apply'),false);
  assert.equal(canTransition('Ready to Apply','Not Interested'),true);assert.equal(stageGroup('Ready to Apply'),'Ready to Apply');
 });

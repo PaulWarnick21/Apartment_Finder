@@ -13,6 +13,8 @@ test('source feedback uses actual choice dates, not notes, scanning, or later ap
   change(store,id,'Interested','2026-11-01T00:00:00Z');
   change(store,id,'Interested','2026-11-15T00:00:00Z');
   store.ingest({...listing(1),title:'Updated advertising'});
+  change(store,id,'Serious Candidates','2026-11-16T00:00:00Z');
+  change(store,id,'Ready to Apply','2026-11-16T00:00:00Z');
   change(store,id,'In Progress','2026-11-16T00:00:00Z');
   assert.deepEqual(savedSourceDecisions(store),[{homeId:id,interested:true,at:'2026-11-01T00:00:00Z'}]);
   change(store,id,'Closed','2026-11-17T00:00:00Z');
