@@ -15,10 +15,10 @@ export function compatibleUnit(a:Listing,b:Listing){
  return true;
 }
 /** Preserve existing canonical IDs; extraction IDs are only scoped to their own ad. */
-export function unionPhotos(existing:Photo[],incoming:Photo[]){
+export function unionPhotos(existing:Photo[],incoming:Photo[],dedupeContent=true){
  const result=existing.map(p=>structuredClone(p)),used=new Set(result.map(p=>p.id));
  for(const source of incoming){
-  const prior=result.find(p=>p.url===source.url||(p.hash&&source.hash&&p.hash===source.hash));
+  const prior=result.find(p=>p.url===source.url||(dedupeContent&&p.hash&&source.hash&&p.hash===source.hash));
   if(prior){if(source.status==='reviewed'&&prior.status!=='reviewed')Object.assign(prior,source,{id:prior.id});continue;}
   const photo=structuredClone(source);
   if(used.has(photo.id))photo.id=`photo-${shortHash(photo.hash??photo.url)}`;
@@ -29,12 +29,17 @@ export function unionPhotos(existing:Photo[],incoming:Photo[]){
 }
 export function reconcileListing(previous:Listing,incoming:Listing,{preservePhotos=false,crossPosting=false}:{preservePhotos?:boolean;crossPosting?:boolean}={}){
  const next=listingSchema.parse(incoming);
+ // A posting's age belongs to that ad, not another ad for the same apartment.
+ if(crossPosting||!next.postedAt){next.postedAt=previous.postedAt;if(previous.evidence.postedAt)next.evidence.postedAt=previous.evidence.postedAt;}
  if(preservePhotos){next.photos=structuredClone(previous.photos);next.galleryComplete=previous.galleryComplete;next.expectedPhotos=previous.expectedPhotos;next.allOutlooksCovered=previous.allOutlooksCovered;
   for(const key of ['galleryReview','interiorAssessment','visualFeatures','galleryCoverage'])if(previous.evidence[key])next.evidence[key]=previous.evidence[key];
   if(previous.evidence.interiorAssessment){next.modern=previous.modern;next.cramped=previous.cramped;}
   for(const key of ['modern','cramped','workspace','gas','openPlan'] as const)if(previous.evidence[`visual:${key}`]){next[key]=previous[key];next.evidence[`visual:${key}`]=previous.evidence[`visual:${key}`];}
  }else if(crossPosting){next.photos=unionPhotos(previous.photos,next.photos);next.galleryComplete=previous.galleryComplete&&incoming.galleryComplete;next.expectedPhotos=next.galleryComplete?next.photos.length:null;next.allOutlooksCovered=false;}
- else {const oldByUrl=new Map(previous.photos.map(p=>[p.url,p]));const incomingPhotos=next.photos.map(p=>{const old=oldByUrl.get(p.url);return old&&(!p.hash||p.hash===old.hash)?{...old,id:old.id}:p;});next.photos=unionPhotos(next.galleryComplete?[]:previous.photos,incomingPhotos);if(!next.galleryComplete)next.expectedPhotos=Math.max(previous.expectedPhotos??0,next.expectedPhotos??0,next.photos.length)||null;}
+ else {const oldByUrl=new Map(previous.photos.map(p=>[p.url,p]));const incomingPhotos=next.photos.map(p=>{const old=oldByUrl.get(p.url);return old&&(!p.hash||p.hash===old.hash)?{...old,id:old.id}:p;});
+  // Preserve each source gallery URL even when two slots contain identical bytes.
+  // Their assessments can share the hash cache; dropping slots corrupts completeness counts.
+  next.photos=unionPhotos(next.galleryComplete?[]:previous.photos,incomingPhotos,false);if(!next.galleryComplete)next.expectedPhotos=Math.max(previous.expectedPhotos??0,next.expectedPhotos??0,next.photos.length)||null;}
  if(crossPosting){
   next.source=previous.source;next.sourceId=previous.sourceId;next.url=previous.url;
   next.conflicts=[...new Set([...previous.conflicts,...next.conflicts])];
@@ -50,6 +55,7 @@ export function reconcileListing(previous:Listing,incoming:Listing,{preservePhot
    }
   }
   next.evidence={...previous.evidence,...next.evidence};
+  if(previous.evidence.postedAt)next.evidence.postedAt=previous.evidence.postedAt;else delete next.evidence.postedAt;
  }
  // Address research is an application overlay, not an advertiser field. Preserve
  // it through factual source refreshes only while the advertised address matches.

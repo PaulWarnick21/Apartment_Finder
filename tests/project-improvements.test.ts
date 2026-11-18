@@ -11,7 +11,7 @@ import {recurringCosts} from '../src/listing-costs.ts';
 import {neighbourhoodAt} from '../server/geography.ts';
 import {BuildingResearchService,matchingPermits} from '../server/building-research.ts';
 import type {LocationMaps} from '../server/location-map.ts';
-const listing=()=>listingSchema.parse({source:'fixture',sourceId:'1',url:'https://example.test/unit',title:'Fixture',address:'100 Example Street, Vancouver',unit:'2',rent:2500,beds:1,description:'Private listing description',photos:[{id:'p',url:'https://example.test/image.jpg',status:'reviewed',kind:'interior',scenery:'nature',unitCertain:true,quality:4}],galleryComplete:true});
+const listing=()=>listingSchema.parse({source:'fixture',sourceId:'1',url:'https://example.test/unit',title:'Fixture',address:'100 Example Street, Vancouver',unit:'2',rent:2500,beds:1,description:'Private listing description',photos:[{id:'p',url:'https://example.test/image.jpg',local:'fixture.jpg',status:'reviewed',kind:'interior',scenery:'nature',unitCertain:true,quality:4}],galleryComplete:true});
 
 test('preference edits preserve unrelated learning and stale revisions cannot overwrite it',()=>{
  const store=new Store(':memory:');try{const before=store.criteria,revision=preferencesRevision(before),edited=criteriaSchema.parse({...before,maxRent:3500});assert.deepEqual(editedPreferences(before,edited),{maxRent:3500});
@@ -26,7 +26,7 @@ test('public connection status coalesces reads, invalidates, and isolates vault 
  const unavailable=await new PublicConnectionStatus(async()=>{throw new Error('Do not leak private failure details');}).get();assert.match(unavailable.message,/Saved apartments/);assert.ok(!unavailable.message.includes('private failure'));assert.equal(unavailable.sharing,false);
 });
 test('compact cards retain decision facts and lead image but omit full evidence',()=>{
- const store=new Store(':memory:');try{const id=store.ingest(listing()).id,home=store.home(id)!,card=cardSummary(home);assert.equal(card.summaryOnly,true);assert.equal(card.listing.description,'');assert.equal(card.listing.photos.length,1);assert.equal(card.score.value,home.score.value);assert.equal(card.revision,home.revision);assert.equal(store.home(id)!.listing.description,'Private listing description');}finally{store.close();}
+ const store=new Store(':memory:');try{const input=listing();input.photos[0].local='saved.jpg';const id=store.ingest(input).id,home=store.home(id)!,card=cardSummary(home);assert.equal(card.summaryOnly,true);assert.equal(card.listing.description,'');assert.equal(card.listing.photos.length,1);assert.equal(card.score.value,home.score.value);assert.equal(card.revision,home.revision);assert.equal(store.home(id)!.listing.description,'Private listing description');}finally{store.close();}
 });
 test('known monthly costs keep explicit fees separate from optional fees, deposits, and ceiling basis',()=>{
  const input={...listing(),parking:'extra' as const,parkingCost:100,description:'Mandatory monthly utilities fee: $80 per month. Optional storage fee $50 monthly. Required refundable deposit $500. Available December 1, 2026.'};

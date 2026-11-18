@@ -19,7 +19,7 @@ export function scoringFacts(input:Listing):Listing{
  }
  const place=`${l.area} ${l.title} ${l.address}`;
  if(l.downtownDistance==='unknown'){
-  if(/\b(North Vancouver|West Vancouver|Burnaby|Richmond|Port Moody|Coquitlam|Surrey|New Westminster|UBC|Kerrisdale|Marpole|Renfrew[ -]Collingwood)\b/i.test(place))l.downtownDistance='far';
+  if(/\b(North Vancouver|West Vancouver|Burnaby|Richmond|Port Moody|Coquitlam|Surrey|New Westminster|UBC|Kerrisdale|Marpole|Renfrew[ -]Collingwood|Riley Park|Oakridge)\b/i.test(place))l.downtownDistance='far';
   else if(/\b(Kitsilano|Mount Pleasant|Fairview|Olympic Village|South False Creek)\b/i.test(place))l.downtownDistance='nearby';
   else if(['downtown','preferred'].includes(l.location)||/\b(Coal Harbour|West End|Yaletown|Downtown Vancouver)\b/i.test(place))l.downtownDistance='downtown';
   else if(l.location==='outside')l.downtownDistance='far';
@@ -40,6 +40,12 @@ export function unitFloor(title:string,description:string){
  let buildingSection=false;
  for(const statement of (title+'\n'+description).split(/[.!?;\n]+/).map(s=>s.trim()).filter(Boolean)){
   if(/\b(?:about the building|building amenities|community amenities)\b/i.test(statement))buildingSection=true;
+  // Unit-scoped adjectival floors are common in listing headers ("6th-floor condo").
+  // Do not infer the rental floor from a roof deck, amenity or another unit.
+  const adjectival=statement.match(/\b(\d{1,3})(?:st|nd|rd|th)[ -]floor\s+(?:apartment|unit|suite|condo|studio|home)\b/i);
+  if(adjectival&&!buildingSection&&!/\b(?:other|some|select|all|guest|display|model|show)\b/i.test(statement.slice(0,adjectival.index))){
+   const value=Number(adjectival[1]);if(value<=200)findings.push({value,statement});
+  }
   const match=statement.match(/\b(?:on|located on|situated on)\s+(?:the\s+)?(ground|\d{1,3})(?:st|nd|rd|th)?\s+floor\b|\bfloor(?: level)?\s*:\s*(ground|\d{1,3})\b/i);
   if(!match)continue;
   const prefix=statement.slice(0,match.index!);
@@ -64,13 +70,13 @@ export function feedbackFeatures(l:Listing){
  const f=scoringFacts(l),inside=f.photos.filter(p=>p.status==='reviewed'&&p.kind==='interior'),nature=inside.filter(p=>p.scenery==='nature'&&p.quality!==null),verified=nature.filter(p=>p.unitCertain);
  const selected=verified.length?verified:nature;
  const view=verified.length?'verified-nature':nature.length?'representative-nature':inside.some(p=>p.scenery==='buildings')?'buildings':'unknown';
- return {rent:f.rent,beds:f.beds,view,quality:selected.length?Math.max(...selected.map(p=>p.quality!)):null,location:String(f.downtownDistance),modern:f.modern,furnished:f.furnished,workspace:f.workspace,gas:f.gas,shortLease:f.shortLease,cramped:f.cramped,floor:f.floorLevel===null?'unknown':f.floorLevel<=1?'street':f.floorLevel<5?'low':'high',parking:f.parking,parkingCost:f.parkingCost,north:f.north,openPlan:f.openPlan};
+ return {mountainConfirmed:verified.some(p=>(p.quality??0)>=4&&p.natureTypes?.includes('mountains')),rent:f.rent,beds:f.beds,view,quality:selected.length?Math.max(...selected.map(p=>p.quality!)):null,location:String(f.downtownDistance),modern:f.modern,furnished:f.furnished,workspace:f.workspace,gas:f.gas,shortLease:f.shortLease,cramped:f.cramped,floor:f.floorLevel===null?'unknown':f.floorLevel<=1?'street':f.floorLevel<5?'low':'high',parking:f.parking,parkingCost:f.parkingCost,north:f.north,openPlan:f.openPlan};
 }
 export type FeedbackFeatures=ReturnType<typeof feedbackFeatures>;
 /** Residual learning stays within the same known facts; price and view strength act through the base score. */
 export function sameCalibrationContext(a:FeedbackFeatures,b:FeedbackFeatures){
  if(a.rent===null||b.rent===null)return false;
- for(const key of ['beds','view','location','modern','furnished','workspace','gas','shortLease','cramped','floor','parking','north','openPlan'] as const)if(a[key]!==b[key])return false;
+ for(const key of ['mountainConfirmed','beds','view','location','modern','furnished','workspace','gas','shortLease','cramped','floor','parking','north','openPlan'] as const)if(a[key]!==b[key])return false;
  return a.parking!=='extra'||(a.parkingCost===null)===(b.parkingCost===null);
 }
 export function featureDistance(a:FeedbackFeatures,b:FeedbackFeatures){

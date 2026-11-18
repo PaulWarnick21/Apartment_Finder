@@ -79,7 +79,8 @@ test('better partial views and gas distinguish example 16; second bedroom remain
  const criteria=criteriaSchema.parse({priceAnchor:3500,priceSlope:.0006428571428571429});
  const l=listingSchema.parse({source:'fixture',sourceId:'16',url:'https://example.com/16',title:'Example',address:'Example',rent:3180,beds:1,location:'downtown',workspace:true,modern:true,gas:true,shortLease:false,photos:[{...photo('mountains','interior','nature'),quality:3.5}],expectedPhotos:1,galleryComplete:true});
  const one=scoreListing(l,criteria),two=scoreListing({...l,beds:2},criteria);
- assert.equal(one.value,3.8);assert.equal(two.value,4);assert.ok(!two.adjustments.some(a=>a.label==='Usable workspace'));
+ // The second bedroom still helps, but partial nature cannot cross the new 4.0 gate.
+ assert.equal(one.value,3.8);assert.equal(two.value,3.9);assert.ok(!two.adjustments.some(a=>a.label==='Usable workspace'));
  assert.ok(scoreListing({...l,gas:null},criteria).value<one.value);
  assert.ok(scoreListing({...l,rent:3500},criteria).value<=one.value);
  assert.ok(scoreListing({...l,photos:[{...l.photos[0],quality:3}]},criteria).value<one.value);

@@ -34,8 +34,8 @@ test('Hollyburn denied or optional short terms do not retain a positive generic 
  }
  const supported=extractTrial(original.replace('minimum three-month tenancy','minimum 90 day tenancy'),url,source);assert.equal(supported.shortLease,true);assert.match(supported.lease,/minimum 90 day tenancy/);
 });
-test('Hollyburn gallery follows the target masthead popup, excluding unrelated popups and cloned slides',()=>{
- const a='https://portal.hollyburn.com/img/suite-images/example-a.jpg',b='https://portal.hollyburn.com/img/suite-images/example-b.jpg',other='https://portal.hollyburn.com/img/suite-images/unrelated.jpg';
+test('Hollyburn gallery includes allowed image folders but excludes unrelated popups and cloned slides',()=>{
+ const a='https://portal.hollyburn.com/img/suite-images/example-a.jpg',b='https://www.hollyburn.com/drive/uploads/example-b.jpg',other='https://portal.hollyburn.com/img/suite-images/unrelated.jpg';
  const slider=`<section id="page-masthead"><div class="single-rental__slider"><a class="js-slider-popup-toggle" href="#target-gallery" style="background-image:url('${a}')"></a><div class="slick-cloned"><a class="js-slider-popup-toggle" href="#other-gallery" style="background-image:url('${other}')"></a></div><a class="js-slider-popup-toggle" href="#target-gallery" style="background-image:url('${b}')"></a></div></section>`;
  const popup=(id:string,urls:string[])=>`<div id="${id}">${urls.map(url=>`<div class="popup-slider__slide"><img src="${url}"></div>`).join('')}</div>`;
  const html=fixture('hollyburn-unit-studio')+popup('other-gallery',[other])+slider+popup('target-gallery',[a,b])+`<div class="slick-cloned">${popup('unused-clone',[other])}</div>`;
@@ -46,4 +46,5 @@ test('Hollyburn gallery follows the target masthead popup, excluding unrelated p
  const popupExtra=extractTrial(html.replace(popup('target-gallery',[a,b]),popup('target-gallery',[a,b,other])),url,source);assert.deepEqual(popupExtra.photos.map(p=>p.url),[a,b]);assert.equal(popupExtra.expectedPhotos,3);assert.equal(popupExtra.galleryComplete,false);
  const popupMissing=extractTrial(html.replace(popup('target-gallery',[a,b]),popup('target-gallery',[a])),url,source);assert.deepEqual(popupMissing.photos.map(p=>p.url),[a]);assert.equal(popupMissing.expectedPhotos,2);assert.equal(popupMissing.galleryComplete,false);
  const disjoint=extractTrial(html.replace(popup('target-gallery',[a,b]),popup('target-gallery',[other])),url,source);assert.deepEqual(disjoint.photos,[]);assert.equal(disjoint.expectedPhotos,2);assert.equal(disjoint.galleryComplete,false);
+ const untrusted=extractTrial(html.replaceAll(b,'https://evil.test/drive/uploads/example-b.jpg'),url,source);assert.deepEqual(untrusted.photos.map(p=>p.url),[a]);assert.equal(untrusted.galleryComplete,false);
 });

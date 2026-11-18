@@ -1,0 +1,8 @@
+import {useState} from 'react';
+
+export type AreaMixSettingsValue={enabled:boolean;downtownPercent:number|null;revision:string};
+export function AreaMixSettings({value,save}:{value:AreaMixSettingsValue;save:(patch:{revision:string;downtownPercent:number})=>Promise<AreaMixSettingsValue>}){
+ const [current,setCurrent]=useState(value),[percent,setPercent]=useState(value.downtownPercent??85),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ async function update(){setBusy(true);setMessage('');try{const result=await save({revision:current.revision,downtownPercent:percent});setCurrent(result);setMessage('Area target saved for future listings.');}catch(error){setMessage(error instanceof Error?error.message:String(error));}finally{setBusy(false);}}
+ return <section className="plan-explainer"><h3>New-listing area target</h3><label>Downtown Vancouver (%)<input type="number" min="0" max="100" step="1" value={percent} onChange={event=>setPercent(Number(event.target.value))}/></label><p>{100-percent}% combined North Vancouver and West Vancouver. When checked downtown inventory is exhausted, scans can fill the remaining capacity from those areas.</p><p>This changes future intake only. Existing ranks and decisions stay as they are.</p><button type="button" disabled={busy||!Number.isInteger(percent)||percent<0||percent>100} onClick={()=>void update()}>Save area target</button> <button type="button" disabled={busy} onClick={()=>{setCurrent(value);setPercent(value.downtownPercent??85);setMessage('');}}>Reload current target</button>{message&&<p role="status">{message}</p>}</section>;
+}

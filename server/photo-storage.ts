@@ -4,8 +4,10 @@ import {createHash} from 'node:crypto';
 import sharp from 'sharp';
 import type {Photo} from '../src/domain.ts';
 const digest=(bytes:Buffer)=>createHash('sha256').update(bytes.toString('base64')).digest('hex');
+export class EmptyPhotoError extends Error {constructor(){super('Source returned an empty image response');}}
 /** Retain the exact downloaded file; make a separate, bounded JPEG for analysis/cards. */
 export async function storePhoto(bytes:Buffer,dataDir:string):Promise<Pick<Photo,'hash'|'local'|'sourceLocal'|'sourceWidth'|'sourceHeight'|'sourceBytes'>>{
+ if(!bytes.length)throw new EmptyPhotoError();
  if(bytes.length>15*1024*1024)throw new Error('Photo exceeds 15MB limit');
  const input=sharp(bytes,{limitInputPixels:50000000}),meta=await input.metadata();
  const ext=({jpeg:'jpg',png:'png',webp:'webp',avif:'avif',gif:'gif'} as Record<string,string>)[meta.format??''];

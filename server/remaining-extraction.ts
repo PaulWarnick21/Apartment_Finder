@@ -5,6 +5,7 @@ import {hash} from './db.ts';
 import {workspaceTextEvidence} from './workspace-evidence.ts';
 const clean=(s:string)=>s.replace(/\s+/g,' ').trim();
 const num=(s:unknown)=>{const n=Number(String(s??'').replace(/,/g,''));return Number.isFinite(n)&&n>0?n:null;};
+export class NonRentalPropertyError extends Error {}
 function features(l:Listing,text:string){
  const yes=(field:string,re:RegExp)=>{const m=text.match(re);if(m)l.evidence[field]=m[0];return m?true:null;};
  l.gas=yes('gas',/gas (?:range|stove|cooktop)/i);const furnishing=extractFurnishing(l.title+' '+text);l.furnished=furnishing.value;if(furnishing.statement)l.evidence.furnishingStatement=furnishing.statement;
@@ -32,10 +33,12 @@ export function extractRemaining(source:'zillow'|'rew'|'facebook',html:string,ur
  if(source==='zillow'){
   const next=JSON.parse($('#__NEXT_DATA__').text()),cache=JSON.parse(next.props.pageProps.componentProps.gdpClientCache);const id=url.match(/\/(\d+)_zpid/)?.[1];
   const p=(Object.values(cache) as any[]).map(v=>v.property).find(p=>String(p?.zpid)===id);if(!p)throw new Error('Target Zillow property missing');
+  if(p.homeStatus==='FOR_SALE')throw new NonRentalPropertyError('Zillow property is not currently advertised for rent; its status is FOR_SALE');
   if(p.homeStatus&&p.homeStatus!=='FOR_RENT')throw new Error('Zillow property is not currently advertised for rent');
   const photos=(p.originalPhotos??[]).map((photo:any)=>[...(photo.mixedSources?.jpeg??[])].sort((a,b)=>b.width-a.width)[0]?.url).filter(Boolean);
-  const unit=p.streetAddress?.match(/#([\w-]+)/)?.[1]??'';
-  l=listingSchema.parse({source,sourceId:id,url,title:p.streetAddress,address:`${p.streetAddress.replace(/\s*#.*$/,'')}, ${p.city}, ${p.state}`,unit,rent:p.price,beds:p.bedrooms,baths:p.bathrooms,sqft:p.livingArea,description:p.description,area:p.neighborhoodRegion?.name??'Unknown',laundry:p.resoFacts?.laundryFeatures?.includes('In Unit')?'in-unit':'unknown',lease:p.resoFacts?.leaseTerm??'Unknown',photos:photos.map((url:string)=>({id:hash(url).slice(0,16),url})),expectedPhotos:p.responsivePhotos?.length??photos.length,galleryComplete:photos.length>0&&photos.length===(p.responsivePhotos?.length??photos.length),evidence:{gallery:'All photos in this property’s structured originalPhotos gallery.'}});
+  const unit=p.streetAddress?.match(/#([\w-]+)/)?.[1]??'',advertisedRent=num(p.price);
+  l=listingSchema.parse({source,sourceId:id,url,title:p.streetAddress,address:`${p.streetAddress.replace(/\s*#.*$/,'')}, ${p.city}, ${p.state}`,unit,rent:advertisedRent!==null&&advertisedRent>1?advertisedRent:null,beds:p.bedrooms,baths:p.bathrooms,sqft:p.livingArea,description:p.description,area:p.neighborhoodRegion?.name??'Unknown',laundry:p.resoFacts?.laundryFeatures?.includes('In Unit')?'in-unit':'unknown',lease:p.resoFacts?.leaseTerm??'Unknown',photos:photos.map((url:string)=>({id:hash(url).slice(0,16),url})),expectedPhotos:p.responsivePhotos?.length??photos.length,galleryComplete:photos.length>0&&photos.length===(p.responsivePhotos?.length??photos.length),evidence:{gallery:'All photos in this property’s structured originalPhotos gallery.'}});
+  if(l.rent===null)l.evidence.rent='Usable monthly rent not supplied in this Zillow posting; confirm with the advertiser.';
   if(/Downtown|West End|Yaletown|Coal Harbour/i.test(l.area))l.location='downtown';
   const supplied=p.resoFacts?.furnished;
   if(supplied===true||/^(?:yes|true)$/i.test(String(supplied)))l.evidence.furnished='Furnished: Yes';

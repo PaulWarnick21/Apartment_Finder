@@ -9,7 +9,7 @@ import {scoreListing} from '../server/scoring.ts';
 import {criteriaSchema,listingSchema} from '../src/domain.ts';
 import {RatingFeedbackService,evaluateProposal,proposalSchema,ratingInput,planFeedbackReviewer} from '../server/rating-feedback.ts';
 import {createApp} from '../server/api.ts';
-const listing=(extra:Record<string,unknown>={})=>listingSchema.parse({source:'fixture',sourceId:'1',url:'https://example.com/1',title:'Fixture',address:'Example',rent:2500,beds:1,location:'downtown',furnished:true,photos:[{id:'p',url:'https://example.com/p.jpg',status:'reviewed',kind:'interior',scenery:'nature',unitCertain:true,quality:4}],galleryComplete:true,expectedPhotos:1,...extra});
+const listing=(extra:Record<string,unknown>={})=>listingSchema.parse({source:'fixture',sourceId:'1',url:'https://example.com/1',title:'Fixture',address:'Example',rent:2500,beds:1,location:'downtown',furnished:true,photos:[{id:'p',url:'https://example.com/p.jpg',local:'fixture.jpg',status:'reviewed',kind:'interior',scenery:'nature',unitCertain:true,quality:4}],galleryComplete:true,expectedPhotos:1,...extra});
 const noChange={summary:'Compared the scores.',interpretation:'A single example does not establish a general preference change.',changes:[]};
 const input=(score=3.7,reason='Furnishing matters less than the view.')=>({requestId:randomUUID(),score,reason});
 
@@ -84,4 +84,34 @@ test('ratings API requires CSRF, stores offline in demo, and exports history',as
  const data=await (await fetch(base+path)).json() as any;assert.equal(data.ratings.length,1);assert.equal(data.ratings[0].status,'pending');assert.match(data.ratings[0].error,/offline/);
  const exported=await (await fetch(base+'/api/export')).json() as any;assert.equal(exported.ratings.length,1);
  }finally{await app.close();store.close();}
+});
+
+test('a live-app rating submission automatically starts one background review without a retry action', {timeout:10000},async t=>{
+ const store=new Store(':memory:'),{id}=store.ingest(listing());
+ const oldHome=store.ingest(listing({sourceId:'older',address:'Other apartment'})).id;
+ const offline=new RatingFeedbackService(store,null);offline.submit(oldHome,input());await offline.close();
+ let start!:()=>void,release!:()=>void,calls=0;
+ const started=new Promise<void>(resolve=>start=resolve),waiting=new Promise<void>(resolve=>release=resolve);
+ const networkFetch=globalThis.fetch;
+ t.mock.method(globalThis,'fetch',async(...args:Parameters<typeof fetch>)=>{
+  const target=args[0] instanceof Request?args[0].url:String(args[0]);
+  assert.equal(new URL(target).hostname,'127.0.0.1','This integration test must never contact a source or AI provider');
+  return networkFetch(...args);
+ });
+ const app=createApp(store,mkdtempSync(join(tmpdir(),'feedback-auto-api-')),{feedbackReviewer:async value=>{
+  calls++;assert.equal(value.current.homeId,id);start();await waiting;return noChange;
+ }});
+ await new Promise<void>(resolve=>app.server.listen(0,'127.0.0.1',resolve));
+ const base=`http://127.0.0.1:${(app.server.address() as any).port}`;
+ try{
+  const state=await(await fetch(base+'/api/state')).json() as any;assert.equal(calls,0,'Startup must not replay historical feedback');
+  const payload=input(),path=`/api/homes/${id}/ratings`,options={method:'POST',headers:{'content-type':'application/json','x-af-token':state.csrf},body:JSON.stringify(payload)};
+  const result=await fetch(base+path,options);assert.equal(result.status,201);await started;
+  const reviewing=await(await fetch(base+path)).json() as any;assert.equal(reviewing.ratings[0].status,'reviewing');assert.equal(reviewing.ratings[0].calibrationApplied,true);
+  assert.equal((await fetch(base+path,options)).status,201);assert.equal(calls,1,'A duplicate submission must not spend another review call');
+  // No further client action is needed to finish and save the review.
+  release();await new Promise<void>(resolve=>setImmediate(resolve));
+  const completed=await(await fetch(base+path)).json() as any;assert.equal(completed.ratings.length,1);assert.equal(completed.ratings[0].status,'applied');assert.ok(completed.ratings[0].review);assert.equal(calls,1);
+  assert.equal(store.db.prepare('SELECT status FROM rating_feedback WHERE home_id=?').get(oldHome)!.status,'pending');
+ }finally{release();await app.close();store.close();}
 });

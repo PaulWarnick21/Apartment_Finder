@@ -3,6 +3,9 @@ import {z} from 'zod';
 import {Store} from './db.ts';
 import {Budget,assertAccessRecoveryCaps} from './plans.ts';
 import {captureSchema} from './browser-bridge.ts';
+import {recordSourceAccess} from './traffic-policy.ts';
+import {sourceById} from './sources.ts';
+import {heartbeatScan} from './scan-concurrency.ts';
 export const chromeSnapshotSchema=captureSchema.omit({id:true}).extend({galleryComplete:z.boolean(),links:z.array(z.string().url().max(3000)).max(500).default([]),next:z.string().url().max(3000).nullable().optional(),galleryCursor:z.number().int().min(0).max(2000).optional(),gallerySlots:z.number().int().min(0).max(2000).optional()});
 export type ChromeSnapshot=z.infer<typeof chromeSnapshotSchema>;
 export type ChromeJobOptions={galleryCursor?:number;knownImages?:ChromeSnapshot['images'];factsOnly?:boolean;preReserved?:boolean};
@@ -15,15 +18,13 @@ export class ChromeJobs {
  private active:{job:Job;resolve:(s:ChromeSnapshot)=>void;reject:(e:Error)=>void;timer:ReturnType<typeof setInterval>;budget:Budget}|null=null;
  constructor(private store:Store){}
  request(budget:Budget,url:string,kind:Job['kind'],maxRent:number|null,maxPhotos:number,accessRecovery=false,options:ChromeJobOptions={}){
-  budget.check();if(!allowedChromeJobUrl(url))throw new Error('Chrome job URL not allowed');if(this.active)throw new Error('Chrome job already running');
+  budget.check();if(budget.caps.cachedReviewOnly)throw new Error('Cached assessment cannot access listing sources or download photos');if(!allowedChromeJobUrl(url))throw new Error('Chrome job URL not allowed');if(this.active)throw new Error('Chrome job already running');
   if(!this.store.get('browserExtension'))throw new Error('Connect the Chrome extension first');
   const source=chromeSource(url)!;if(!budget.caps.sources.includes(source))throw new Error('Source not included in approved plan');
   if(accessRecovery){assertAccessRecoveryCaps(budget.caps);if(kind!=='discovery'||maxPhotos!==0)throw new Error('Recovery only permits one discovery page');}else this.store.checkSource(source);
-  const count=this.store.db.prepare("SELECT COUNT(*) n FROM requests WHERE source=? AND kind='page' AND at>=?").get(source,new Date(Date.now()-86400000).toISOString()) as {n:number};
-  if(count.n>=15)throw new Error('Source daily page cap reached');
-  if(!options.preReserved){budget.reserve('pages');budget.reserve('requests');}this.store.db.prepare('INSERT INTO requests(source,at,kind) VALUES (?,?,?)').run(source,new Date().toISOString(),'page');
+  if(!options.preReserved){budget.reserve('pages');budget.reserve('requests');}recordSourceAccess(budget,sourceById(source),'page');
   const job:Job={id:randomUUID(),planId:budget.id,url,kind,maxRent,maxPhotos:Math.min(200,maxPhotos),state:'queued',expires:Date.now()+240000,galleryCursor:Math.max(0,Math.min(2000,options.galleryCursor??0)),knownImages:options.knownImages?.slice(0,500),factsOnly:options.factsOnly===true};
-  return new Promise<ChromeSnapshot>((resolve,reject)=>{const timer=setInterval(()=>{try{budget.check();if(Date.now()>job.expires)throw new Error('Chrome did not finish the page within four minutes. Check the extension; no retry was made.');this.store.db.prepare('UPDATE scan_lock SET heartbeat=? WHERE owner=?').run(new Date().toISOString(),budget.id);}catch(e){this.fail(e instanceof Error?e.message:String(e));}},1000);this.active={job,resolve,reject,timer,budget};});
+  return new Promise<ChromeSnapshot>((resolve,reject)=>{const timer=setInterval(()=>{try{budget.check();if(Date.now()>job.expires)throw new Error('Chrome did not finish the page within four minutes. Check the extension; no retry was made.');heartbeatScan(this.store,budget.id);}catch(e){this.fail(e instanceof Error?e.message:String(e),budget.id);}},1000);this.active={job,resolve,reject,timer,budget};});
  }
  poll(){if(!this.active)return {job:null};this.active.budget.check();if(this.active.job.state!=='queued')return {job:null};this.active.job.state='claimed';return {job:this.active.job};}
  check(input:unknown){const {id}=z.object({id:z.string().uuid()}).strict().parse(input);if(!this.active||this.active.job.id!==id)return {active:false};try{this.active.budget.check();if(this.active.job.expires<Date.now())throw new Error('Chrome job expired');return {active:true};}catch{this.fail('Chrome job cancelled or expired');return {active:false};}}
@@ -36,5 +37,6 @@ export class ChromeJobs {
   if(snapshot.warning){this.store.pause(chromeSource(current.job.url)!,snapshot.warning,true);this.fail(snapshot.warning);return {ok:true};}
   clearInterval(current.timer);this.active=null;current.resolve(snapshot);return {ok:true};
  }
- fail(message:string){const current=this.active;if(current){clearInterval(current.timer);this.active=null;current.reject(new Error(message));}}
+ /** Worker cleanup may cancel only its own Chrome work; app shutdown omits planId. */
+ fail(message:string,planId?:string){const current=this.active;if(current&&(!planId||current.job.planId===planId)){clearInterval(current.timer);this.active=null;current.reject(new Error(message));}}
 }

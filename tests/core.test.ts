@@ -11,7 +11,7 @@ import {sourceById,allowedUrl} from '../server/sources.ts';
 import {discover,parseListing} from '../server/parsers.ts';
 import {assessPhotos} from '../server/worker.ts';
 import {createApp} from '../server/api.ts';
-const sample=(p:Partial<Listing>={})=>listingSchema.parse({source:'fixture',sourceId:'a',url:'https://example.com/a',title:'Fixture apartment',address:'100 Example St',unit:'1',rent:2400,beds:1,location:'downtown',laundry:'in-unit',...p});
+const sample=(p:Partial<Listing>={})=>listingSchema.parse({source:'fixture',sourceId:'a',url:'https://example.com/a',title:'Fixture apartment',address:'100 Example St',unit:'1',rent:2400,beds:1,location:'downtown',laundry:'in-unit',photos:[{id:'saved',url:'https://example.test/saved.jpg',local:'saved.jpg',status:'downloaded'}],...p});
 const criteria=criteriaSchema.parse({requireLaundry:true});
 const caps={sources:['craigslist'],maxPages:2,maxListings:1,maxPhotos:3,maxAiCalls:3,maxReservedUsd:.3,reservePerCallUsd:.1};
 function running(store:Store){const p=createPlan(store,caps);approvePlan(store,p.id,'APPROVE ONE SCAN');claimPlan(store,p.id);return new Budget(store,p.id,p.caps);}

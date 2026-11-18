@@ -6,8 +6,11 @@ import {criteriaSchema} from '../src/domain.ts';
 import {seedDemo} from './demo.ts';
 import {createApp} from './api.ts';
 import {applyLocalUpgrades} from './local-upgrades.ts';
+import {remoteAccessFromEnv} from './request-access.ts';
 if(existsSync('.env'))loadEnvFile('.env');
 const demo=process.argv.includes('--demo'),dev=process.argv.includes('--dev');
+const remoteAccess=dev?null:remoteAccessFromEnv(process.env);
+if(dev&&(process.env.AF_REMOTE_ORIGIN||process.env.AF_REMOTE_USER))console.log('Private phone access is disabled in development mode; use the built app for Tailscale Serve.');
 const dataDir=resolve('data',demo?'demo':'live');mkdirSync(dataDir,{recursive:true});
 const store=new Store(resolve(dataDir,'apartments.sqlite'));
 if(!demo&&existsSync('private/settings.json')&&!store.get('privateImported')){store.set('criteria',criteriaSchema.parse(JSON.parse(readFileSync('private/settings.json','utf8'))));store.set('privateImported',true);}
@@ -16,6 +19,6 @@ if(demo)seedDemo(store);
 applyLocalUpgrades(store);
 // Never clear another worker's lock or resume work on startup. Interrupted scans
 // remain locked until the user explicitly recovers them in Activity.
-const app=createApp(store,dataDir,{demo,dev});const port=Number(process.env.PORT??(demo?4318:4317));
+const app=createApp(store,dataDir,{demo,dev,remoteAccess});const port=Number(process.env.PORT??(demo?4318:4317));
 app.server.listen(port,'127.0.0.1',()=>console.log(`Apartment Finder: http://127.0.0.1:${port}\n${demo?'DEMO fixtures only.':'Live scanning is OFF until you approve a bounded plan.'}`));
 for(const signal of ['SIGINT','SIGTERM'] as const)process.on(signal,()=>{void app.close().then(()=>{store.close();process.exit(0);});});

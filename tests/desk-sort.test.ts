@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {Store} from '../server/db.ts';
 import {listingSchema} from '../src/domain.ts';
 import {compareHomes} from '../src/desk-sort.ts';
-const listing=(id:string,rent=2400)=>listingSchema.parse({source:'fixture',sourceId:id,url:`https://example.com/${id}`,title:'Example',address:`Example ${id}`,rent,beds:1,photos:[{id:'p',url:'https://example.com/photo',status:'reviewed',kind:'interior'}]});
+const listing=(id:string,rent=2400)=>listingSchema.parse({source:'fixture',sourceId:id,url:`https://example.com/${id}`,title:'Example',address:`Example ${id}`,rent,beds:1,photos:[{id:'p',url:'https://example.com/photo',local:'fixture.jpg',status:'reviewed',kind:'interior'}]});
 test('Closed sorts by section entry, not listing ID, notes, or refresh time',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-14T12:00:00Z')});const db=new Store(':memory:');try{
   const older=db.ingest(listing('older')).id,newer=db.ingest(listing('newer')).id;db.homes();

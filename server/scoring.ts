@@ -1,12 +1,19 @@
 import type {Criteria,Listing,Score} from '../src/domain.ts';
 import {assessedFacts,feedbackFeatures,sameCalibrationContext} from './scoring-facts.ts';
 import {listingUnavailable} from './listing-availability.ts';
+import {sharedRoomEvidence} from './listing-rental-scope.ts';
+import {parkingAssessment} from './parking-assessment.ts';
+import {quickRank} from './quick-rank.ts';
 const clamp=(n:number)=>Math.min(5,Math.max(.1,n));
 const round=(n:number)=>Math.round(n*10)/10;
 export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
   const l=assessedFacts(input,c,homeId);let limit=5;
   const flags:string[]=[],reasons:string[]=[],adjustments:{label:string;value:number}[]=[];
+  // Full scoring explains the same configured hard requirements as quick intake.
+  // The grade itself never contributes to the detailed numerical score.
+  if(c.quickIntake){const intake=quickRank(l,c,homeId);if(!intake.eligible)reasons.push(...intake.reasons);flags.push(...intake.flags);}
   if(l.offeringKind==='building')reasons.push('Building advertisement; an individual apartment offering is required');
+  if(sharedRoomEvidence(l))reasons.push('Shared accommodation; a whole apartment is required');
   if(listingUnavailable(l))reasons.push('Source explicitly marks this rental unavailable');
   if(l.evidence.nonRental==='true')reasons.push('Not an apartment rental');
   const add=(label:string,value:number)=>adjustments.push({label,value});
@@ -16,7 +23,7 @@ export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
   // Several supported interior benefits can make a weak-view home worth a look.
   // Furniture alone, marketing copy, and representative suites do not qualify.
   const interiorBenefits=[l.furnished===true,l.openPlan===true,l.modern===true,l.beds!==null&&l.beds<2&&l.workspace===true].filter(Boolean).length;
-  const interiorTradeoff=c.interiorTradeoff.enabled&&l.rent!==null&&interiorBenefits>=3&&reviewed.some(p=>p.kind==='interior'&&p.unitCertain);
+  const interiorTradeoff=!c.requireNiceViewForDesk&&c.interiorTradeoff.enabled&&l.rent!==null&&interiorBenefits>=3&&reviewed.some(p=>p.kind==='interior'&&p.unitCertain);
   if(!hasInteriorPhoto){
     if(complete&&reviewed.every(p=>p.kind==='floorplan'))reasons.push('Floor plans only; apartment photos required');
     else if(complete&&reviewed.every(p=>['floorplan','exterior','amenity'].includes(p.kind)))reasons.push('No apartment interior photos');
@@ -28,30 +35,34 @@ export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
   const noNature=complete&&l.allOutlooksCovered&&!views.length&&reviewed.some(p=>p.kind==='interior'&&p.unitCertain&&p.scenery==='buildings');
   let base=c.baseScore,spread=0;
   const cost=l.rent===null?null:l.rent+(l.parking==='extra'?(l.parkingCost??0):0);
+  const bedroomValue=cost===null?0:Math.max(0,Math.min(1,(c.secondBedroomZeroBonusRent-cost)/Math.max(1,c.secondBedroomZeroBonusRent-c.secondBedroomFullBonusRent)));
+  const secondBedroomBonus=c.bonuses.secondBedroom*bedroomValue;
   if(l.rent!==null) base+=(c.priceAnchor-(cost??l.rent))*c.priceSlope;
   else {flags.push('Rent Unsure');spread+=.6;}
-  if(c.maxRent!==null && l.rent!==null){
-    if(l.rent>=c.maxRent || (c.rentBasis==='with-parking'&&cost!==null&&cost>=c.maxRent)) reasons.push('Rent exceeds the configured ceiling');
-    else if(c.rentBasis==='unresolved'&&cost!==null&&cost>=c.maxRent) flags.push('Budget basis needs confirmation');
+  const rentLimit=c.quickIntake?c.quickIntake.maxRent:c.maxRent;
+  if(rentLimit!==null && l.rent!==null&&(!c.quickIntake||!l.conflicts.some(text=>/\brent\b|\bprice\b/i.test(text)))){
+    const exceeds=(amount:number)=>c.quickIntake?amount>rentLimit:amount>=rentLimit;
+    if(!c.quickIntake&&exceeds(l.rent) || (c.rentBasis==='with-parking'&&cost!==null&&exceeds(cost))) reasons.push('Rent exceeds the configured ceiling');
+    else if(c.rentBasis==='unresolved'&&cost!==null&&exceeds(cost)) flags.push('Budget basis needs confirmation');
   }
-  if(l.location==='outside')base-=c.outsidePenalty;
-  if(l.location==='near-transit')base-=c.transitPenalty;
-  if(l.location==='unknown'){
-    if(l.downtownDistance==='far')base-=c.outsidePenalty;
-    else if(l.downtownDistance==='nearby')base-=c.transitPenalty/2;
-    else if(l.downtownDistance==='unknown'){flags.push('Location Unsure');spread+=.5;}
-  }
+  // Keep the location cost visible, apply it once, and retain larger distance penalties.
+  // Transit access alone does not erase being outside the preferred downtown core.
+  const outsideCore=l.downtownDistance!=='downtown'&&(l.downtownDistance==='far'||l.downtownDistance==='nearby'||l.location==='outside'||l.location==='near-transit');
+  if(outsideCore){
+    const deduction=l.location==='near-transit'?c.transitPenalty:l.location==='outside'||l.downtownDistance==='far'?c.outsidePenalty:c.transitPenalty/2;
+    add('Outside Downtown Core',-Math.max(c.outsideDowntownMinPenalty,deduction));
+  }else if(l.location==='unknown'&&l.downtownDistance==='unknown'){flags.push('Location Unsure');spread+=.5;}
   if(quality!==null)base+=(quality-3)*c.viewWeight;
   else {flags.push('View Unverified');spread+=.8;}
+  if(views.some(p=>(p.quality??0)>=4&&!p.attributionPending&&p.natureTypes?.includes('mountains')))add('Confirmed mountain outlook',c.mountainViewBonus);
   if(!complete) flags.push('Photo review pending');
   if(noNature&&!interiorTradeoff)reasons.push('Confirmed absence of a qualifying nature outlook');
-  if(c.requireLaundry && ['shared-only','none'].includes(l.laundry))reasons.push('In-unit laundry is required');
+  if(c.requireLaundry && ['shared-only','none'].includes(l.laundry)&&(!c.quickIntake||!l.conflicts.some(text=>/laundry|washer/i.test(text))))reasons.push('In-unit laundry is required');
   if(c.requireLaundry && ['unknown','hookups'].includes(l.laundry))flags.push('Laundry Unsure');
   if(l.parking==='unknown' || l.parking==='extra'&&l.parkingCost===null) {flags.push('Parking Unsure');spread+=.15;}
-  if(l.parking==='none')add('No parking',-.25);
   if(l.parkingCount!==null&&l.parkingCount>1&&l.parking==='included')add('Additional parking',c.bonuses.extraParking);
   if(l.beds===0 && !(c.studioExceptionMax!==null&&l.rent!==null&&l.rent<=c.studioExceptionMax&&quality!==null&&quality>=4&&complete))add('Studio',-c.studioPenalty);
-  if(l.beds!==null&&l.beds>=2)add('Second bedroom',c.bonuses.secondBedroom);
+  if(l.beds!==null&&l.beds>=2){if(secondBedroomBonus>0)add('Second bedroom',Math.round(secondBedroomBonus*100)/100);else flags.push('Second-bedroom bonus withheld at this rent');}
   else if(l.workspace===true)add('Usable workspace',c.bonuses.workspace);
   else if(l.workspace===null)flags.push('Workspace Unsure');
   for(const [field,label] of [['shortLease','Short lease'],['modern','Modern interiors'],['openPlan','Open layout'],['gas','Gas cooking'],['north','North-facing'],['furnished','Furnished']] as const)if(l[field]===true)add(label,c.bonuses[field]);
@@ -77,7 +88,7 @@ export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
   }}
   const partialCeiling=(q:number)=>{
     const weakViewCost=cost===null?0:Math.max(0,cost-c.partialViewPriceAnchor)*c.partialViewPriceSlope*Math.min(1,Math.max(0,(3.5-q)*2));
-    return c.partialNatureCeiling+(q-3)*c.viewWeight-weakViewCost+(l.furnished===true?c.bonuses.furnished:0)+(l.shortLease===true?c.bonuses.shortLease:0)+(l.gas===true?c.bonuses.gas:0)+(l.beds!==null&&l.beds>=2?c.bonuses.secondBedroom:0);
+    return c.partialNatureCeiling+(q-3)*c.viewWeight-weakViewCost+(l.furnished===true?c.bonuses.furnished:0)+(l.shortLease===true?c.bonuses.shortLease:0)+(l.gas===true?c.bonuses.gas:0)+(l.beds!==null&&l.beds>=2?secondBedroomBonus:0);
   };
   if(quality!==null&&quality>2&&quality<4){
     const ceiling=partialCeiling(quality);
@@ -121,12 +132,53 @@ export function scoreBase(input:Listing,c:Criteria,homeId=input.homeId):Score {
     }
   }
   const cap=(ceiling:number,label:string)=>{limit=Math.min(limit,ceiling);if(value>ceiling){add(label,Math.round((ceiling-value)*100)/100);value=ceiling;}low=Math.min(low,value);high=Math.min(high,ceiling);};
+  if(c.requireNiceViewForDesk){
+    const niceView=views.some(p=>p.quality!>=4&&!p.attributionPending)
+      &&!l.conflicts.some(text=>/\b(?:view|outlook|photo attribution)\b/i.test(text));
+    if(!niceView){
+      const label=quality!==null&&quality<4?'View below the nice-nature standard':'Nice actual-unit nature view not confirmed';
+      cap(2.9,label);
+      reasons.push(label+(c.quickIntake?'; full-score preference not met':'; review manually in Excluded'));
+    }
+  }
   if(c.farFromDowntownCeiling!==null&&l.downtownDistance==='far'&&(quality===null||quality<c.greatViewThreshold))cap(c.farFromDowntownCeiling,'Far from downtown without a great verified view');
   if(c.streetLevelCeiling!==null&&l.floorLevel!==null&&l.floorLevel<=1)cap(c.streetLevelCeiling,'Street-level outlook ceiling');
-  if(c.expensiveWeakViewRent!==null&&cost!==null&&cost>=c.expensiveWeakViewRent&&(quality??representativeQuality)<=3){const second=l.beds!==null&&l.beds>=2&&quality!==null&&quality>2?.1:0;cap(c.expensiveWeakViewCeiling+second,'High rent with a modest outlook');}
+  if(c.expensiveWeakViewRent!==null&&cost!==null&&cost>=c.expensiveWeakViewRent&&(quality??representativeQuality)<=3){const second=l.beds!==null&&l.beds>=2&&quality!==null&&quality>2?.1*bedroomValue:0;cap(c.expensiveWeakViewCeiling+second,'High rent with a modest outlook');}
+  // 4.0 itself belongs to the strong-match band. Bonuses and learned ratings must
+  // never cross it without a good actual-unit outlook and supported elevation.
+  const strongView=complete&&views.some(p=>p.quality!>=4&&!p.attributionPending)
+    &&l.floorLevel!==null&&l.floorLevel>=3
+    &&!l.conflicts.some(text=>/\b(?:floor|storey|story|view|outlook|photo attribution)\b/i.test(text));
+  if(!strongView){
+    cap(3.9,'4.0+ requires a confirmed good elevated nature view');
+    if(quality===null||quality<4)flags.push('Good unit-window nature view not confirmed');
+    if(l.floorLevel===null)flags.push('Floor Height Unsure');
+    else if(l.floorLevel<3)flags.push('Below third floor; elevated view requirement not met');
+    if(!complete)flags.push('Complete photo review required for 4.0+');
+    if(l.conflicts.some(text=>/\b(?:floor|storey|story|view|outlook|photo attribution)\b/i.test(text)))flags.push('View or floor evidence conflicts; strong-match rating withheld');
+  }
+  // Premium prices need exceptional supported unit quality, not bedroom count or
+  // luxury marketing. Existing photo assessments cover kitchen/bath condition together.
+  const exceptional=strongView&&(quality??0)>=4.5&&l.modern===true&&l.cramped===false
+    &&l.openPlan===true&&!!l.evidence.interiorAssessment
+    &&reviewed.filter(p=>p.kind==='interior').every(p=>p.unitCertain&&!p.attributionPending);
+  if(!exceptional)cap(4.7,'4.8+ requires exceptional verified overall quality');
+  if(cost!==null&&cost>=c.premiumRentThreshold&&!exceptional){
+    cap(c.premiumRentCeiling,'High rent without exceptional verified overall quality');
+    flags.push('Premium rent requires an exceptional view and photo-supported modern, spacious interiors');
+  }
   if(reasons.length){limit=Math.min(limit,2.9);value=Math.min(2.9,value);low=Math.min(low,value);high=Math.min(2.9,high);}
+  // Apply parking after view/interior ceilings so those caps cannot swallow the deduction.
+  // Older positive calibration must not restore points removed by this near-must-have.
+  const parking=parkingAssessment(l);
+  if(parking.penalty){
+    add(parking.label,-parking.penalty);
+    value=clamp(value-parking.penalty);low=clamp(low-parking.penalty);high=clamp(high-parking.penalty);
+    limit=Math.min(limit,value);
+    if(parking.penalty<1)flags.push('Parking Unsure');
+  }
   if(round(value)<3&&!reasons.includes('Score below 3.0'))reasons.push('Score below 3.0');
-  return {ceiling:round(limit),value:round(value),low:round(low),high:round(high),base:round(base),adjustments,flags:[...new Set(flags)],reasons,eligible:hasInteriorPhoto&&!reasons.length&&round(value)>=3,uncertain:flags.length>0,view:noNature?'No qualifying nature':quality===null?'Unverified':quality>=4?'Nature dominates':'Partial nature'};
+  return {ceiling:round(limit),value:round(value),low:round(low),high:round(high),base:round(base),adjustments,flags:[...new Set(flags)],reasons:[...new Set(reasons)],eligible:hasInteriorPhoto&&!reasons.length&&round(value)>=3,uncertain:flags.length>0,view:noNature?'No qualifying nature':quality===null?'Unverified':quality>=4?'Nature dominates':'Partial nature'};
 }
 
 /** Latest personal examples adjust comparable homes, after all evidence-based ceilings. */

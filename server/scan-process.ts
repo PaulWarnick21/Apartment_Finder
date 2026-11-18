@@ -5,6 +5,7 @@ import {resolve} from 'node:path';
 import type {Store} from './db.ts';
 import {Budget,getPlan} from './plans.ts';
 import type {ChromeJobs,ChromeSnapshot} from './chrome-jobs.ts';
+import {assertCanStartScan} from './scan-concurrency.ts';
 
 type Request={type:'chrome-request';requestId:string;planId:string;url:string;kind:'listing'|'discovery';maxRent:number|null;maxPhotos:number;accessRecovery:boolean;options?:Record<string,unknown>};
 /** The server retains the authenticated browser bridge; the scanner runs independently. */
@@ -12,8 +13,12 @@ export class ScanProcesses{
  private children=new Map<string,ChildProcess>();
  constructor(private store:Store,private dataDir:string,private jobs:ChromeJobs){}
  get hasActive(){return this.children.size>0;}
+ assertCanStart(id:string){
+  if(this.children.has(id))throw new Error('This scan process is already running');
+  assertCanStartScan(this.store,id,[...this.children.keys()]);
+ }
  start(id:string){
-  if(this.children.size)throw new Error('Another scan process is running');
+  this.assertCanStart(id);
   if(this.store.path===':memory:')throw new Error('A scan process needs a persistent database');
   const plan=getPlan(this.store,id);if(plan.state!=='approved')throw new Error('An approved plan is required');
   const child=spawn(process.execPath,['--import','tsx',fileURLToPath(new URL('./worker-cli.ts',import.meta.url)),id,'--data-dir',resolve(this.dataDir),'--ipc'],{windowsHide:true,stdio:['pipe','pipe','pipe','ipc']});
@@ -22,7 +27,7 @@ export class ScanProcesses{
   child.stdout?.resume();child.stderr?.resume();
   child.on('message',message=>{
    const m=message as Request|{type:'chrome-fail';message:string};
-   if(m.type==='chrome-fail'){this.jobs.fail(m.message);return;}
+   if(m.type==='chrome-fail'){this.jobs.fail(m.message,id);return;}
    if(m.type!=='chrome-request'||m.planId!==id)return;
    const reply=(result:unknown)=>{if(child.connected)child.send({type:'chrome-result',requestId:m.requestId,...result as object});};
    try{
@@ -34,7 +39,7 @@ export class ScanProcesses{
   child.on('error',()=>this.store.event('Scan process could not start. Prepare a new plan after checking the local runtime.'));
   // close also fires after a spawn error, when no exit event is emitted.
   child.on('close',code=>{
-   this.children.delete(id);this.jobs.fail('Scan process finished');
+   this.children.delete(id);this.jobs.fail('Scan process finished',id);
    const current=getPlan(this.store,id);
    if(current.state==='approved')this.store.db.prepare("UPDATE plans SET state='interrupted',detail='Worker could not claim this plan. A new approval is required.' WHERE id=?").run(id);
    if(current.state==='running')this.store.event(`Scan worker interrupted (exit ${code??'signal'}). Completed results retained; use interrupted-run recovery.`);

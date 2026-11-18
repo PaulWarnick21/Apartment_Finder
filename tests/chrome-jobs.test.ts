@@ -29,3 +29,26 @@ test('Chrome warnings pause the source and fail the job without fallback navigat
   assert.equal(allowedChromeJobUrl('https://user@www.apartments.com/a'),false);
  }finally{jobs.fail('test cleanup');db.close();}
 });
+
+test('worker cleanup cannot cancel a different plan Chrome job',async()=>{
+ const {db,p,jobs,budget}=setup();try{
+  approvePlan(db,p.id,'APPROVE ONE SCAN');claimPlan(db,p.id);
+  const done=jobs.request(budget,url,'listing',3000,0),job=jobs.poll().job!;
+  jobs.fail('Another source finished','different-plan');
+  assert.equal(jobs.check({id:job.id}).active,true);
+  jobs.result({id:job.id,snapshot:page});assert.equal((await done).url,url);
+  const cancelled=jobs.request(budget,url,'listing',3000,0),failed=assert.rejects(cancelled,/Owner finished/);
+  jobs.fail('Owner finished',p.id);await failed;assert.equal(jobs.poll().job,null);
+ }finally{jobs.fail('test cleanup');db.close();}
+});
+
+test('cached assessments cannot dispatch Chrome work even through pre-reserved IPC',()=>{
+ const db=new Store(':memory:'),jobs=new ChromeJobs(db);
+ try{
+  db.set('browserExtension',{id:'a'.repeat(32),tokenHash:'test'});
+  const p=createPlan(db,{sources:['apartments'],assessmentMode:'full',phase:'assessment',cachedReviewOnly:true,fullReviewHomeIds:[1],billingMode:'chatgpt',maxPages:1,maxListings:1,maxPhotos:0,maxAddressLookups:0,maxAiCalls:1,maxReservedUsd:0});
+  approvePlan(db,p.id,'APPROVE ONE SCAN');claimPlan(db,p.id);const budget=new Budget(db,p.id,p.caps);
+  for(const preReserved of [false,true])assert.throws(()=>jobs.request(budget,url,'listing',3000,0,false,{preReserved}),/Cached assessment cannot access listing sources/);
+  assert.equal(jobs.poll().job,null);assert.equal(getPlan(db,p.id).usage.pages,0);assert.equal(getPlan(db,p.id).usage.requests,0);assert.equal(db.db.prepare('SELECT count(*) AS n FROM requests').get()!.n,0);
+ }finally{jobs.fail('test cleanup');db.close();}
+});

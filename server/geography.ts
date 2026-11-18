@@ -3,6 +3,7 @@ type Position=[number,number];
 type Boundary={type:'Feature';properties:{name:string};geometry:{type:'Polygon'|'MultiPolygon';coordinates:Position[][]|Position[][][]}};
 const boundaries=JSON.parse(readFileSync(new URL('./public-data/vancouver-neighbourhoods.geojson',import.meta.url),'utf8')) as {features:Boundary[]};
 function inRing(lon:number,lat:number,ring:Position[]){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [x,y]=ring[i],[previousX,previousY]=ring[j];if((y>lat)!==(previousY>lat)&&lon<(previousX-x)*(lat-y)/(previousY-y)+x)inside=!inside;}return inside;}
+export const vancouverNeighbourhoodNames=boundaries.features.map(feature=>feature.properties.name);
 export function neighbourhoodAt(lat:number,lon:number){
  if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
  for(const feature of boundaries.features){const polygons=feature.geometry.type==='Polygon'?[feature.geometry.coordinates as Position[][]]:feature.geometry.coordinates as Position[][][];

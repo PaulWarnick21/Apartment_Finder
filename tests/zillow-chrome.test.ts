@@ -12,6 +12,7 @@ import {extractRemaining} from '../server/remaining-extraction.ts';
 import {discoverSource} from '../server/source-discovery.ts';
 import {sourceById} from '../server/sources.ts';
 import {runRegularPlan} from '../server/regular-worker.ts';
+import {isQuarantined} from '../server/discovery-queue.ts';
 
 const url='https://www.zillow.com/homedetails/Example/123_zpid/';
 const image='https://photos.zillowstatic.com/fp/example.jpg';
@@ -38,6 +39,26 @@ test('Regular Zillow scans dispatch through the paired Chrome bridge and apply t
  jobs.result({id:job.id,snapshot:capture({...property,price:5000})});await done;
  assert.equal(db.homes().length,1);assert.equal(db.homes()[0].listing.source,'zillow');assert.equal(getPlan(db,p.id).usage.photos,0);assert.equal(getPlan(db,p.id).usage.aiCalls,0);assert.equal(getPlan(db,p.id).usage.pages,2);
  }finally{jobs.fail('cleanup');db.close();rmSync(dir,{recursive:true,force:true});}
+});
+
+test('Zillow placeholder or missing rent stays unknown instead of losing the rental',()=>{
+ for(const price of [0,1,null,undefined]){
+  const listing=extractRemaining('zillow',capture({...property,price}).html,url);
+  assert.equal(listing.rent,null);assert.match(listing.evidence.rent,/not supplied/);
+  assert.equal(listing.photos.length,1);
+ }
+ assert.equal(extractRemaining('zillow',capture(property).html,url).rent,2400);
+});
+
+test('confirmed Zillow sale ads are non-rental failures while unknown statuses still need extraction review',async()=>{
+ for(const [homeStatus,kind] of [['FOR_SALE','prefilter'],['UNRECOGNIZED_STATUS','parse']]){
+  const db=new Store(':memory:'),dir=mkdtempSync(join(tmpdir(),'af-zillow-sale-'));
+  try{
+   const p=createPlan(db,{phase:'assessment',trafficPolicy:'session',sources:['zillow'],billingMode:'chatgpt',newListingsOnly:true,targetNewListingsPerSource:1,maxPages:1,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0});approvePlan(db,p.id,'APPROVE ONE SCAN');db.set('discoveryQueue:zillow',{urls:[url],next:null});
+   await runRegularPlan(db,p.id,dir,undefined,{session:(_source,budget)=>({stopped:false,start:async()=>{},close:async()=>{},html:async()=>{budget.reserve('pages');return capture({...property,homeStatus}).html;},resource:async()=>{throw Error('No resource expected');},image:async()=>{throw Error('No photos expected');}})});
+   const failures=db.get<any[]>('candidateFailures:zillow')!;assert.equal(failures.length,1);assert.equal(failures[0].kind,kind);assert.equal(isQuarantined(db,'zillow',url),kind==='parse');assert.equal(db.homes().length,0);assert.equal(getPlan(db,p.id).usage.aiCalls,0);assert.equal(getPlan(db,p.id).usage.photos,0);
+  }finally{db.close();rmSync(dir,{recursive:true,force:true});}
+ }
 });
 test('Zillow discovery uses only visible same-site unit links',()=>{
  const page=capture(null,'Rental search','/vancouver-bc/rentals/');assert.deepEqual(discoverSource(page.html,sourceById('zillow')),[url]);assert.equal(page.images.length,0);

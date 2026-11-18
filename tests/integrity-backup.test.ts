@@ -8,7 +8,7 @@ import {Store} from '../server/db.ts';
 import {listingSchema} from '../src/domain.ts';
 import {createFullBackup,verifyBackup,restoreBackup} from '../server/full-backup.ts';
 
-const listing=(sourceId='a',patch:Record<string,unknown>={})=>listingSchema.parse({source:'fixture',sourceId,url:`https://example.com/${sourceId}`,title:'Fixture',address:'100 Example St',unit:'1',rent:2400,beds:1,photos:[{id:'p1',url:`https://example.com/${sourceId}.jpg`,status:'reviewed',kind:'interior',scenery:'nature',quality:4,unitCertain:true}],galleryComplete:true,expectedPhotos:1,...patch});
+const listing=(sourceId='a',patch:Record<string,unknown>={})=>listingSchema.parse({source:'fixture',sourceId,url:`https://example.com/${sourceId}`,title:'Fixture',address:'100 Example St',unit:'1',rent:2400,beds:1,photos:[{id:'p1',url:`https://example.com/${sourceId}.jpg`,local:'fixture.jpg',status:'reviewed',kind:'interior',scenery:'nature',quality:4,unitCertain:true}],galleryComplete:true,expectedPhotos:1,...patch});
 test('cross-posts preserve original facts, unique photo IDs, reviewed gallery and stable identity',()=>{const store=new Store(':memory:');try{
  const first=store.ingest(listing()).id,again=store.ingest(listing('b',{source:'other',rent:2500})).id;
  assert.equal(first,again);const h=store.home(first)!;assert.equal(h.listing.photos.length,2);assert.equal(new Set(h.listing.photos.map(p=>p.id)).size,2);assert.equal(h.listing.galleryComplete,true);assert.equal(h.listing.expectedPhotos,2);assert.equal(h.listing.source,'fixture');assert.equal(h.listing.rent,2500);assert.equal(store.postingDetails(first).length,2);

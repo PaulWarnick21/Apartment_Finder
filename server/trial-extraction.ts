@@ -1,3 +1,4 @@
+import {studioTitleEvidence} from '../src/bedrooms.ts';
 import {load} from 'cheerio';
 import {extractFurnishing} from '../src/furnishing.ts';
 import {largestImage,craigslistGallery} from './photo-resolution.ts';
@@ -48,7 +49,8 @@ export function extractTrial(html:string,url:string,source:Source,galleryXml?:st
   if(sliders.length===1&&anchors.length&&refs.length===1&&/^#[A-Za-z][\w-]*$/.test(refs[0])){
    const popup=$(refs[0]);
    if(popup.length===1){
-    const popupUrls=[...new Set(popup.find('.popup-slider__slide img[src]').filter((_,e)=>!$(e).closest('.slick-cloned').length).map((_,e)=>largestImage($,e,url,source.mediaHosts)).get().filter(s=>s.includes('/suite-images/')))];
+    // Target membership establishes gallery scope; allowed images also use /drive/uploads/.
+    const popupUrls=[...new Set(popup.find('.popup-slider__slide img[src]').filter((_,e)=>!$(e).closest('.slick-cloned').length).map((_,e)=>largestImage($,e,url,source.mediaHosts)).get().filter(Boolean))];
     const mainImages=anchors.map((_,e)=>{const background=($(e).attr('style')??'').match(/background-image:\s*url\(["']?([^"')]+)["']?\)/i)?.[1];const image=$(e).find('img[src]').first();const found=background??(image.length?largestImage($,image[0],url,source.mediaHosts):null);if(!found)return '';try{const absolute=new URL(found,url).href;return allowedUrl(absolute,source.mediaHosts)?absolute:'';}catch{return '';}}).get();
     const mainUrls=[...new Set(mainImages.filter(Boolean))];
     const same=mainImages.every(Boolean)&&mainUrls.length>0&&mainUrls.length===popupUrls.length&&mainUrls.every(s=>popupUrls.includes(s));
@@ -108,6 +110,14 @@ export function extractTrial(html:string,url:string,source:Source,galleryXml?:st
   const parking=numeric('parking');if(parking!==null){l.parkingCount=parking;l.parking=parking===0?'none':'included';l.evidence.parking=`Parking: ${parking}`;}
  }
  if(source.id==='austeville'){
+  const studio=studioTitleEvidence(title);
+  const unitText=body.slice(Math.max(0,body.indexOf(title))).split(/Virtual Tours|Sample Studio|About the building|More vacancies/i)[0];
+  const titleBeds=title.match(/\b(\d+|one|two|three)\s*[- ]?(?:bedrooms?|beds?|br)\b/i),unitBeds=unitText.match(/\b(\d+|one|two|three)\s*[- ]?(?:bedrooms?|beds?|br)\b/i);
+  const bedroomNumber=(text:string)=>({one:1,two:2,three:3}[text.toLowerCase()]??Number(text));
+  const structuredBeds=residence?.numberOfBedrooms;
+  l.beds=studio?0:titleBeds?bedroomNumber(titleBeds[1]):typeof structuredBeds==='number'&&structuredBeds>=0?structuredBeds:unitBeds?bedroomNumber(unitBeds[1]):null;
+  const bedroomMatch=titleBeds??unitBeds;
+  if(studio)l.evidence.bedrooms=`Studio explicitly advertised in the unit title: ${studio}`;else if(bedroomMatch)l.evidence.bedrooms=bedroomMatch[0];
   const header=$('.property-snapshot').first(),area=header.find('.property-snapshot__header .eyebrow').first().text().trim();
   if(area){l.area=area;l.evidence.location=`Property header: ${area}`;if(/\b(?:West Vancouver|North Vancouver|Burnaby|Richmond|Coquitlam|Surrey|New Westminster)\b/i.test(area)){l.location='outside';l.downtownDistance='far';}else if(/\b(?:Coal Harbour|West End|Yaletown|Downtown Vancouver)\b/i.test(area)){l.location='downtown';l.downtownDistance='downtown';}}
   header.find('.property-snapshot__details').each((_,e)=>{const paragraphs=$(e).children('p').map((_,p)=>$(p).text().trim()).get();if(paragraphs.length&&/^\d{1,6}\s+\S/.test(paragraphs[0]))l.address=paragraphs.join(', ').slice(0,500);});

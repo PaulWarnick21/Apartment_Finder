@@ -8,6 +8,11 @@
 /* Keep detail controls visible within the scrolling overlay. */
 .dialog-header{position:sticky;top:0;z-index:2;background:#fafbf7;padding-top:14px}
 .dialog-header button{min-width:44px;min-height:44px;flex-shrink:0}
+.apartment-dialog .dialog-header{align-items:flex-start}
+.apartment-dialog .dialog-header h2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;line-height:1.25;max-height:2.5em}
+.full-listing-title{margin:0 0 18px}
+.full-listing-title p{overflow-wrap:anywhere}
+@media(max-width:720px){.apartment-dialog .dialog-header{gap:12px;padding-top:8px;padding-bottom:12px;margin-bottom:14px}.apartment-dialog .dialog-header h2{font-size:20px}}
 .photo-open{display:block;position:relative;padding:0;border:0;width:100%;overflow:hidden;cursor:zoom-in;background:transparent}
 .photo-open img{display:block}
 .photo-open span{position:absolute;bottom:10px;right:10px;border-radius:5px;padding:5px 8px;background:#fffE;font-size:11px;color:#233d37}
@@ -50,5 +55,40 @@
 
 .rating-panel{padding:12px 14px;margin:12px 0}.rating-panel h3{font-size:13px;margin-bottom:8px}.rating-inputs{grid-template-columns:80px minmax(0,1fr);gap:10px;margin-bottom:8px}.rating-inputs label{font-size:10px;gap:4px}.rating-inputs input,.rating-inputs textarea{padding:7px 8px;font-size:12px;min-height:34px}.rating-actions{gap:8px}.rating-actions button,.rating-actions .primary{font-size:11px;padding:7px 11px}.rating-history{margin:8px 0 0;font-size:11px}
 
+/* Quick intake remains a small, photo-led decision view on desktop and mobile. */
+.quick-grade{display:inline-flex;align-items:center;gap:8px;font-size:25px;flex-shrink:0}
+.quick-grade small{font-size:9px;letter-spacing:.5px;max-width:40px;line-height:1.4}
+.quick-review-facts{display:flex;align-items:flex-start;gap:24px;margin-bottom:16px}
+.quick-review-facts>div:nth-child(2){flex:1;min-width:0}
+.quick-review-facts h3{margin:6px 0 0;font-size:26px;white-space:nowrap}
+.quick-review-facts p{margin:8px 0 4px;overflow-wrap:anywhere}
+.quick-review-facts small{color:#66785f}
+.quick-review-explainer{font-size:12px;color:#66785f;margin:12px 0 18px}
+.quick-review-content>.interest-actions{position:sticky;top:100px;z-index:1;background:#fafbf7;padding:10px 0;margin-bottom:16px}
+.quick-review-content .interest-actions button{min-height:44px;font-size:13px}
+.quick-photo-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px}
+.quick-photo-heading h3{margin:0}.quick-photo-heading span{font-size:12px;color:#66785f}
+.quick-photo-note{font-size:11px;color:#66785f;margin:8px 0}
+.quick-review-content .photo-grid{margin-top:14px}.quick-review-content li{margin:7px 0}
+.full-review-status{padding:12px;background:#edf1e5;border-radius:7px;margin:12px 0;font-size:12px}
+.full-review-status p{font-size:12px;margin:6px 0 0;overflow-wrap:anywhere}
+.full-review-status button{margin-top:10px}.full-review-paused,.full-review-failed{background:#f6eadd;color:#81542d}
+.card-body .full-review-status{font-size:11px}.card-body .full-review-status p{font-size:10px}
+.tabs{overflow-x:auto;max-width:100%}.tabs button{flex-shrink:0}
+@media(max-width:600px){.quick-review-facts{gap:12px}.quick-review-facts>div:first-child,.quick-review-facts>.quick-grade{display:none}.quick-review-facts>div:nth-child(2){min-width:0;flex:1}.quick-review-content>.interest-actions{top:102px}.quick-photo-heading{align-items:flex-start;flex-direction:column;gap:5px}}
+
 .source-badges{display:flex;flex-wrap:wrap;gap:5px}.source-badge{display:inline-block;border:1px solid #c4d9cd;background:#e8f2eb;color:#235d46;border-radius:5px;padding:4px 7px;font-size:10px;font-weight:600}.card-body>.source-badges{margin-bottom:9px}.pinned-apartment-facts .source-badges{gap:5px}
 .location-map{margin:20px 0 26px}.location-map-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.location-map-heading h3{margin:0}.location-map-heading a{font-size:12px}.location-map>p{font-size:12px;margin:8px 0 12px;color:#657b6d}.location-map iframe{display:block;width:100%;height:280px;border:1px solid var(--border);border-radius:8px;background:#edf1e5}.location-map-placeholder{padding:35px 16px;background:#edf1e5;border-radius:8px;color:#657b6d;font-size:13px;text-align:center}.location-map-caption{display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px 15px;font-size:10px;color:#657b6d;margin-top:7px}@media(max-width:720px){.location-map iframe{height:240px}}
+/* Card galleries leave vertical scrolling and pinch zoom available on phones. */
+.card-photos{position:relative;width:100%;height:100%;touch-action:pan-y pinch-zoom;user-select:none}
+.card-photos>img{display:block;width:100%;height:100%;object-fit:cover}
+.card-photos .card-photo-arrow{position:absolute;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid #ffffff90;border-radius:50%;background:#18392dde;color:#fff;box-shadow:0 2px 8px #0003;font-size:30px;line-height:1}
+.card-photos .card-photo-arrow:hover:not(:disabled){background:#244f40}
+.card-photos .card-photo-arrow:disabled{opacity:.3;cursor:default}
+.card-photo-previous{left:8px}.card-photo-next{right:8px}
+.card-photo-count{position:absolute;right:12px;bottom:10px;background:#18392de8;color:#fff;border-radius:4px;padding:4px 7px;font-size:11px;font-variant-numeric:tabular-nums;pointer-events:none}
+.card-photo-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.card-photo-loading{position:absolute;top:12px;right:12px;background:#18392de8;color:#fff;border-radius:4px;padding:4px 7px;font-size:11px;pointer-events:none}
+.quick-location-status{display:block;margin-top:5px;color:#66785f}
+.decision-save-count{margin-right:auto;display:flex;flex-wrap:wrap;gap:6px 15px;font-size:11px;letter-spacing:0}.decision-save-count a{color:#824327}.decision-status{margin:12px 0;max-height:35vh;overflow:auto;border:1px solid #bbc9b5;border-radius:9px;background:#fbfdf7;box-shadow:0 5px 24px #18392d26;padding:12px 16px;font-size:12px;color:#244f40}
+.decision-status p{margin:0;line-height:1.5}.decision-save-error{padding-top:8px}.decision-save-error p{color:#824327}.decision-save-error button{margin:8px 8px 0 0;min-height:40px}

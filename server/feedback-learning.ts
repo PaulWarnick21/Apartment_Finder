@@ -15,16 +15,18 @@ export function explicitPreferences(criteria:Criteria,reason:string){
 }
 export function feedbackFacts(input:Listing,reason:string,feedbackId:number){
  const l=scoringFacts(input);
- for(const [field,value] of Object.entries(conditionCorrections(reason)) as ['modern'|'cramped',boolean|null][]){l[field]=value;l.evidence[field]=`User assessment in feedback #${feedbackId}: ${reason}`;}
+ Object.assign(l,conditionCorrections(reason));
+ for(const field of Object.keys(conditionCorrections(reason)))l.evidence[field]=`User assessment in feedback #${feedbackId}: ${reason}`;
  return l;
 }
 /** Explicit corrections have field-level history; silence about a field is not a reversal. */
 export function conditionCorrections(reason:string){
- const facts:Partial<Pick<Listing,'modern'|'cramped'>>={};
- const normalized=reason.replace(/[’‘]/g,"'");
+ const facts:Partial<Pick<Listing,'modern'|'cramped'|'beds'>>={};
+ const normalized=reason.replace(/[’‘]/g,"'").replace(/\bdates (?=kitchen|bathroom|interiors)/gi,'dated ');
  for(const clause of normalized.split(/[.!?;\n]+/)){
   const condition=/\b(?:kitchen|interiors?|bathrooms?|cabinets?|appliances?)\b/i.test(clause);
   const unsure=/\b(?:not sure|uncertain|unconfirmed|unknown|can't tell|cannot tell|cannot confirm|can't confirm|could be|might be|may be)\b/i.test(clause);
+  if(!unsure&&/\b(?:this|it|the (?:apartment|unit|home))\s+is\s+(?:actually\s+)?a\s+studio\s+(?:instead of|rather than|not)\s+(?:a\s+)?(?:1|one)[ -]bedroom\b/i.test(clause))facts.beds=0;
   if(condition&&/\b(?:dated|modern|updated|renovated|condition)\b/i.test(clause)){
    const notDated=/\b(?:not|isn't|aren't|no longer)\s+(?:(?:a|that|really|particularly)\s+)?dated\b/i.test(clause);
    const notModern=/\b(?:not|isn't|aren't|no longer)\s+(?:(?:a|that|really|particularly)\s+)?(?:modern|updated|renovated)\b/i.test(clause);

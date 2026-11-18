@@ -1,6 +1,8 @@
+import {searchAreaExclusion,intakeSearchUrls,applySearchArea,searchRegion} from './search-area.ts';
+import {tryReserveAreaCandidate,settleAreaCandidate,areaMixBucket} from './area-mix.ts';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {storePhoto} from './photo-storage.ts';
+import {storePhoto,EmptyPhotoError} from './photo-storage.ts';
 import {reusedDownload,rememberDownload} from './gallery-downloads.ts';
 import {validationAttempt,validationOutcome,validationTargetReached,ingestNewCandidate} from './new-listing-validation.ts';
 import {Store,hash} from './db.ts';
@@ -8,59 +10,96 @@ import {Budget,getPlan} from './plans.ts';
 import type {ChromeJobClient,ChromeSnapshot} from './chrome-jobs.ts';
 import {extractApartments} from './apartments-extraction.ts';
 import {reviewGallery} from './gallery-review.ts';
-import {hardFailure,pendingHomes,postingForSource,refreshCandidates,reserveRefresh,saveGalleryProgress,galleryResumeAllowance,type SourceResult} from './regular-worker.ts';
+import {intakeFailure,quickIntake,pendingCollectionHomes,pendingHomes,postingForSource,refreshCandidates,reserveRefresh,saveGalleryProgress,galleryResumeAllowance,prioritizeAreaCandidates,type SourceResult} from './regular-worker.ts';
 import {sourceById,allowedUrl,type Source} from './sources.ts';
 import {discoveryCards,nextDiscovery,listingUrl} from './source-discovery.ts';
-import {readQueue,saveQueue,mergeDiscovery,removeCandidate,recordCandidateFailure} from './discovery-queue.ts';
-type ApartmentDependencies={image?:(url:string,budget:Budget)=>Promise<Buffer>;review?:typeof reviewGallery;source?:Source};
-async function downloadImage(url:string,budget:Budget){
+import {readQueue,saveQueue,mergeDiscovery,removeCandidate,recordCandidateFailure,prioritizeQueue,hasCurrentQueuedWork} from './discovery-queue.ts';
+import {applyPostingDate,detailPostingDate,postingAgeRank} from './listing-age.ts';
+import {recordSourceAccess} from './traffic-policy.ts';
+import {resolveQuickLocation} from './quick-location.ts';
+import {waitForSourceAccess} from './source-pacing.ts';
+type ApartmentDependencies={resumeSourcePhase?:boolean;addressLookup?:typeof fetch;image?:(url:string,budget:Budget)=>Promise<Buffer>;review?:typeof reviewGallery;source?:Source};
+export async function downloadApartmentImage(url:string,budget:Budget){
  const store=budget.store;budget.check();store.checkSource('apartments');
  const u=new URL(url);if(u.protocol!=='https:'||!/^images\d+\.apartments\.com$/.test(u.hostname)||u.username||u.password||u.port&&u.port!=='443')throw new Error('Untrusted photo host');
- const daily=store.db.prepare("SELECT COUNT(*) n FROM requests WHERE source='apartments' AND kind='image' AND at>=?").get(new Date(Date.now()-86400000).toISOString()) as {n:number};if(daily.n>=150)throw new Error('Daily photo cap reached');
- budget.reserve('photos');budget.reserve('requests');store.db.prepare('INSERT INTO requests(source,at,kind) VALUES (?,?,?)').run('apartments',new Date().toISOString(),'image');
- const response=await fetch(url,{signal:AbortSignal.timeout(20000),redirect:'error'}).catch(e=>{store.pause('apartments','Photo request failed or exceeded its time limit');throw e;});
+ await waitForSourceAccess(budget,'apartments','image');
+ budget.reserve('photos');budget.reserve('requests');recordSourceAccess(budget,sourceById('apartments'),'image');
+ const response=await fetch(url,{signal:AbortSignal.timeout(20000),redirect:'error'}).catch(e=>{
+  const safeCode=(value:unknown)=>typeof value==='string'&&/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(value)?value:undefined;
+  // Retain diagnostic categories without logging signed URLs, headers or error payloads.
+  const diagnostic={at:new Date().toISOString(),host:u.hostname,photoUrlHash:hash(url),name:safeCode(e?.name),causeName:safeCode(e?.cause?.name),causeCode:safeCode(e?.cause?.code),redirectRefused:e?.cause?.message==='unexpected redirect'};
+  store.set(`photoTransportFailure:${budget.id}:apartments`,diagnostic);
+  store.pause('apartments','Photo request failed or exceeded its time limit');throw e;
+ });
  if([404,410].includes(response.status))throw new Error(`Image unavailable: ${response.status}`);
  if(!response.ok){store.pause('apartments',`Photo server returned HTTP ${response.status}`,response.status===403);throw new Error('Photo access warning; source paused');}
  const chunks:Uint8Array[]=[];let size=0;const reader=response.body!.getReader();try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>15000000)throw new Error('Photo too large');chunks.push(value);}}finally{await reader.cancel();}
  await new Promise(r=>setTimeout(r,1000));return Buffer.concat(chunks);
 }
 export async function runApartmentsSource(store:Store,budget:Budget,dataDir:string,jobs?:ChromeJobClient,deps:ApartmentDependencies={}):Promise<SourceResult>{
- const id=budget.id,plan=getPlan(store,id);let partial=false,failed=0,processed=0;
+ const id=budget.id,plan=getPlan(store,id);let partial=false,failed=0,processed=0,areaDeferred=false,areaReason='';
  try{
   if(!jobs)throw new Error('Keep the app and paired Chrome extension open for Apartments.com scans');if(plan.caps.maxAiCalls&&plan.caps.billingMode!=='chatgpt')throw new Error('Chrome trial uses ChatGPT plan access only');
   const source=deps.source??sourceById('apartments'),snapshotDir=join(dataDir,'chrome-scans',id);await mkdir(snapshotDir,{recursive:true});const queue=readQueue(store,'apartments');
-  const discover=async(url:string,fresh:boolean)=>{const page=await jobs.request(budget,url,'discovery',store.criteria.maxRent,0);await writeFile(join(snapshotDir,hash(url)+'.json'),JSON.stringify(page));if(page.truncated)throw new Error('Discovery capture truncated');const cards=discoveryCards(page.html,source,url),seen=new Set(cards.map(card=>card.url));for(const link of page.links){const normalized=listingUrl(link,source,url);if(normalized&&!seen.has(normalized)){cards.push({url:normalized});seen.add(normalized);}}if(!cards.length)throw new Error('No listing links recognized on the discovery page');const next=page.next&&allowedUrl(page.next,source.hosts)&&!listingUrl(page.next,source)?page.next:nextDiscovery(page.html,source,url);if(!fresh||!queue.next)queue.next=next;if(fresh)queue.freshCheckedAt=new Date().toISOString();mergeDiscovery(store,source.id,queue,cards);};
-  await discover(source.search,true);
+  const discover=async(url:string,fresh:boolean)=>{const page=await jobs.request(budget,url,'discovery',store.criteria.maxRent,0);await writeFile(join(snapshotDir,hash(url)+'.json'),JSON.stringify(page));if(page.truncated)throw new Error('Discovery capture truncated');const cards=discoveryCards(page.html,source,url),seen=new Set(cards.map(card=>card.url));for(const link of page.links){const normalized=listingUrl(link,source,url);if(normalized&&!seen.has(normalized)){cards.push({url:normalized});seen.add(normalized);}}if(!cards.length)throw new Error('No listing links recognized on the discovery page');const next=page.next&&allowedUrl(page.next,source.hosts)&&!listingUrl(page.next,source)?page.next:nextDiscovery(page.html,source,url);if(!fresh||!queue.next)queue.next=next;if(fresh)queue.freshCheckedAt=new Date().toISOString();mergeDiscovery(store,source.id,queue,cards,url);};
+  if(budget.caps.phase!=='assessment'&&!deps.resumeSourcePhase){const searches=intakeSearchUrls(store,source);if(!searches.length)throw Error('No supported geographic search filters configured for this source');let discovered=0,lastDiscoveryGap:Error|undefined;for(const url of searches){if(budget.remaining('pages')<2)break;try{await discover(url,true);discovered++;}catch(error){if(!(error instanceof Error)||error.message!=="No listing links recognized on the discovery page")throw error;lastDiscoveryGap=error;store.event(source.name+': no listing links recognized at '+url+'; trying the next configured geographic route. Empty inventory is not established.');}}if(!discovered&&lastDiscoveryGap)throw lastDiscoveryGap;}
+  const months=store.criteria.listingAgePriorityMonths;
+  prioritizeQueue(queue,months,budget.caps.queuePolicy==='balanced');saveQueue(store,'apartments',queue);
   for(const home of refreshCandidates(store,'apartments',budget)){
    if(!budget.remaining('pages')||!budget.remaining('listings'))break;reserveRefresh(store,budget);const url=home.postings.find(p=>p.source==='apartments')!.url;
    const page=await jobs.request(budget,url,'listing',store.criteria.maxRent,0,false,{factsOnly:true});await writeFile(join(snapshotDir,hash(url)+'.json'),JSON.stringify(page));
    try{store.ingest(extractApartments(page),{preservePhotos:true});store.set(`factsChecked:${home.id}:apartments`,new Date().toISOString());}catch(e){recordCandidateFailure(store,'apartments',url,String(e),'refresh');failed++;}
   }
-  const pending=budget.caps.newListingsOnly?[]:pendingHomes(store,'apartments');let pendingAllowance=galleryResumeAllowance(store,'apartments',budget,pending.length,queue.urls.length);
-  while(budget.remaining('listings')&&!validationTargetReached(budget,'apartments')){
-   budget.check();let home=pendingAllowance>0||!queue.urls.length?pending.shift():undefined;if(home)pendingAllowance--;if(!home&&!queue.urls.length){if(queue.next&&budget.remaining('pages')>1){await discover(queue.next,false);if(!queue.urls.length)break;}else break;}
-   const posting=home?postingForSource(store,home,'apartments'):undefined,url=posting?.url??queue.urls[0];if(!url)break;if(!posting?.galleryComplete&&!budget.remaining('pages')){if(home)pending.unshift(home);break;}budget.reserve('listings');validationAttempt(budget,'apartments');
+  const pending=(quickIntake(store,budget.caps)?pendingCollectionHomes(store,'apartments'):pendingHomes(store,'apartments')).filter(h=>!budget.caps.newListingsOnly||budget.caps.resumeHomeIds?.includes(h.id)).sort((a,b)=>postingAgeRank(postingForSource(store,a,'apartments').postedAt,months)-postingAgeRank(postingForSource(store,b,'apartments').postedAt,months));let pendingAllowance=galleryResumeAllowance(store,'apartments',budget,pending.length,queue.urls.length);
+  while(budget.remaining('listings')&&(pending.length>0||!validationTargetReached(budget,'apartments'))){
+   budget.check();const areaPreference=prioritizeAreaCandidates(store,'apartments',budget,queue,pending);
+   const candidateRank=(fields:Parameters<typeof tryReserveAreaCandidate>[4],postedAt:string|undefined)=>postingAgeRank(postedAt,months)+(areaPreference&&areaMixBucket(store,'apartments',fields)!==areaPreference?2:0);
+   const resumeWanted=validationTargetReached(budget,'apartments')||pendingAllowance>0||!queue.urls.length;
+   let home=resumeWanted&&pending.length&&(validationTargetReached(budget,'apartments')||!queue.urls.length||candidateRank(pending[0].listing,postingForSource(store,pending[0],'apartments').postedAt)<=candidateRank(queue.cards?.[queue.urls[0]]??{},queue.cards?.[queue.urls[0]]?.postedAt))?pending.shift():undefined;
+   if(home)pendingAllowance--;if(!home&&!queue.urls.length){while(budget.caps.phase!=='assessment'&&!queue.urls.length&&queue.next&&budget.remaining('pages')>1)await discover(queue.next,false);if(!queue.urls.length)break;}
+   const posting=home?postingForSource(store,home,'apartments'):undefined,url=posting?.url??queue.urls[0],areaCard=posting?{searchUrl:posting.evidence.searchAreaSourceUrl,searchRegion:posting.evidence.searchAreaRegion}:queue.cards?.[url];if(!url)break;if(!posting?.galleryComplete&&!budget.remaining('pages')&&!queue.offerings?.some(item=>item.url===url)){if(home)pending.unshift(home);break;}
+   const claim=tryReserveAreaCandidate(store,budget,'apartments',url,home?{...home.listing,homeId:home.id}:areaCard??{});
+   if(!claim.allowed){if(home)pending.unshift(home);areaDeferred=true;areaReason=claim.reason??'Waiting for the preferred area allocation.';break;}
+   let areaToken=claim.token;
+   try{
+   budget.reserve('listings');validationAttempt(budget,'apartments');
    if(!posting?.galleryComplete){
     const knownImages:ChromeSnapshot['images']=home?.listing.photos.map(p=>({url:p.sourceUrl??p.url,alt:'',width:p.sourceWidth??0,height:p.sourceHeight??0}))??[];
     const cursor=store.get<number>(`galleryCursor:apartments:${url}`)??0;
-    const page=await jobs.request(budget,url,'listing',store.criteria.maxRent,budget.caps.newListingsOnly?0:budget.remaining('photos'),false,{galleryCursor:cursor,knownImages,factsOnly:budget.caps.newListingsOnly});await writeFile(join(snapshotDir,hash(url)+'.json'),JSON.stringify(page));
-    try{const listing=extractApartments(page);listing.galleryComplete=page.galleryComplete&&listing.expectedPhotos!==null&&(page.gallerySlots??listing.photos.length)>=listing.expectedPhotos;const saved=ingestNewCandidate(store,budget,'apartments',listing);removeCandidate(store,'apartments',queue,url);if(!saved)continue;home=store.home(saved.id)!;store.set(`galleryCursor:apartments:${url}`,page.galleryCursor??0);}catch(e){removeCandidate(store,'apartments',queue,url);recordCandidateFailure(store,'apartments',url,String(e),'parse',{preserveExistingGallery:budget.caps.newListingsOnly});validationOutcome(budget,'apartments',{url,result:'parse-failure',reason:String(e)});failed++;continue;}
-    if(budget.caps.newListingsOnly&&home&&!hardFailure(home.listing,store.criteria)){
+    const queuedFacts=queue.offerings?.find(listing=>listing.url===url);
+    const page=queuedFacts?undefined:await jobs.request(budget,url,'listing',store.criteria.maxRent,budget.caps.newListingsOnly&&!home?0:budget.remaining('photos'),false,{galleryCursor:cursor,knownImages,factsOnly:budget.caps.newListingsOnly&&!home});if(page)await writeFile(join(snapshotDir,hash(url)+'.json'),JSON.stringify(page));
+    try{const listing=queuedFacts??applySearchArea(store,applyPostingDate(extractApartments(page!),detailPostingDate(page!.html,'apartments',url)??queue.cards?.[url]?.postedAt),areaCard);if(page)listing.galleryComplete=page.galleryComplete&&listing.expectedPhotos!==null&&(page.gallerySlots??listing.photos.length)>=listing.expectedPhotos;
+     const detailed=tryReserveAreaCandidate(store,budget,'apartments',url,{...listing,...(home?{homeId:home.id}:{})});areaToken=detailed.token;
+     if(!detailed.allowed){
+      queue.offerings=[...(queue.offerings??[]).filter(item=>item.url!==url),listing];
+      const region=searchRegion(listing),city=region==='north-vancouver'?'North Vancouver':region==='west-vancouver'?'West Vancouver':undefined;
+      queue.cards??={};queue.cards[url]={...queue.cards[url],url,area:listing.area,...(city?{city}:{}),rent:listing.rent,beds:listing.beds};
+      if(home)pending.unshift(home);areaDeferred=true;areaReason=detailed.reason??'Parsed location is waiting for its area allocation.';break;
+     }
+     const saved=home&&budget.caps.resumeHomeIds?.includes(home.id)?store.ingest(listing,{preservePhotos:!quickIntake(store,budget.caps)}):ingestNewCandidate(store,budget,'apartments',listing);queue.offerings=queue.offerings?.filter(item=>item.url!==url);removeCandidate(store,'apartments',queue,url);if(!saved)continue;home=store.home(saved.id)!;store.set(`galleryCursor:apartments:${url}`,page?.galleryCursor??cursor);}catch(e){removeCandidate(store,'apartments',queue,url);recordCandidateFailure(store,'apartments',url,String(e),'parse',{preserveExistingGallery:budget.caps.newListingsOnly});validationOutcome(budget,'apartments',{url,result:'parse-failure',reason:String(e)});failed++;continue;}
+    if(home&&postingAgeRank(home.listing.postedAt,months)&&hasCurrentQueuedWork(store)){saveGalleryProgress(store,home,home.listing,budget,'apartments');partial=true;continue;}
+    if(budget.caps.newListingsOnly&&home&&!home.listing.galleryComplete&&!intakeFailure(store,budget,home.listing)){
      // Identity is now known to be new. Only this new home may have its full gallery opened.
      saveGalleryProgress(store,home,home.listing,budget,'apartments');
-     if(budget.remaining('pages')&&budget.remaining('photos')){
+     while(budget.remaining('pages')&&budget.remaining('photos')&&!home.listing.galleryComplete){
+      const beforePhotos=home.listing.photos.length,beforeCursor=store.get<number>(`galleryCursor:apartments:${url}`)??0;
       const gallery=await jobs.request(budget,url,'listing',store.criteria.maxRent,budget.remaining('photos'));await writeFile(join(snapshotDir,hash(url)+'-gallery.json'),JSON.stringify(gallery));
-      try{const listing=extractApartments(gallery);listing.galleryComplete=gallery.galleryComplete&&listing.expectedPhotos!==null&&(gallery.gallerySlots??listing.photos.length)>=listing.expectedPhotos;home=store.home(store.ingest(listing).id)!;store.set(`galleryCursor:apartments:${url}`,gallery.galleryCursor??0);}catch(e){recordCandidateFailure(store,'apartments',url,String(e),'parse',{preserveExistingGallery:budget.caps.newListingsOnly});validationOutcome(budget,'apartments',{url,result:'parse-failure',reason:String(e)});failed++;partial=true;}
+      try{const listing=applySearchArea(store,extractApartments(gallery),areaCard);listing.galleryComplete=gallery.galleryComplete&&listing.expectedPhotos!==null&&(gallery.gallerySlots??listing.photos.length)>=listing.expectedPhotos;home=store.home(store.ingest(listing).id)!;store.set(`galleryCursor:apartments:${url}`,gallery.galleryCursor??0);}catch(e){recordCandidateFailure(store,'apartments',url,String(e),'parse',{preserveExistingGallery:budget.caps.newListingsOnly});validationOutcome(budget,'apartments',{url,result:'parse-failure',reason:String(e)});failed++;partial=true;break;}
+      if(!home.listing.galleryComplete&&home.listing.photos.length<=beforePhotos&&(gallery.galleryCursor??0)<=beforeCursor){partial=true;break;}
      }
     }
    }
    if(!home)continue;const listing=home.listing;processed++;
-   try{if(!['Not Interested','Closed','Leased'].includes(home.stage)&&!hardFailure(listing,store.criteria)){
-    for(const photo of listing.photos){budget.check();store.checkSource('apartments');if(photo.local||photo.status==='unavailable'||!/^https:\/\/images\d+\.apartments\.com\//.test(photo.url))continue;const cached=reusedDownload(budget,photo.url,dataDir);if(cached){Object.assign(photo,cached,{status:'downloaded'});continue;}if(!budget.remaining('photos')){partial=true;break;}try{const downloaded=await storePhoto(await(deps.image??downloadImage)(photo.url,budget),dataDir);Object.assign(photo,downloaded,{status:'downloaded'});rememberDownload(budget,photo.url,downloaded);}catch(e){if(/Daily (?:image|photo) (?:cap|limit) reached/i.test(String(e))){partial=true;break;}if(!/Image unavailable: (404|410)/.test(String(e)))throw e;photo.status='unavailable';photo.note='Source image is no longer available; the gallery gap remains recorded.';}}
-    if(listing.photos.some(p=>p.local&&(p.status!=='reviewed'||p.attributionPending))&&budget.remaining('aiCalls'))await(deps.review??reviewGallery)(listing,budget,dataDir);
+   try{if(!['Not Interested','Closed','Leased'].includes(home.stage)&&!intakeFailure(store,budget,listing)){
+    if(quickIntake(store,budget.caps))await resolveQuickLocation(store,budget,listing,home.id,deps.addressLookup);
+    const areaFailure=searchAreaExclusion(store,listing,true);if(areaFailure){validationOutcome(budget,'apartments',{url:listing.url,result:areaFailure.startsWith('Location')?'area-unconfirmed':'outside-area',homeId:home.id,reason:areaFailure});if(areaFailure.startsWith('Location'))partial=true;continue;}
+    if(postingAgeRank(listing.postedAt,months)&&hasCurrentQueuedWork(store)){partial=true;continue;}
+    for(const photo of listing.photos){budget.check();store.checkSource('apartments');if(photo.local||photo.status==='unavailable'||!/^https:\/\/images\d+\.apartments\.com\//.test(photo.url))continue;const cached=reusedDownload(budget,photo.url,dataDir);if(cached){Object.assign(photo,cached,{status:'downloaded'});continue;}if(!budget.remaining('photos')){partial=true;break;}try{const downloaded=await storePhoto(await(deps.image??downloadApartmentImage)(photo.url,budget),dataDir);Object.assign(photo,downloaded,{status:'downloaded'});rememberDownload(budget,photo.url,downloaded);}catch(e){if(/Daily (?:image|photo) (?:cap|limit) reached/i.test(String(e))){partial=true;break;}if(!(e instanceof EmptyPhotoError)&&!/Image unavailable: (404|410)/.test(String(e)))throw e;photo.status='unavailable';photo.note=e instanceof EmptyPhotoError?'Source returned an empty image response; retained as an explicit gallery gap.':'Source image is no longer available; the gallery gap remains recorded.';}}
+    if(!quickIntake(store,budget.caps)&&listing.photos.some(p=>p.local&&(p.status!=='reviewed'||p.attributionPending))&&budget.remaining('aiCalls'))await(deps.review??reviewGallery)(listing,budget,dataDir);
    }}finally{partial=saveGalleryProgress(store,home,listing,budget,'apartments')||partial;}
+   }finally{settleAreaCandidate(store,budget,areaToken,home?.id);}
   }
-  saveQueue(store,'apartments',queue);const more=!!queue.urls.length||!!queue.next||!!pending.length;return {source:'apartments',state:partial||failed||more?'partial':'complete',detail:`Fresh discovery checked; ${processed} candidates processed.${more?' More inventory remains queued.':''}${partial?' Gallery gaps or pending review are recorded.':''}${failed?` ${failed} listing issues retained for review.`:''}`};
+  saveQueue(store,'apartments',queue);const more=!!queue.urls.length||!!queue.next||!!pending.length;return {source:'apartments',state:partial||failed||more||areaDeferred?'partial':'complete',...(areaDeferred?{areaDeferred:true}:{}),detail:`${areaDeferred?areaReason+' ':''}Fresh discovery checked; ${processed} candidates processed.${more?' More inventory remains queued.':''}${partial?' Gallery gaps or pending review are recorded.':''}${failed?` ${failed} listing issues retained for review.`:''}`};
  }catch(e){return {source:'apartments',state:/paused|challenge|warning/i.test(String(e))?'paused':'partial',detail:e instanceof Error?e.message:String(e)};}finally{jobs?.fail('Source finished');}
 }
 export async function runApartmentsPlan(store:Store,id:string,dataDir:string,jobs:ChromeJobClient){const {runRegularPlan}=await import('./regular-worker.ts');return runRegularPlan(store,id,dataDir,jobs);}

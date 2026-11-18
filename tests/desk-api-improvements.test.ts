@@ -7,7 +7,8 @@ import {Store} from '../server/db.ts';
 import {createApp} from '../server/api.ts';
 import {listingSchema} from '../src/domain.ts';
 import {applyLocalUpgrades,learningVersion} from '../server/local-upgrades.ts';
-const fixture=(sourceId:string)=>listingSchema.parse({source:'fixture',sourceId,url:'https://example.test/'+sourceId,title:'Fixture',address:'100 Example St',unit:'',rent:2500,beds:1,description:'Full private description',photos:[{id:'p1',url:'https://example.test/p1',status:'reviewed',kind:'interior',scenery:'nature',unitCertain:true,quality:4}],galleryComplete:true});
+import {photosForDisplay} from '../src/photo-order.ts';
+const fixture=(sourceId:string)=>listingSchema.parse({source:'fixture',sourceId,url:'https://example.test/'+sourceId,title:'Fixture',address:'100 Example St',unit:'',rent:2500,beds:1,description:'Full private description',photos:[{id:'p1',url:'https://example.test/p1',local:'fixture.jpg',status:'reviewed',kind:'interior',scenery:'nature',unitCertain:true,quality:4}],galleryComplete:true});
 test('compact desk API supports conditional refresh, full details and repeated protected preference saves',async()=>{
  const store=new Store(':memory:'),dir=mkdtempSync(join(tmpdir(),'af-api-improvements-')),id=store.ingest(fixture('a')).id,app=createApp(store,dir,{demo:true});
  await new Promise<void>(done=>app.server.listen(0,'127.0.0.1',done));const base=`http://127.0.0.1:${(app.server.address() as {port:number}).port}/api/`;
@@ -22,6 +23,28 @@ test('compact desk API supports conditional refresh, full details and repeated p
   assert.equal((await patch(state.criteriaRevision,{maxRent:3300})).status,409);
  }finally{await app.close();store.close();}
 });
+test('compact desk supplies every saved card photo in display order without full assessment payloads',async()=>{
+ const listing=fixture('card-gallery'),basePhoto=listing.photos[0];
+ listing.photos=[
+  {...basePhoto,id:'promo',url:'https://example.test/promo',local:'promo.jpg',note:'Promotional text overlay'},
+  {...basePhoto,id:'kitchen',url:'https://example.test/kitchen',local:'kitchen.jpg',scenery:'unknown'},
+  {...basePhoto,id:'window',url:'https://example.test/window',local:'window.jpg',note:'Detailed window assessment'},
+  {...basePhoto,id:'pending',url:'https://example.test/pending',local:undefined,status:'pending'}
+ ];
+ const store=new Store(':memory:'),id=store.ingest(listing).id,dir=mkdtempSync(join(tmpdir(),'af-card-gallery-')),app=createApp(store,dir,{demo:true});
+ await new Promise<void>(done=>app.server.listen(0,'127.0.0.1',done));
+ try{
+  const before=store.home(id)!;
+  const state=await(await fetch(`http://127.0.0.1:${(app.server.address() as {port:number}).port}/api/state?compact=1`)).json() as any;
+  const card=state.homes.find((home:any)=>home.id===id);
+  assert.equal(card.galleryCount,4);
+  assert.deepEqual(card.listing.photos.map((photo:any)=>photo.local),['window.jpg','kitchen.jpg','promo.jpg']);
+  assert.deepEqual(photosForDisplay(card.listing.photos).map(photo=>photo.local),['window.jpg','kitchen.jpg','promo.jpg']);
+  assert.equal(card.listing.photos[0].note,'');
+  assert.deepEqual(store.home(id),before);
+ }finally{await app.close();store.close();}
+});
+
 test('duplicate merge/split API preserves aliases and can rebuild learning atomically',async()=>{
  const store=new Store(':memory:'),a=store.ingest(fixture('a')).id,b=store.ingest(fixture('b')).id,dir=mkdtempSync(join(tmpdir(),'af-merge-api-')),app=createApp(store,dir,{demo:true});
  await new Promise<void>(done=>app.server.listen(0,'127.0.0.1',done));const base=`http://127.0.0.1:${(app.server.address() as {port:number}).port}/api/`;
