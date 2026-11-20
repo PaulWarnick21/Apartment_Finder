@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {photoSchema,listingSchema,criteriaSchema} from '../src/domain.ts';
 import {photosForDisplay} from '../src/photo-order.ts';
 import {scoreListing} from '../server/scoring.ts';
+import {scoringFacts} from '../server/scoring-facts.ts';
 import {deskCategory} from '../src/desk-category.ts';
 const photo=(id:string,kind='interior',scenery='unknown',unitCertain=true)=>photoSchema.parse({id,url:`https://example.com/${id}.jpg`,local:`${id}.jpg`,status:'reviewed',kind,scenery,unitCertain,quality:scenery==='nature'?4:scenery==='buildings'?2:null});
 test('window outlooks lead cards and galleries without changing stored photo order',()=>{
@@ -69,7 +70,12 @@ test('moderate partial views limit example 14 despite rent and interior bonuses'
  const l=listingSchema.parse({source:'fixture',sourceId:'14',url:'https://example.com/14',title:'Example',address:'Example',rent:2400,beds:1,location:'downtown',workspace:true,modern:true,openPlan:true,furnished:false,shortLease:false,lease:'Minimum one year',photos:[{...photo('partial','interior','nature'),quality:3}],expectedPhotos:1,galleryComplete:true});
  const score=scoreListing(l,criteria);assert.equal(score.value,3.5);assert.equal(score.high,3.5);assert.ok(score.low<=score.value);assert.equal(score.eligible,true);
  assert.equal(scoreListing({...l,furnished:null,shortLease:null},criteria).value,3.5);
- assert.equal(scoreListing({...l,furnished:true,shortLease:true},criteria).value,3.9);
+ // A stale short-lease flag conflicts with the saved one-year minimum and earns no lease bonus.
+ const conflictingLease={...l,furnished:true,shortLease:true};
+ assert.equal(scoringFacts(conflictingLease).shortLease,null);
+ assert.ok(scoringFacts(conflictingLease).conflicts.includes('Conflicting short-term lease statements'));
+ assert.equal(scoreListing(conflictingLease,criteria).value,3.7);
+ assert.equal(scoreListing({...conflictingLease,lease:'Month-to-month lease'},criteria).value,3.9);
  assert.ok(scoreListing({...l,photos:[photo('nature','interior','nature')]},criteria).value>3.5);
  assert.ok(scoreListing({...l,rent:3500,workspace:false,modern:null,openPlan:null},criteria).value<3.5);
  assert.equal(scoreListing({...l,laundry:'shared-only'},{...criteria,requireLaundry:true}).eligible,false);

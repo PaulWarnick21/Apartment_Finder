@@ -1,3 +1,4 @@
+import {AvailabilityMonitor} from './availability-monitor.ts';
 import {searchAreaSummary} from './search-area.ts';
 import {areaMixSettings,updateAreaMixSettings} from './area-mix-settings.ts';
 import {createServer,type IncomingMessage,type ServerResponse} from 'node:http';
@@ -43,6 +44,7 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  const scanProcesses=new ScanProcesses(store,dataDir,chromeJobs);
  const buildingResearch=new BuildingResearchService(store,locationMaps,demo);
  const fullReviews=new FullReviewService(store,dataDir,scanProcesses,demo,{research:id=>buildingResearch.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS')});
+ const availabilityMonitor=new AvailabilityMonitor(store,dataDir,chromeJobs,demo);
  const server=createServer(async(req,res)=>{const host=req.headers.host??'';
  const send=(status:number,value:unknown)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
  try{
@@ -59,13 +61,13 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
    const originId=origin?.match(/^chrome-extension:\/\/([a-p]{32})$/)?.[1];
    if(!originId)return send(403,{error:'Extension origin not allowed'});
    res.setHeader('Access-Control-Allow-Origin',origin!);res.setHeader('Vary','Origin');
-   res.setHeader('Access-Control-Allow-Methods','POST');res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization, X-AF-Extension-Id');
+   res.setHeader('Access-Control-Allow-Methods','POST');res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization, X-AF-Extension-Id, X-AF-Extension-Version');
    res.writeHead(204);return res.end();
   }
   if(req.method!=='POST')return send(405,{error:'POST required'});
   extensionOrigin(origin,id);if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
   if(path==='/api/browser-bridge/pair')return send(200,browserBridge.pair(await body(req),origin));
-  browserBridge.authenticate(id,req.headers.authorization??'',origin);
+  browserBridge.authenticate(id,req.headers.authorization??'',origin,String(req.headers['x-af-extension-version']??''));
   if(path==='/api/browser-bridge/jobs/poll'){
    const {waitMs}=z.object({waitMs:z.number().int().min(0).max(20000).optional()}).strict().parse(await body(req));
    const controller=new AbortController(),closed=()=>controller.abort();res.once('close',closed);
@@ -84,7 +86,7 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  }
  if(path==='/api/state'&&req.method==='GET'){
   const homes=store.homes(),criteria=store.criteria,chatgpt=await connectionStatus.get(),mode=aiMode();
-  const value={csrf,demo,searchAreaSummary:searchAreaSummary(store),areaMix:areaMixSettings(store),homes:url.searchParams.get('compact')==='1'?homes.map(cardSummary):homes,criteria,criteriaRevision:preferencesRevision(criteria),sources:sourceStatuses(store,Date.now(),homes),events:store.events(),plans:(store.db.prepare('SELECT id FROM plans ORDER BY created_at DESC LIMIT 30').all() as any[]).map(p=>getPlan(store,p.id)),providerReady:mode==='api'?!!process.env.OPENAI_API_KEY&&!!process.env.OPENAI_MODEL:!chatgpt.pending&&chatgpt.sharing&&!!chatgpt.model,aiMode:mode,chatgpt,schedule:store.get('scanSchedule')??{enabled:false,reason:'Recurring scans are not enabled. Each run needs bounded approval.'}};
+  const value={csrf,demo,availabilitySchedule:store.get('availabilitySchedule'),availabilityRun:store.get('availabilityRun'),searchAreaSummary:searchAreaSummary(store),areaMix:areaMixSettings(store),homes:url.searchParams.get('compact')==='1'?homes.map(cardSummary):homes,criteria,criteriaRevision:preferencesRevision(criteria),sources:sourceStatuses(store,Date.now(),homes),events:store.events(),plans:(store.db.prepare('SELECT id FROM plans ORDER BY created_at DESC LIMIT 30').all() as any[]).map(p=>getPlan(store,p.id)),providerReady:mode==='api'?!!process.env.OPENAI_API_KEY&&!!process.env.OPENAI_MODEL:!chatgpt.pending&&chatgpt.sharing&&!!chatgpt.model,aiMode:mode,chatgpt,schedule:store.get('scanSchedule')??{enabled:false,reason:'Recurring scans are not enabled. Each run needs bounded approval.'}};
   const content=JSON.stringify(value),etag='"'+createHash('sha256').update(content).digest('hex')+'"';res.setHeader('ETag',etag);
   if(req.headers['if-none-match']===etag){res.writeHead(304,{'Cache-Control':'private, no-cache'});return res.end();}
   res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'private, no-cache'});return res.end(content);
@@ -165,5 +167,5 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  if(dev){if(!vite){const {createServer}=await import('vite');vite=await createServer({server:{middlewareMode:true},appType:'spa'});}return vite.middlewares(req,res,()=>send(404,{error:'Not found'}));}
  const root=resolve('dist');const file=resolve(root,'.'+decodeURIComponent(path));if(file!==root&&!file.startsWith(root+sep))return send(403,{error:'Invalid path'});const actual=existsSync(file)&&extname(file)?file:join(root,'index.html');if(!existsSync(actual))return send(503,{error:'Run npm run build first'});const mime:Record<string,string>={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'};res.writeHead(200,{'Content-Type':mime[extname(actual)]??'application/octet-stream'});res.end(readFileSync(actual));
  }catch(e){const message=e instanceof Error?e.message:'Unexpected error';send(/changed|already|running/.test(message)?409:400,{error:message});}finally{if(req.method==='POST'&&req.url?.startsWith('/api/chatgpt/'))connectionStatus.invalidate();}});
- return {server,close:async()=>{await fullReviews.close();await feedback.close();chromeJobs.fail('Server stopped');await scanProcesses.close();closeAccountUsage();chatGpt(dataDir).close();await vite?.close();await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}};
+ return {server,close:async()=>{await availabilityMonitor.close();await fullReviews.close();await feedback.close();chromeJobs.fail('Server stopped');await scanProcesses.close();closeAccountUsage();chatGpt(dataDir).close();await vite?.close();await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}};
 }

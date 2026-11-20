@@ -17,6 +17,9 @@ sources.find(s=>s.id==='facebook')!.mediaHosts.push('*.fbcdn.net');
 // Rendering dependencies observed in the November 16 inventory captures. These do
 // not expand allowed listing or photo hosts, or permit bypassing access challenges.
 sources.find(s=>s.id==='kijiji')!.assetHosts=['webapp-static.ca-kijiji-production.classifiedscloud.io'];
+// Every application script in the saved Zumper search comes from this CDN.
+// Blocking it leaves only 25 SSR rows while Next advances by 50 results.
+sources.find(s=>s.id==='zumper')!.assetHosts=['d214hhm15p4t1d.cloudfront.net'];
 sources.find(s=>s.id==='hollyburn')!.assetHosts=['cdnjs.cloudflare.com','maps.googleapis.com','maps.gstatic.com'];
 // The saved vacancies page includes Google Maps before its dynamic property-search app.
 sources.find(s=>s.id==='austeville')!.assetHosts=['maps.googleapis.com','maps.gstatic.com'];

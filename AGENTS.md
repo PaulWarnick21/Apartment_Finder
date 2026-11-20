@@ -18,9 +18,13 @@ proprietary connectors, or manual detail collection as prerequisites.
 
 ## Conventions
 
-- Never start a live listing scan or paid AI request without the user's approval of a bounded
-  scan plan. Startup, tests and demos must remain offline. Scheduled scans are disabled until
-  separately enabled; first-scan approval is not recurring authorization.
+- A direct user instruction to start or continue scanning authorizes the assistant to choose
+  suitable bounded scan limits and proceed without asking for separate approval of those
+  limits (user preference, November 19, 2026). Record the chosen bounds and respect any
+  requested deadline; the user will correct limits if needed. Preserve existing AI/spending
+  permissions, source pacing and access-warning guards. Startup, tests and demos must remain
+  offline. Scheduled scans are disabled until separately enabled; a one-off scan instruction
+  is not recurring authorization.
 - Default to TypeScript, a React Sorting Desk, a Node backend/worker, SQLite, and Playwright
   for sources needing browser rendering. Pin compatible versions at setup.
 - Keep AI behind a provider interface. Code handles filtering and score arithmetic; a

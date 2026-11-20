@@ -38,7 +38,7 @@ export class ChromeJobs {
    const timer=setTimeout(finish,Math.min(20000,milliseconds));this.waiting=finish;signal?.addEventListener('abort',finish,{once:true});
   });
  }
- get watching(){return !!this.store.db.prepare("SELECT 1 FROM plans WHERE state IN ('approved','running') AND json_extract(caps,'$.purpose')='listings'").get();}
+ get watching(){return !!this.store.db.prepare("SELECT 1 FROM plans WHERE state IN ('approved','running') AND json_extract(caps,'$.purpose') IN ('listings','availability')").get();}
  poll(){if(!this.active)return {job:null};this.active.budget.check();if(this.active.job.state!=='queued')return {job:null};this.active.job.state='claimed';return {job:this.active.job};}
  check(input:unknown){const {id}=z.object({id:z.string().uuid()}).strict().parse(input);if(!this.active||this.active.job.id!==id)return {active:false};try{this.active.budget.check();if(this.active.job.expires<Date.now())throw new Error('Chrome job expired');return {active:true};}catch{this.fail('Chrome job cancelled or expired');return {active:false};}}
  result(input:unknown){const result=z.object({id:z.string().uuid(),snapshot:chromeSnapshotSchema.optional(),error:z.string().max(2000).optional()}).strict().parse(input);const current=this.active;

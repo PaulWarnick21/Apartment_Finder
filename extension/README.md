@@ -1,5 +1,11 @@
 # Normal Chrome scanner
 
+Version 0.5.2 reports the running extension version and its last authenticated contact
+through `/api/browser/state`. This distinguishes a loaded fix from files that have only
+been updated on disk. Restart the backend, reload the existing extension, and verify
+`runtime.version` before a bounded live validation. Legacy clients report an unknown
+version; this status check makes no source requests and clears no source warning.
+
 Version 0.5.1 fixes Apartments.com availability-text false positives: an ordinary
 “temporarily unavailable” amenity/unit does not establish a site access warning.
 Explicit security challenges and service-outage headings still stop. The bridge retains

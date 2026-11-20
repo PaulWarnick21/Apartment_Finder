@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DecisionQueue} from '../src/decision-queue.ts';
+import {ApiError} from '../src/api-request.ts';
+import {retainUnchangedHomes} from '../src/desk-refresh.ts';
+import {DecisionSaveNotice} from '../src/decision-status.tsx';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {createElement} from 'react';
 import {listingSchema,type Home} from '../src/domain.ts';
 import {deskCategory} from '../src/desk-category.ts';
 
@@ -68,4 +73,76 @@ test('a later failed decision retains the earlier acknowledged stage even before
  queue.enqueue(h,'Interested');await flush();const interested=queue.project([h])[0];
  queue.enqueue(interested,'Not Interested');await flush();assert.equal(queue.project([h])[0].stage,'Interested');
  queue.dismiss(h.id);assert.equal(queue.project([h])[0].stage,'Interested');
+});
+
+test('an unreadable acknowledgement is confirmed automatically without repeating the write',async()=>{
+ const h=home(1);let writes=0,reads=0;
+ const queue=new DecisionQueue(async(_path,method)=>{
+  if(method==='PUT'){writes++;throw new ApiError('Unreadable response',true,502);}
+  reads++;return saved(h,'Interested');
+ });
+ queue.enqueue(h,'Interested');await flush();
+ assert.equal(writes,1);assert.equal(reads,1);assert.equal(queue.snapshot()[0].status,'saved');
+});
+
+test('scanner revision changes recover automatically while preserving newer user notes',async()=>{
+ const h=home(1),current={...h,revision:4,notes:'A newer saved note'};const writes:any[]=[];
+ const queue=new DecisionQueue(async(_path,method,body)=>{
+  if(method!=='PUT')return current;
+  writes.push(body);if(writes.length===1)throw new ApiError('This apartment changed.',true,409);
+  return saved(current,'Not Interested');
+ });
+ queue.enqueue(h,'Not Interested');await flush();
+ assert.equal(queue.snapshot()[0].status,'saved');assert.equal(writes.length,2);
+ assert.equal(writes[1].revision,4);assert.equal(writes[1].notes,current.notes);
+});
+
+test('automatic recovery refuses conflicting edits or decisions and is bounded when offline',async()=>{
+ for(const current of [{...home(1),revision:2,notes:'Changed elsewhere'},{...home(1),revision:2,stage:'Interested' as const}]){
+  let writes=0;const queue=new DecisionQueue(async(_path,method)=>{
+   if(method==='PUT'){writes++;throw new ApiError('Changed',true,409);}return current;
+  });
+  queue.enqueue(home(1),'Not Interested',{notes:'My draft'});await flush();
+  assert.equal(writes,1);assert.equal(queue.snapshot()[0].status,'failed');
+ }
+ let writes=0,reads=0;const queue=new DecisionQueue(async(_path,method)=>{
+  if(method==='PUT'){writes++;throw new ApiError('Connection interrupted',true);}reads++;return home(1);
+ });
+ queue.enqueue(home(1),'Not Interested');await flush();assert.equal(writes,2);assert.equal(reads,2);assert.equal(queue.snapshot()[0].status,'failed');
+});
+
+test('a late poll clears a lost-response warning only when stage and submitted edits are confirmed',async()=>{
+ const h=home(1),queue=new DecisionQueue(async()=>{throw new ApiError('Offline',true);});
+ queue.enqueue(h,'Not Interested',{notes:'My note'});await flush();assert.equal(queue.snapshot()[0].status,'failed');
+ queue.reconcile([saved(h,'Not Interested')]);assert.equal(queue.snapshot()[0].status,'failed');
+ queue.reconcile([{...saved(h,'Not Interested'),notes:'My note'}]);assert.equal(queue.snapshot().length,0);
+});
+
+test('malformed successful responses cannot mark a decision saved or block the next apartment',async()=>{
+ const queue=new DecisionQueue(async()=>({ok:true} as unknown as Home),1);
+ queue.enqueue(home(1),'Interested');queue.enqueue(home(2),'Not Interested');await flush();
+ assert.deepEqual(queue.snapshot().map(entry=>entry.status),['failed','failed']);
+ assert.equal(queue.blocked(3),false);
+});
+
+test('polls reuse unchanged card objects while applying new facts and user decisions',()=>{
+ const before=[home(1),home(2)],after=structuredClone(before);after[1].stage='Not Interested';after[1].revision++;
+ const next=retainUnchangedHomes(before,[...after,home(3)]);
+ assert.equal(next[0],before[0]);assert.equal(next[1],after[1]);assert.equal(next[2].id,3);assert.equal(before[1].stage,'Unreviewed');
+});
+
+test('failed save snapshots change identity so memoized cards replace pending status with recovery controls',async()=>{
+ const pending=deferred<Home>(),queue=new DecisionQueue(()=>pending.promise);
+ queue.enqueue(home(1),'Not Interested');const before=queue.snapshot()[0];
+ assert.equal(before.status,'saving');pending.reject(new Error('Connection unavailable'));await flush();
+ const after=queue.snapshot()[0];assert.notEqual(after,before);assert.equal(before.status,'saving');assert.equal(after.status,'failed');
+ const html=renderToStaticMarkup(createElement(DecisionSaveNotice,{entry:after,retry:()=>{},dismiss:()=>{}}));
+ assert.match(html,/wasn’t confirmed/);assert.match(html,/Retry Save/);assert.match(html,/Keep Current State/);
+ assert.doesNotMatch(html,/Decision save pending|disabled/);
+});
+
+test('the inline notice labels only active saves as waiting and keeps confirmed saves quiet',()=>{
+ const entry={home:home(1),stage:'Interested' as const,edits:{},at:'2026-11-19',status:'queued' as const};
+ const render=(status:'queued'|'saving'|'saved')=>renderToStaticMarkup(createElement(DecisionSaveNotice,{entry:{...entry,status},retry:()=>{},dismiss:()=>{}}));
+ assert.match(render('queued'),/Waiting to save/);assert.match(render('saving'),/Saving/);assert.equal(render('saved'),'');
 });

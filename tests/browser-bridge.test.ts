@@ -39,6 +39,21 @@ test('one approved page capture is single-use and cannot claim full photo review
  }finally{db.close();}
 });
 
+test('runtime version reports only authenticated client evidence and clears on disconnect',()=>{
+ const {db,bridge}=setup();try{
+  const {code}=bridge.prepare(),{token}=bridge.pair({code,extensionId},origin);
+  assert.equal(bridge.state().runtime,null);
+  assert.throws(()=>bridge.authenticate(extensionId,'Bearer wrong',origin,'0.5.2'),/connected/);
+  assert.equal(bridge.state().runtime,null);
+  bridge.authenticate(extensionId,`Bearer ${token}`,origin,'0.5.2');
+  assert.equal(bridge.state().runtime?.version,'0.5.2');
+  assert.ok(bridge.state().runtime?.lastSeenAt);
+  bridge.authenticate(extensionId,`Bearer ${token}`,origin);
+  assert.equal(bridge.state().runtime?.version,null);
+  bridge.disconnect();assert.equal(bridge.state().runtime,null);
+ }finally{db.close();}
+});
+
 test('approval expires, restarts do not resume, warnings pause the source',()=>{
  const {db,dir,bridge}=setup(),realNow=Date.now;try{
   const initial=realNow();bridge.prepare();Date.now=()=>initial+660000;
@@ -76,9 +91,11 @@ test('HTTP bridge requires pairing token and does not weaken existing CSRF or CO
   const paired=await post('browser-bridge/pair',{code:plan.code,extensionId},headers);
   assert.equal(paired.headers.get('access-control-allow-origin'),origin);const {token}=await paired.json() as any;
   assert.equal((await post('browser-bridge/claim',{url:testListingUrl},headers)).status,400);
-  const authorized={...headers,Authorization:`Bearer ${token}`};
+  const authorized={...headers,Authorization:`Bearer ${token}`,'X-AF-Extension-Version':'0.5.2'};
   const claimed=await(await post('browser-bridge/claim',{url:testListingUrl},authorized)).json() as any;
   assert.equal((await post('browser-bridge/capture',sample(claimed.id),authorized)).status,200);
+  const bridgeState=await(await fetch(base+'/api/browser/state')).json() as any;
+  assert.equal(bridgeState.runtime.version,'0.5.2');assert.ok(bridgeState.runtime.lastSeenAt);
   assert.equal((await post('browser/prepare',{}, {...authorized,'X-AF-Token':state.csrf})).status,403);
   const preflight=await fetch(base+'/api/browser-bridge/pair',{method:'OPTIONS',headers:{Origin:'https://evil.example'}});assert.equal(preflight.status,403);
  }finally{await app.close();db.close();}

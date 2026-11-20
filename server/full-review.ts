@@ -7,7 +7,7 @@ import {readAccountUsage,validateAccountUsage} from './account-usage.ts';
 import {assertFeedbackReady,feedbackBlocker} from './feedback-learning.ts';
 import {assertCanStartScan,isCachedReview} from './scan-concurrency.ts';
 import {cachedReviewReady} from './cached-review.ts';
-import {deduplicateHome} from './automatic-duplicates.ts';
+import {deduplicateForFullReview} from './review-duplicates.ts';
 
 export type FullReviewPolicy={accountId:string;profileId:string;stopAt:number;maxPages:number;maxPhotos:number;maxAiCalls:number};
 type ProcessRunner={readonly hasActive:boolean;assertCanStart?:(id:string)=>void;start:(id:string)=>void};
@@ -72,7 +72,7 @@ export class FullReviewService{
    }
    const result=this.store.get<{complete:boolean;hardFiltered:boolean;detail:string}>(`fullReviewResult:${plan.id}:${job.id}`);
    const latest=this.store.get<FullReviewState>(`fullReview:${job.id}`);if(latest?.status!=='running')continue;
-   deduplicateHome(this.store,job.id);if(this.store.resolveHomeId(job.id)!==job.id)continue;
+   await deduplicateForFullReview(this.store,job.id,this.dataDir);if(this.store.resolveHomeId(job.id)!==job.id||this.store.home(job.id)?.stage!=='Interested'||this.store.get<FullReviewState>(`fullReview:${job.id}`)?.status!=='running')continue;
    let researchDetail='';
    if(result?.complete&&!result.hardFiltered&&this.deps.research){
     const key=`fullReviewResearch:${plan.id}:${job.id}`;
@@ -88,8 +88,8 @@ export class FullReviewService{
   for(const next of queued){
    let home=this.store.home(next.id);
    if(!home||home.id!==next.id||home.stage!=='Interested'){this.save(next.id,{status:'cancelled',detail:'The apartment is no longer awaiting an Interested assessment.'});continue;}
-   deduplicateHome(this.store,next.id);home=this.store.home(next.id);
-   if(!home||home.id!==next.id)continue;
+   await deduplicateForFullReview(this.store,next.id,this.dataDir);home=this.store.home(next.id);
+   if(!home||home.id!==next.id||home.stage!=='Interested'||this.store.get<FullReviewState>(`fullReview:${next.id}`)?.status!=='queued')continue;
    if(this.demo){this.save(next.id,{status:'paused',detail:'Offline demo: full assessment is queued but no network or AI requests run.'});continue;}
    const blocker=feedbackBlocker(this.store);
    if(blocker){this.waitForFeedback(next.id,blocker);continue;}

@@ -1,5 +1,6 @@
 import {discoveryAreaFailure,searchAreaExclusion,searchRouteAllowed,sourceFilteredIntake,areaSearchRoute} from './search-area.ts';
 import {studioTitleEvidence} from '../src/bedrooms.ts';
+import {discoveryBedrooms} from './discovery-bedrooms.ts';
 import type {Listing} from '../src/domain.ts';
 import {hash,type Store} from './db.ts';
 import {discoveryFailure,prioritizeCards,type DiscoveryCard} from './source-discovery.ts';
@@ -9,7 +10,7 @@ import {postingAgeRank} from './listing-age.ts';
 import {quickIntakeLimits} from './quick-rank.ts';
 export type DiscoveryQueue={urls:string[];next:string|null;cards?:Record<string,DiscoveryCard>;offerings?:Listing[];freshCheckedAt?:string};
 export type DiscoverySummary={at:string;recognized:number;alreadySaved:number;unavailable:number;filtered:number;quarantined:number;rejectedRoutes:number;queued:number};
-export function readQueue(store:Store,source:string):DiscoveryQueue{const queue:DiscoveryQueue={urls:[],next:null,...store.get<DiscoveryQueue>(`discoveryQueue:${source}`)};queue.urls=queue.urls.filter(url=>!discoveryAreaFailure(store,queue.cards?.[url]??{})&&(!sourceFilteredIntake(store)||!!areaSearchRoute(store,source,queue.cards?.[url]?.searchUrl??'')));if(queue.offerings)queue.offerings=queue.offerings.filter(listing=>!searchAreaExclusion(store,listing,sourceFilteredIntake(store)));if(queue.next&&!searchRouteAllowed(store,queue.next))queue.next=null;return queue;}
+export function readQueue(store:Store,source:string):DiscoveryQueue{const queue:DiscoveryQueue={urls:[],next:null,...store.get<DiscoveryQueue>(`discoveryQueue:${source}`)};queue.urls=queue.urls.filter(url=>!discoveryIntakeFailure(store,queue.cards?.[url]??{url})&&(!sourceFilteredIntake(store)||!!areaSearchRoute(store,source,queue.cards?.[url]?.searchUrl??'')));if(queue.offerings)queue.offerings=queue.offerings.filter(listing=>!searchAreaExclusion(store,listing,sourceFilteredIntake(store)));if(queue.next&&!searchRouteAllowed(store,queue.next))queue.next=null;return queue;}
 export function saveQueue(store:Store,source:string,queue:DiscoveryQueue){store.set(`discoveryQueue:${source}`,queue);}
 /** Balance waiting time and promising cards within each posting-age tier. */
 export function balanceQueue(queue:DiscoveryQueue,months:number|null=null,now=Date.now()){
@@ -38,7 +39,7 @@ export function hasPosting(store:Store,source:string,url:string){return !!store.
 export function hasOffering(store:Store,listing:Listing){return !!store.db.prepare('SELECT 1 FROM postings WHERE source=? AND source_id=?').get(listing.source,listing.sourceId);}
 export function inventoryCheckKey(source:string,url:string){return `inventoryChecked:${source}:${hash(url)}`;}
 /** A building URL can advertise new floorplans without changing its own URL. Recheck facts only. */
-function inventoryDue(store:Store,source:string,url:string){if(source!=='zumper')return false;const post=store.db.prepare('SELECT home_id FROM postings WHERE source=? AND url=? LIMIT 1').get(source,url) as {home_id:number}|undefined;if(!post)return false;const listing=store.home(post.home_id)?.listing;if(!listing||listing.offeringKind!=='floorplan'&&!/Building \/ floor-plan advertisement|Representative photos of the building/i.test(listing.description+' '+listing.conflicts.join(' ')))return false;const at=store.get<string>(inventoryCheckKey(source,url));return !at||Date.now()-Date.parse(at)>=86400000;}
+function inventoryDue(store:Store,source:string,url:string){if(source!=='zumper'&&source!=='hollyburn')return false;const post=store.db.prepare('SELECT home_id FROM postings WHERE source=? AND url=? LIMIT 1').get(source,url) as {home_id:number}|undefined;if(!post)return false;const listing=store.home(post.home_id)?.listing;if(!listing||!(source==='hollyburn'&&/^\/building\/[^/]+\/$/.test(new URL(url).pathname))&&listing.offeringKind!=='floorplan'&&!/Building \/ floor-plan advertisement|Representative photos of the building/i.test(listing.description+' '+listing.conflicts.join(' ')))return false;const at=store.get<string>(inventoryCheckKey(source,url));return !at||Date.now()-Date.parse(at)>=86400000;}
 export function recordCandidateFailure(store:Store,source:string,url:string,reason:string,kind:'parse'|'prefilter'|'not-found'|'refresh'='parse',options:{preserveExistingGallery?:boolean}={}){
  const key=`candidateFailures:${source}`,old=store.get<Array<{url:string;reason:string;kind:string;at:string;attempts:number}>>(key)??[],previous=old.find(item=>item.url===url&&item.kind===kind);
  store.set(key,[...old.filter(item=>item!==previous),{url,reason:reason.slice(0,1000),kind,at:new Date().toISOString(),attempts:(previous?.attempts??0)+1}].slice(-500));
@@ -52,7 +53,8 @@ export function discoveryIntakeFailure(store:Store,card:DiscoveryCard){
  const failure=discoveryFailure(card,null);if(failure)return failure;
  const limits=quickIntakeLimits(store.criteria);
  if(card.rent!=null&&(card.rent<limits.minRent||limits.maxRent!==null&&card.rent>limits.maxRent))return 'Advertised monthly rent is outside the quick-intake range';
- const beds=studioTitleEvidence(card.title??'')?0:card.beds;
+ const titleBeds=discoveryBedrooms(card.title??'');
+ const beds=card.bedsConflict?null:studioTitleEvidence(card.title??'')?0:card.beds!=null&&titleBeds!=null&&card.beds!==titleBeds?null:card.beds??titleBeds;
  if(beds!=null&&limits.allowedBeds.length&&!limits.allowedBeds.includes(beds))return 'Advertised bedroom count is outside the quick-intake range';
  return null;
 }

@@ -15,6 +15,7 @@ export function listingUrl(value:string){const u=new URL(value);if(u.origin!=='h
 const imageSchema=z.object({url:z.string().url().max(3000),alt:z.string().max(1000),width:z.number().int().min(0).max(100000),height:z.number().int().min(0).max(100000)}).strict();
 export const captureSchema=z.object({id:z.string().uuid(),url:z.string().max(3000),title:z.string().max(1000),text:z.string().max(150000),html:z.string().max(1000000),images:z.array(imageSchema).max(500),advertisedPhotos:z.number().int().min(0).max(10000).nullable(),galleryComplete:z.literal(false),warning:z.string().max(1000).nullable(),warningEvidence:z.string().max(2000).optional(),truncated:z.boolean()}).strict();
 type Pair={id:string;tokenHash:string};
+type Runtime={extensionId:string;version:string|null;lastSeenAt:string};
 type Probe={id:string;url:string;state:'approved'|'claimed'|'saved'|'failed';expires:number;message?:string;imageCount?:number;advertisedPhotos?:number|null};
 export class BrowserBridge {
  private code:{hash:string;expires:number;attempts:number}|null=null;
@@ -22,7 +23,7 @@ export class BrowserBridge {
  private probe:Probe|null=null;
  constructor(private store:Store,private dataDir:string,private demo=false){}
  private enabled(){if(this.demo)throw new Error('Browser connection is disabled in the offline demo');}
- state(){const pair=this.store.get<Pair>('browserExtension');return {connected:!!pair,extensionId:pair?.id??null,probe:this.probe,lastCapture:this.store.get<Probe>('browserLastCapture')??null,lastExtraction:this.store.get('browserLastExtraction')??null};}
+ state(){const pair=this.store.get<Pair>('browserExtension'),runtime=this.store.get<Runtime>('browserExtensionRuntime');return {connected:!!pair,extensionId:pair?.id??null,runtime:pair&&runtime?.extensionId===pair.id?runtime:null,probe:this.probe,lastCapture:this.store.get<Probe>('browserLastCapture')??null,lastExtraction:this.store.get('browserLastExtraction')??null};}
  prepare(){this.enabled();if(this.store.db.prepare('SELECT 1 FROM scan_lock WHERE id=1').get())throw new Error('Finish the running scan first');
   const code=randomBytes(12).toString('hex');this.code={hash:digest(code),expires:Date.now()+600000,attempts:0};
   this.probe={id:randomUUID(),url:testListingUrl,state:'approved',expires:Date.now()+600000};
@@ -34,8 +35,13 @@ export class BrowserBridge {
   this.code=null;const token=randomBytes(32).toString('hex');this.store.set('browserExtension',{id:extensionId,tokenHash:digest(token)});
   this.store.event('Normal Chrome extension connected. Automatic scanning remains off.');return {token};
  }
- authenticate(id:string,authorization:string,origin?:string){this.enabled();extensionOrigin(origin,id);const pair=this.store.get<Pair>('browserExtension');
+ authenticate(id:string,authorization:string,origin?:string,version?:string){this.enabled();extensionOrigin(origin,id);const pair=this.store.get<Pair>('browserExtension');
   if(!pair||pair.id!==id||!authorization.startsWith('Bearer ')||!same(digest(authorization.slice(7)),pair.tokenHash))throw new Error('Extension is not connected');
+  // Attest the code that is actually polling, not merely the manifest on disk.
+  // Legacy clients remain usable but explicitly report an unknown version.
+  const reported=version&&/^\d{1,5}(?:\.\d{1,5}){1,3}$/.test(version)?version:null;
+  const previous=this.store.get<Runtime>('browserExtensionRuntime');
+  if(previous?.extensionId!==id||previous.version!==reported||Date.now()-Date.parse(previous.lastSeenAt)>=15000)this.store.set('browserExtensionRuntime',{extensionId:id,version:reported,lastSeenAt:new Date().toISOString()});
  }
  claim(input:unknown){const {url}=z.object({url:z.string().max(3000)}).strict().parse(input);const p=this.probe;
   if(!p||p.state!=='approved'||p.expires<Date.now()||listingUrl(url)!==p.url)throw new Error('No approved connection test for this page. Prepare one in Preferences.');
@@ -58,5 +64,5 @@ export class BrowserBridge {
   if(snapshot.warning)this.store.pause('apartments',snapshot.warning,true);
   return {ok:true,message:p.message,imageCount:p.imageCount,advertisedPhotos:p.advertisedPhotos};
  }
- disconnect(){this.code=null;this.probe=null;this.store.set('browserExtension',null);this.store.event('Chrome extension disconnected; pending connection test cancelled.');}
+ disconnect(){this.code=null;this.probe=null;this.store.set('browserExtension',null);this.store.set('browserExtensionRuntime',null);this.store.event('Chrome extension disconnected; pending connection test cancelled.');}
 }

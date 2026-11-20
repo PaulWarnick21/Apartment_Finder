@@ -1,5 +1,79 @@
 # Requirements
 
+November 19 scan authorization preference: when the user instructs the assistant to start
+or continue a scan, choose suitable bounded limits and start without a second confirmation
+of those limits. The user explicitly delegates limit selection and will correct it if needed.
+This supersedes earlier requirements for separate approval of concrete traffic ceilings.
+Record the selected bounds, honor the requested deadline and preserve established source
+guards and AI/spending permissions. A one-off instruction does not enable recurring scans.
+
+November 19 afternoon continuation: the user requested continuing today's scans until
+08:00 November 20 America/Toronto (2026-11-20T13:00:00Z). Resume the same saved run,
+retaining baseline IDs, all prior usage, queues, recovery state and user decisions.
+The longer window uses cumulative outer limits of 18,000 pages, 12,000 candidate
+attempts and 240,000 photo attempts, zero intake AI/address calls, unchanged adaptive
+pacing, three source workers and one Chrome lane. Stop at the deadline or aggregate
+limit. The confirmed Chrome 0.5.2 reload permits Zillow to rejoin and one guarded
+Apartments.com recovery check; real warnings stay enforced. This is a one-off
+continuation, not authorization to enable recurring discovery.
+
+November 19 availability display refinement: show an apartment-level notice only when
+the apartment is confirmed unavailable. Omit Still listed, not-yet-checked and uncertain
+availability badges from cards and details; retain check outcomes in Activity.
+
+November 19 daily availability monitoring: the user authorized a recurring facts-only
+check around 12:00 America/Toronto for Interested, Serious Candidates, Ready to Apply,
+In Progress, Inquiry Sent, Viewing Booked and Applied homes, including confirmed duplicate
+postings. Leased, Closed and Not Interested are excluded. Check all known cross-posts before
+marking a home unavailable; a live duplicate keeps it available, while blocked/missing pages
+or unresolved possible duplicates keep the conclusion unverified. Show red unavailable cards
+and explicit text, dates and per-source evidence without changing stages, notes, scores or
+photos. This separate authorization does not re-enable daily discovery or paid AI.
+
+
+November 19 duplicate-audit follow-up: run the reliable local image/address duplicate
+check whenever an apartment is submitted for full scoring, and again as saved gallery
+evidence becomes available. Recognize resized cross-posts and shorter subset galleries
+only with corroborating rental facts, specific descriptions and attributed interiors.
+Retain the more advanced active decision, then the older record when stages tie. Preserve
+existing closed decisions, ratings, notes, explicit different-home decisions and recovery
+history. Shared marketing galleries and uncertain unit identity must remain separate.
+Use saved evidence and persistent image signatures; this adds no listing requests or AI
+calls and does not authorize any scan.
+
+November 19 review reliability: Interested / Not Interested decisions must remain available
+while new listings arrive, details load and independent saves run. Recover interrupted save
+acknowledgements without repeating a committed decision, preserve concurrent notes and stages,
+and keep genuinely unresolved saves visible. New Unreviewed arrivals should wait for an
+explicit Show new apartments action during an ongoing review session.
+
+November 19 intake-efficiency correction: include Excluded records alongside qualifying
+tracker additions in source-count reports. Use supported native one/two-bedroom searches
+and reject explicit out-of-range search-card facts before fetching details or photos.
+Recheck saved queues against current criteria; retain unknown or conflicting bedroom
+evidence for detail inspection. Preserve saved records and user decisions. This operates
+within the existing scan's deadline and aggregate approval, without a fresh allowance.
+
+November 19 continuation authorization: after verification of healthy progress, the user explicitly requested continuing scans until at least 2pm Toronto. The active coverage-repair run is extended to 2026-11-19T19:00:00Z, with total limits of 6,000 pages, 4,000 candidate attempts and 80,000 photo attempts, zero intake AI/address calls. Retain all initial validation usage, baseline IDs, plans, queues and retries. Continue 15-minute health checks. Apartments.com and Zillow remain gated on the pending Chrome reload; the separate 2pm reminder and paused morning schedule remain.
+
+November 19 coverage correction: a missing Downtown-only website filter must not exclude an entire source. Use supported Vancouver searches and best-effort proximity (roughly 3–4 km around downtown), retaining uncertain nearby candidates with explicit location uncertainty. Prefer source coordinates/address/neighbourhood evidence; public address lookup is an authorized fallback, without expensive model reasoning. Preserve clear far-away/off-mainland exclusions and all saved decisions. Diagnose and repair Apartments.com recovery plus REW/Zumper/Zillow discovery; do not bypass real challenges. The new bounded validation is 45 minutes, 300 pages, 160 candidate attempts, 4,000 photo attempts, zero intake AI; it does not renew the finished overnight run or enable recurring scans.
+
+November 18 full-core clarification: initial scans must cover the complete user-defined
+downtown peninsula boundary recorded in `private/criteria.md`. A source's neighbourhood
+named "Downtown" must not stand in for that whole region. Include separate West End
+searches and audit the other constituent neighbourhoods; unsupported or unchecked portions
+remain explicit coverage gaps. This configuration correction does not renew scan budgets,
+enable schedules or establish live coverage.
+
+November 18 overnight authorization: check retained sources and repair supported failures,
+then continue fast quick intake until November 19 at 03:00 America/Toronto (08:00 UTC).
+Preserve the current Downtown-only selection, adaptive pacing, three source workers,
+one shared Chrome lane, complete galleries, zero intake AI/address calls and disabled
+recurring scans. Isolate source failures, retry transient failures with bounded increasing
+backoff, and periodically refresh quiet inventory. Never clear access warnings to recover.
+Keep VADA if its Vancouver search returns listings; the approved health check returned
+16 links, so the conditional instruction to remove an empty VADA source did not apply.
+
 November 18 initial-move exception: the user confirmed that a nice, reasonably priced,
 furnished short-term apartment may score above 3.0 without a verified nature view.
 Implement a narrow alternative fit up to 3.5, requiring supported furnishing/short lease,

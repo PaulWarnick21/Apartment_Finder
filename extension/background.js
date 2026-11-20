@@ -4,7 +4,7 @@ import {captureApartmentDiscovery} from './discovery.js';
 const api='http://127.0.0.1:4317/api/browser-bridge/';
 let busy=false;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-async function call(path,body,token){const r=await fetch(api+path,{method:'POST',credentials:'omit',signal:AbortSignal.timeout(path==='jobs/poll'?25000:15000),headers:{'Content-Type':'application/json','X-AF-Extension-Id':chrome.runtime.id,Authorization:`Bearer ${token}`},body:JSON.stringify(body)});const value=await r.json();if(!r.ok)throw new Error(value.error??'Local app unavailable');return value;}
+async function call(path,body,token){const r=await fetch(api+path,{method:'POST',credentials:'omit',signal:AbortSignal.timeout(path==='jobs/poll'?25000:15000),headers:{'Content-Type':'application/json','X-AF-Extension-Id':chrome.runtime.id,'X-AF-Extension-Version':chrome.runtime.getManifest().version,Authorization:`Bearer ${token}`},body:JSON.stringify(body)});const value=await r.json();if(!r.ok)throw new Error(value.error??'Local app unavailable');return value;}
 async function snapshot(tabId,zillow=false){return (await chrome.scripting.executeScript({target:{tabId},func:zillow?captureZillow:capturePage}))[0].result;}
 async function collect(job,token){
  const check=async()=>{if(Date.now()>job.expires||!(await call('jobs/check',{id:job.id},token)).active)throw new Error('Scan cancelled or expired');};

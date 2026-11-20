@@ -5,9 +5,19 @@ import {resolve} from 'node:path';
 import type {Store} from './db.ts';
 import {Budget,getPlan} from './plans.ts';
 import type {ChromeJobs,ChromeSnapshot} from './chrome-jobs.ts';
-import {assertCanStartScan} from './scan-concurrency.ts';
+import {assertCanStartScan,releaseScan} from './scan-concurrency.ts';
+import {releaseAreaClaims} from './area-mix.ts';
 
 type Request={type:'chrome-request';requestId:string;planId:string;url:string;kind:'listing'|'discovery';maxRent:number|null;maxPhotos:number;accessRecovery:boolean;options?:Record<string,unknown>};
+/** Call only after the owned subprocess closes: no live worker can retain this lock. */
+export function finishClosedWorker(store:Store,id:string){
+ const current=getPlan(store,id);
+ if(['approved','running'].includes(current.state)){
+  store.db.prepare("UPDATE plans SET state='interrupted',detail=? WHERE id=?").run('Worker process closed before completion. Saved work retained; continuation requires an approved plan.',id);
+  store.event('Scan worker interrupted; closed-process locks released and completed results retained.');
+ }
+ releaseAreaClaims(store,id);releaseScan(store,id);
+}
 /** The server retains the authenticated browser bridge; the scanner runs independently. */
 export class ScanProcesses{
  private children=new Map<string,ChildProcess>();
@@ -40,9 +50,7 @@ export class ScanProcesses{
   // close also fires after a spawn error, when no exit event is emitted.
   child.on('close',code=>{
    this.children.delete(id);this.jobs.fail('Scan process finished',id);
-   const current=getPlan(this.store,id);
-   if(current.state==='approved')this.store.db.prepare("UPDATE plans SET state='interrupted',detail='Worker could not claim this plan. A new approval is required.' WHERE id=?").run(id);
-   if(current.state==='running')this.store.event(`Scan worker interrupted (exit ${code??'signal'}). Completed results retained; use interrupted-run recovery.`);
+   finishClosedWorker(this.store,id);
   });
  }
  async close(){

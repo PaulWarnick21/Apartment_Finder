@@ -19,6 +19,7 @@ import {parseListing} from './parsers.ts';
 import {extractTrial} from './trial-extraction.ts';
 import {extractRemaining,NonRentalPropertyError} from './remaining-extraction.ts';
 import {extractZumperOfferings} from './zumper-extraction.ts';
+import {extractHollyburnOfferings} from './hollyburn-extraction.ts';
 import {reviewGallery} from './gallery-review.ts';
 import {initializeNewValidation,validationAttempt,validationOutcome,validationTargetReached,ingestNewCandidate,validationSummary} from './new-listing-validation.ts';
 import type {Listing,Criteria,Home} from '../src/domain.ts';
@@ -45,7 +46,7 @@ export function pendingCollectionHomes(store:Store,source:string){return pending
 export function postingForSource(store:Store,home:Home,source:string){return store.postingDetails(home.id).find(p=>p.source===source)?.listing??home.listing;}
 function locate(l:Listing){if(l.location!=='unknown')return;const area=l.area!=='Unknown'?l.area:l.address;const text=area+' '+l.title;if(/\b(Coal Harbour|West End|Yaletown|Downtown Vancouver)\b/i.test(text)){l.location='downtown';l.evidence.location=text;}else if(/\b(North Vancouver|West Vancouver|Burnaby|Richmond|Coquitlam|Port Moody|Surrey|New Westminster)\b/i.test(text)){l.location='outside';l.evidence.location=text;}}
 export function extractSourceOfferings(source:Source,html:string,url:string,xml?:string):Listing[]{
- let listings:Listing[];if(source.id==='craigslist')listings=[parseListing(html,url,source)];else if(['zillow','rew','facebook'].includes(source.id))listings=[extractRemaining(source.id as 'zillow'|'rew'|'facebook',html,url)];else if(source.id==='zumper')listings=extractZumperOfferings(html,url);else listings=[extractTrial(html,url,source,xml)];
+ let listings:Listing[];if(source.id==='craigslist')listings=[parseListing(html,url,source)];else if(['zillow','rew','facebook'].includes(source.id))listings=[extractRemaining(source.id as 'zillow'|'rew'|'facebook',html,url)];else if(source.id==='zumper')listings=extractZumperOfferings(html,url);else if(source.id==='hollyburn')listings=extractHollyburnOfferings(html,url);else listings=[extractTrial(html,url,source,xml)];
  const postedAt=detailPostingDate(html,source.id,url);
  return listings.map(l=>{if(!l.title)throw new Error('Listing title missing; extraction needs review');locate(l);return scoringFacts(applyPostingDate(l,l.postedAt??postedAt));});
 }
@@ -131,6 +132,7 @@ export async function runWebSource(store:Store,source:Source,budget:Budget,dataD
 /** Old incomplete evidence cannot consume every candidate slot forever. */
 export function galleryResumeAllowance(store:Store,source:string,budget:Budget,pending:number,newCandidates:number){if(!pending||!newCandidates)return pending;const available=budget.remaining('listings');if(available>1)return Math.floor(available/2);const key=`galleryResumePriority:${source}`,resume=store.get<boolean>(key)??false;store.set(key,!resume);return resume?1:0;}
 export async function runRegularPlan(store:Store,id:string,dataDir:string,jobs?:ChromeJobClient,deps:ScanDependencies={}){
+ if(getPlan(store,id).caps.purpose==='availability')throw Error('Availability plans must use the saved-listing availability monitor');
  if(getPlan(store,id).caps.phase!=='inventory'&&!quickIntake(store,getPlan(store,id).caps))assertFeedbackReady(store);const plan=claimPlan(store,id),budget=new Budget(store,id,plan.caps),results:SourceResult[]=plan.caps.sources.map((source:string)=>({source,state:'pending',detail:'Awaiting its turn.'}));initializeNewValidation(budget);store.set(`sourceResults:${id}`,results);
  const allocation=store.get<SourceSelectionState>('sourceAllocation')??{selectionCount:0,lastSelected:{}},stats=savedSourceYieldStats(store);let allocationAdvanced=false;
  const available=results.map(r=>r.source).filter(source=>{try{store.checkSource(source);return true;}catch{return false;}});

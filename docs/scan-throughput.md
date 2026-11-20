@@ -1,5 +1,34 @@
 # Scan throughput and the next benchmark
 
+## Approved overnight continuation — November 18–19, 2026
+
+The evening check-in found repeated Windows file-open errors while rewriting an already
+saved, hash-valid photo. Photo storage now verifies and reuses identical existing bytes;
+new files are published atomically using a temporary file and a no-overwrite hard link.
+Concurrent writers cannot truncate media being served or decoded. A content mismatch
+remains an explicit integrity error. The repair uses no extra source requests or budget
+renewal and is loaded by subsequent workers; current source backoffs remain in force.
+
+The user authorized source checks/repairs followed by continuous fast quick intake until
+03:00 America/Toronto on November 19 (08:00 UTC). The private supervisor started at 17:01
+Toronto on November 18. One aggregate authorization allows at most 6,000 pages, 4,000
+candidate attempts and 80,000 photo attempts, with zero AI/address calls. Every batch uses
+adaptive pacing and the same absolute deadline; counters are summed across batches.
+Current Downtown-only geography, user decisions, source warnings and disabled recurring
+scans remain unchanged. VADA returned Vancouver listings and was retained.
+
+Recovery isolates sources, waits five minutes after the first failure, fifteen after the
+second, and an hour after further consecutive failures. Health cooldowns and attention flags
+always take precedence. Gallery collection retains saved progress and can resume up to four
+times per new home. Ten minutes without traffic progress cancels a stalled batch and waits
+for worker cleanup. A known-closed child releases only its own locks; this does not itself
+authorize another scan. Quiet inventory refreshes at thirty-minute intervals. User cancellation
+ends the run. In-flight work can finish after cutoff, but no further budget reservations pass.
+
+Runtime evidence is stored under `data/live/overnight-scan-2026-11-18/`, including the baseline
+backup, atomic run summary, batch IDs, retries and logs. A temporary Windows keep-awake request
+lasts only for the runner; no permanent power setting or recurring scan is enabled.
+
 The November 18 user instruction authorizes implementation after the current one-hour
 run, followed by a **separately approved** thirty-minute benchmark. It does not authorize
 starting that benchmark or restarting daily scans. No request rate guarantees freedom

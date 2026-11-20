@@ -15,7 +15,7 @@ import {reviewGallery} from './gallery-review.ts';
 import {storePhoto,EmptyPhotoError} from './photo-storage.ts';
 import {reusedDownload,rememberDownload} from './gallery-downloads.ts';
 import {cachedReviewReady} from './cached-review.ts';
-import {deduplicateHome} from './automatic-duplicates.ts';
+import {deduplicateForFullReview} from './review-duplicates.ts';
 
 export function selectedReviewComplete(listing:Listing){
  return listing.galleryComplete&&listing.photos.length>0&&(listing.expectedPhotos===null||listing.photos.length>=listing.expectedPhotos)&&listing.photos.every(p=>(p.status==='reviewed'||p.status==='unavailable')&&!p.attributionPending);
@@ -44,12 +44,13 @@ async function runCachedReview(store:Store,source:Source,budget:Budget,dataDir:s
    store.set(resultKey,{complete,hardFiltered,inaccessiblePhotos,detail:detail||(hardFiltered?'Full scoring completed from confirmed hard requirements.':complete?`Full assessment complete.${inaccessiblePhotos?` ${inaccessiblePhotos} inaccessible photos remain explicitly recorded.`:''}`:'Gallery evidence remains incomplete; saved progress can resume.'),updatedAt:new Date().toISOString()});
   });
  }
+ await deduplicateForFullReview(store,id,dataDir);
  return {source:source.id,state:complete?'complete':'partial',detail:`Selected-apartment cached assessment: ${complete?'complete':'incomplete'}. No listing-source requests.${detail?' '+detail:''}`};
 }
 /** User-selected apartments only. This runner never reads or advances discovery queues. */
 export async function runSelectedReviews(store:Store,source:Source,budget:Budget,dataDir:string,jobs?:ChromeJobClient,deps:ScanDependencies={}):Promise<SourceResult>{
- for(const id of budget.caps.fullReviewHomeIds??[])if(store.resolveHomeId(id)===id)deduplicateHome(store,id);
- if((budget.caps.fullReviewHomeIds??[]).every(id=>store.resolveHomeId(id)!==id))return {source:source.id,state:'complete',detail:'Duplicate assessment skipped; older apartment and review retained.'};
+ for(const id of budget.caps.fullReviewHomeIds??[])if(store.resolveHomeId(id)===id)await deduplicateForFullReview(store,id,dataDir);
+ if((budget.caps.fullReviewHomeIds??[]).every(id=>store.resolveHomeId(id)!==id))return {source:source.id,state:'complete',detail:'Duplicate assessment skipped; existing apartment decision and review retained.'};
  if(budget.caps.cachedReviewOnly)return runCachedReview(store,source,budget,dataDir,deps);
  let session:ReturnType<NonNullable<ScanDependencies['session']>>|undefined,partial=false,processed=0;
  const start=async()=>{
@@ -101,15 +102,15 @@ export async function runSelectedReviews(store:Store,source:Source,budget:Budget
        catch(error){if(session?.stopped||!(error instanceof EmptyPhotoError)&&!/Image unavailable: (404|410)/.test(String(error)))throw error;photo.status='unavailable';photo.note='Photo is inaccessible; retained as an explicit evidence gap.';}
       }
       // Downloaded content hashes can reveal cross-posts before spending model calls.
-      saveGalleryProgress(store,home,home.listing,budget,source.id);deduplicateHome(store,id);
-      if(store.resolveHomeId(id)!==id)continue;
+      saveGalleryProgress(store,home,home.listing,budget,source.id);await deduplicateForFullReview(store,id,dataDir);
+      if(store.resolveHomeId(id)!==id||store.home(id)?.stage!=='Interested')continue;
       if(home.listing.photos.some(p=>p.local&&(p.status!=='reviewed'||p.attributionPending))&&budget.remaining('aiCalls'))await(deps.review??reviewGallery)(home.listing,budget,dataDir);
      }
     }
    }catch(error){detail=error instanceof Error?error.message:String(error);partial=true;}
    finally{
     if(store.resolveHomeId(id)!==id)continue;
-    saveGalleryProgress(store,home,home.listing,budget,source.id);deduplicateHome(store,id);
+    saveGalleryProgress(store,home,home.listing,budget,source.id);await deduplicateForFullReview(store,id,dataDir);
     const complete=hardFiltered||selectedReviewComplete(home.listing),inaccessiblePhotos=home.listing.photos.filter(p=>p.status==='unavailable').length;
     store.set(resultKey,{complete,hardFiltered,inaccessiblePhotos,detail:detail||(hardFiltered?'Full scoring completed from confirmed hard requirements.':complete?`Full assessment complete.${inaccessiblePhotos?` ${inaccessiblePhotos} inaccessible photos remain explicitly recorded.`:''}`:'Gallery evidence remains incomplete; saved progress can resume.'),updatedAt:new Date().toISOString()});
     if(!complete)partial=true;

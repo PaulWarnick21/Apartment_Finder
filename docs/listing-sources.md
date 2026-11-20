@@ -1,5 +1,141 @@
 # Listing sources
 
+## Daily shortlist availability — November 19, 2026
+
+Separately authorized by the user: check only saved Interested-and-later active homes and
+their confirmed duplicate ads around noon Toronto each day. Maximum 240 saved page visits,
+60 minutes, one source navigation at a time; no discovery, gallery downloads, AI or address
+lookups. Normal shared pacing, persistent sessions, pauses and exclusive scan locking apply.
+The paired Chrome route uses facts-only capture. Initial fixture coverage includes Craigslist
+removed notices, matching Zillow property status, matching Facebook sold status and existing
+unit-specific availability extraction. This is not live validation of all source closure
+layouts. Missing content, failed fetches, redirects and absent inventory remain unknown.
+
+
+At 04:47 Toronto the repaired scan had 71 new eligible homes with complete galleries across seven sources and no current recovery errors. The user then authorized continuation through 2pm. The same run was resumed without resetting counts or frontiers; aggregate limits are now 6,000 pages, 4,000 attempts and 80,000 photos, zero AI/address calls. This supersedes the initial 05:07 cutoff below. The Hollyburn map-centred route has now returned 20 queued links in a live bounded batch; these are candidates, not final new-home counts.
+
+## Coverage repair — November 19, 2026
+
+The user's 07:43 five-hour report counted 436 qualifying additions and 141 Excluded
+records (577 distinct tracker records). Thirteen excluded records advertised 3+ bedrooms;
+none downloaded photos. Six REW cards used the previously unrecognized `bd` label and
+four Zumper cards lost structured bedroom counts to empty visible fields. Both parser
+gaps and saved-queue checks are repaired. One additional Zumper exclusion was a wrong
+sibling-unit extraction from an address page; exact requested-unit selection now has
+saved-capture regressions. At 07:55 the Craigslist form-derived minimum/maximum-bedroom
+route and Zumper's advertised city `/1-beds` and `/2-beds` routes were appended for
+validation within the current approval, preserving prior frontiers and provenance.
+REW's observed 1+ filter does not exclude larger homes; Facebook/Kijiji native options
+still require validation before claiming exact one/two-bedroom filtering.
+
+The 07:59 authorized inventory pass validated Craigslist's native 1–2 bedroom query:
+200 cards comprised 100 one-bedroom, 93 two-bedroom and seven unknown; its next URL
+retained both bedroom parameters. The broad root was superseded for future discovery
+at 08:04 while retaining its saved frontier and geographic provenance. Zumper's native
+one-bedroom route returned 50 structured Vancouver rows, all one-bedroom, with an
+advertised second page. Its two-bedroom route remains pending after a local allowance
+stop; the broad Zumper route remains available until that replacement is verified.
+An offline reparse also removed 14 unsuitable queued candidates before detail visits.
+The wrong-unit Zumper record 1474 was corrected from its saved exact-unit capture at
+08:01, preserving its ID, first-seen time and user decisions; the existing authorized
+run may collect its ten own gallery photos. These findings do not reset scan budgets.
+
+At 08:15 the coordinator was replaced after repeated approval races with independently
+authorized selected-home reviews had incorrectly created source retry delays. Eleven
+focused concurrency/recovery tests and TypeScript passed. The replacement waits for the
+occupied worker lane and distinguishes untouched drafts from actual worker failures.
+One supervisor remains active; original scan limits, deadline, counters, frontiers and
+existing cooldowns were preserved, with separate handoff backups.
+
+Facebook's original search capture stopped at 14 visible cards, although the saved public feed contained 24 rows and advertised more. The repaired, authorized live inventory pass at 05:25–05:28 Toronto collected **264 unique public listing cards** using one navigation and 23 paced ordinary scrolls. These are discovery candidates, not 264 newly eligible apartments. Further inventory remains explicitly partial. New snapshots whitelist public listing fields and the displayed search scope rather than storing the surrounding account/navigation state. Unique card counts no longer accumulate repeated observations on every scroll.
+
+By 05:45, a subsequent bounded pass had extended the observed depth to 27 scrolls, bringing the union to **443 unique cards**, with **98 candidates queued** for detail checks. Its no-progress end is unverified coverage, not proof of exhaustion. One additional Downtown candidate had reached the desk with all six photos; older captured candidates remained deferred under the existing age-priority rule. Radius-control failures are isolated from the healthy feed when the original URL is unchanged, the dialog is closed, and budget/source guards still pass. The desktop sidebar control and browser-serialization repair have an offline Chrome regression fixture; live verification of the smaller radius remains pending.
+
+At 05:55 the union reached **644 unique cards**, with **136 candidates queued** and **four additional eligible Facebook homes saved with complete galleries since the repair**. The source has no access warning. A version-3 radius retry now waits for the actual form to render rather than inspecting its empty modal shell; delayed-render offline Chrome validation passed. The website radius was still observed at 72 km at this checkpoint. A successfully verified changed property-rental URL can be retained automatically as an approximate route without invalidating earlier candidate provenance. The same scan continues through 14:00 Toronto, with aggregate counters and monitoring preserved.
+
+At 06:01 the native Facebook location control successfully changed from 72 km to **5 km around Vancouver**. The actually advertised presets were 1, 2, 5, 10, 20, 40, 60, 72, 80, 100, 250 and 500 km, so 5 km was the available choice within the authorized approximate range. The observed `?exact=false` search URL was retained as an approximate route, preserving earlier broad-search provenance. A subsequent independent worker at 06:06–06:08 followed that route, retained the visible 5 km label, and captured 160 unique public cards. At 06:11 Facebook had 11 new eligible homes with complete galleries in this run and 177 candidates queued. This verifies the native search setting and working intake; individual addresses remain approximate and the dynamic feed is not proven exhausted.
+
+Facebook now receives dedicated inventory turns, preserving its maximum observed scroll depth. Later batches replay ordinary visible results with a gradually larger allowance (up to 80 pages per batch), within the unchanged aggregate approval; no private cursor replay or guessed endpoint requests are used. Two no-progress scrolls leave coverage unverified, and real access warnings still pause the source. The approximate Vancouver intake gate continues to exclude explicit distant locations and retain uncertainty honestly. Gallery auditing found successful complete enumeration, with skipped collection explained by criteria or age priority rather than a demonstrated image transport defect.
+
+The user relaxed strict Downtown-only discovery: use supported Vancouver-wide routes when needed and admit uncertain/nearby candidates with approximate provenance. Craigslist, VADA, Facebook, Kijiji, Hollyburn and EasyRent are restored to the configured work pool. REW, Zumper, Zillow and Apartments.com also retain precise routes plus observed city-wide fallbacks; these new routes need live validation and are not proof of complete coverage.
+
+Chrome was observed running extension 0.4.0 despite newer workspace files. Version 0.5.2 now reports its loaded version through authenticated bridge polling. Its Apartments.com warning detector repair must be loaded and a one-page recovery must succeed before ordinary scanning can resume; no source warning was cleared by changing configuration. Desktop reload is currently awaiting user action because native window activation failed.
+
+REW's saved final-page paginator is now recognized, distinguishing a traversed neighbourhood from an unverified dynamic end. Zumper blocked its own observed CDN script host; allowing that host and normal scrolling in the authorized live diagnostic exposed 49 DOM cards instead of the initial 25. The automated two-page diagnostic (navigation plus accounted scroll) subsequently extracted 58 candidate URLs versus 25 before, including 25 additional public response rows. This verifies that page, not all pagination or 58 newly eligible apartments. Zillow's existing capture retained only visible anchors; bounded key-only schema diagnostics are prepared, with functional search-state extraction still awaiting the extension reload and live validation.
+
+Kijiji's source-advertised page-N segment before its category/location ID is now accepted without allowing a different municipality/category. Hollyburn building pages now expose individual advertised vacancy rows with stable vacancy IDs and galleries scoped to their associated popup. Missing physical suite numbers and display-suite photos remain explicit; representative photos cannot establish an exact-unit view or confident duplicate merge. Saved-capture fixtures and duplicate protections passed; live intake validation is ongoing.
+
+The bounded follow-up began November 19 at 04:22 Toronto and stops at 05:07. It includes six diagnostic page visits within the aggregate 300-page allowance. Ten sources are runnable; Apartments.com and Zillow await the user's extension reload, scheduled for a 2pm reminder. A 15-minute monitor checks progress and shutdown. The first six admitted homes had complete galleries (three Craigslist, two Zumper, one VADA). These early results are not the final scan total.
+
+The 04:37 monitoring pass found and repaired two additional local discovery problems. Exhausting a page share during Zumper hydration no longer creates a transport cooldown; its unfinished page remains resumable. Hollyburn's city-only search is an unpopulated location shell, so that route is isolated and its previously observed West End map-centred search is now explicitly configured. EasyRent also has an explicit Vancouver filter route matching the saved FacetWP selection. These route additions and retryable local frontiers were applied only at idle batch boundaries, retaining the original aggregate limits and deadline. Fresh live validation of those routes remains pending.
+
+The 06:41 health check found that Hollyburn's previously working map route had captured
+its loading indicator at 06:02 and then remained blocked. That saved page contained zero
+building links; the same URL's successful 05:29 capture contained 29 scoped building links.
+A bounded render wait and persisted no-card route retries are now installed and pass offline
+Chrome/fixture checks. The due Hollyburn routes were queued at 06:47 within the existing
+scan, with prior counters and source-health guards preserved. At 06:50 the next authorized
+worker recovered the map route and recognized 21 building URLs; its saved capture no longer
+contains the loading indicator. The city-only shell still has no recognized inventory and
+remains explicitly incomplete, with its next retry deferred by the persistent backoff.
+The furnished-rental route continued working throughout.
+
+At 07:26 the monitor found an EasyRent pagination race: clicking Next marked that
+control active while the prior page's 20 cards and loading indicators remained.
+The captured catalogue advertised 28 pages, so the blocked pages 17/18 were not
+evidence of exhaustion. Initial navigation and Next now wait for loading to finish
+and one numbered active page to match the requested page. Nine focused tests,
+including offline Chrome rendering, and TypeScript checks passed. At 07:30 only
+the two affected saved frontiers were requeued within the same scan; counters,
+source guards and the 2pm deadline were preserved. Subsequent authorized passes at
+07:35–07:40 captured settled pages 18, 19 and 20, each with one numbered active
+control, no loading indicators and 20 cards. Their 60 distinct URLs differ from
+the earlier page-16/page-17 cards, verifying live progression. All 60 explicitly
+advertise rented/unavailable status, so none became new admissions. Coverage is
+still partial; the last advertised page is 28.
+
+## Full-core route correction — November 18, 2026
+
+Zillow and Zumper each had only their Downtown neighbourhood configured for the selected
+core region. Separate West End routes are now included in the private configuration.
+Zillow advertises its West End apartments route in the saved `remaining-trial/zillow-3.html`
+capture; Zumper advertises its West End search in saved unit-page JSON-LD breadcrumbs.
+These are evidence for the route URLs, not completed search-page validation. Their new
+inventory frontiers start pending and must be checked within approved scan allowances.
+
+Initial coverage review must explicitly account for West End/Stanley Park, Coal Harbour,
+Gastown, Yaletown and the downtown end of Burrard Bridge. REW already has West End,
+Coal Harbour, Yaletown and Downtown West routes; Austeville has Coal Harbour and West End.
+Gastown coverage within sources' Downtown routes and the southern edge remain unverified;
+do not substitute a guessed Downtown East route or claim complete peninsula coverage.
+Apartments.com's configured Downtown condo route likewise does not establish whole-core
+coverage, and its existing access pause must remain respected. Sources without supported
+area filters remain coverage gaps. No live source or AI requests accompanied this correction.
+
+## Overnight preflight — November 18, 2026, evening
+
+The approved fresh health check recognized listing links on Craigslist (357), VADA's
+Vancouver search (16), Zumper Downtown (25), Facebook (14), REW Downtown (20), Kijiji (41),
+Hollyburn furnished inventory (66), EasyRent (20) and Sunstar Downtown (165). These are
+page-level advertisement links, not newly eligible apartments or complete source coverage.
+VADA therefore remains retained; it still lacks a supported Downtown-only search route.
+Craigslist, Facebook, Kijiji, Hollyburn and EasyRent likewise remain outside the current
+Downtown intake until supported geographic filters are established.
+
+Austeville's selected search crashes in its own JavaScript while dereferencing a suite's
+parent building. The repaired adapter verifies the page-advertised neighbourhood filter
+and matches published suite rows to published top-level buildings in the advertised feed.
+It never imports the broad feed wholesale. Live validation traversed Coal Harbour and
+West End, leaving one unseen candidate after filtering and saved-posting checks. This
+supersedes the earlier blanket prohibition on using that feed: only this validated,
+neighbourhood-matched fallback is allowed. Unknown or conflicting parent evidence is excluded.
+
+Zillow's normal-Chrome check completed three pages with no new queued candidates; further
+coverage remains unverified. Apartments.com's existing access-warning pause was preserved
+and no new request was made to that source. The overnight intake uses the five currently
+supported, accessible Downtown sources: REW, Zumper, Zillow, Austeville and Sunstar.
+Private captures and results are in `data/live/overnight-source-check-2026-11-18/`.
+
 ## Source continuity audit — November 18, 2026, afternoon
 
 The user requested a source-by-source investigation after simplifying the desk. This audit

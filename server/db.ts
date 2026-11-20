@@ -1,3 +1,5 @@
+import {availabilityStages} from '../src/availability.ts';
+import {homeAvailability} from './availability-store.ts';
 import {categoryEntry} from './desk-membership.ts';
 import {migrateSeriousCandidates} from './stage-migration.ts';
 import {initializeDuplicateIndex} from './automatic-duplicates.ts';
@@ -104,6 +106,7 @@ export class Store {
    home.fullReview=this.get<Home['fullReview']>(`fullReview:${home.id}`);
    home.reviewMode=home.stage!=='Unreviewed'&&home.fullReview?.status==='complete'?'full':'quick';
   }
+  if(availabilityStages.has(home.stage))home.availability=homeAvailability(this,home.id,duplicates.length>0);
   home.listing=correctStudioBedrooms(home.listing);
   home.deskExclusion=searchAreaExclusion(this,home.listing,true)??bedroomIntakeExclusion(home.listing,criteria,home.id)??photoCollectionExclusion(home.listing);
   home.categoryEnteredAt=categoryEntry(this.db,home);return home;}

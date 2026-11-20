@@ -27,9 +27,12 @@ export function mixEnabled(store:Store,budget?:Budget){
 }
 /** Scoped facts take precedence over route provenance; titles/views do not locate a home. */
 export function areaMixBucket(store:Store,source:string,fields:AreaMixFields):AreaMixBucket|undefined{
- const explicit=searchRegion(fields);if(explicit!=='unknown')return bucket(explicit);
  const url=fields.searchUrl??fields.evidence?.searchAreaSourceUrl,region=fields.searchRegion??fields.evidence?.searchAreaRegion;
  const route=url?areaSearchRoute(store,source,url):undefined;
+ // Approximate Vancouver candidates belong to the Downtown discovery work pool;
+ // this is scheduling provenance, not a claim about their exact location.
+ if(route?.scope==='vancouver-approximate'&&route.region===region)return 'downtown';
+ const explicit=searchRegion(fields);if(explicit!=='unknown')return bucket(explicit);
  return route&&route.region===region?bucket(route.region):undefined;
 }
 function resolveAliases(store:Store){

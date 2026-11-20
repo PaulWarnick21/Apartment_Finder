@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Apartment Finder — Chrome Bridge",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Read approved Apartments.com and Zillow listings in normal Chrome for your local Apartment Finder.",
   "minimum_chrome_version": "120",
   "permissions": [

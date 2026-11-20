@@ -4,7 +4,7 @@ import {listingSchema,type Listing,type Photo} from '../src/domain.ts';
 import {compatibleUnit} from './listing-integrity.ts';
 import type {DiscoveryQueue} from './discovery-queue.ts';
 
-function forgetQueuedPosting(store:Store,source:string,sourceId:string){
+export function forgetQueuedPosting(store:Store,source:string,sourceId:string){
  const queue=store.get<DiscoveryQueue>(`discoveryQueue:${source}`),post=store.db.prepare('SELECT url FROM postings WHERE source=? AND source_id=?').get(source,sourceId) as {url:string}|undefined;
  if(!queue||!post)return;
  queue.urls=queue.urls.filter(url=>url!==post.url);if(queue.offerings)queue.offerings=queue.offerings.filter(l=>l.source!==source||l.sourceId!==sourceId);if(queue.cards)delete queue.cards[post.url];store.set(`discoveryQueue:${source}`,queue);
@@ -22,6 +22,13 @@ function address(l:Listing){
  const type=text.match(/\b(st|ave|rd|blvd|dr|pl|cres)\b/)?.[1],street=text.replace(/\b(st|ave|rd|blvd|dr|pl|cres)\b/g,'').replace(/\s+/g,' ').trim();
  return {street:/^\d+[a-z]?\s+\S/.test(street)?street:'',unit,city,type,conflict};
 }
+export {address as duplicateAddress};
+/** Shared marketing galleries cannot establish a particular apartment. */
+export function sharedGallery(l:Listing){
+ const text=[l.title,l.description,l.evidence.photoProvenance,...l.photos.map(p=>p.note)].join(' ')
+  .replace(/\bnon-representative\b|\bnot (?:a |identified as )?representative\b|\bdoes not mark it as representative\b/gi,'');
+ return l.offeringKind!=='unit'||/\b(?:[a-z] plan|floor ?plans?|display suites?|model (?:suites?|units?)|representative|stock photos?|similar (?:suites?|units?)|select (?:renovated )?suites|slideshow photos|multiple (?:suites|units)|(?:photos|images)[^.]{0,60}(?:may not|not of|not represent)|collection of \d+[^.]{0,40}(?:homes|apartments))\b/i.test(text);
+}
 function photoKeys(p:Photo){return [...new Set([p.hash&&`hash:${p.hash}`,p.sourceLocal&&`original:${p.sourceLocal}`,p.url&&`url:${p.url}`,p.sourceUrl&&`url:${p.sourceUrl}`].filter((key):key is string=>!!key))];}
 function photos(l:Listing){return l.photos.filter(p=>!['amenity','exterior','floorplan'].includes(p.kind)&&!p.attributionPending&&!/representative|model (?:suite|unit)|similar (?:suite|unit)|stock photo/i.test(p.note));}
 export function duplicateEvidence(a:Listing,b:Listing){
@@ -30,7 +37,7 @@ export function duplicateEvidence(a:Listing,b:Listing){
  const sameAddress=!!x.street&&x.street===y.street;
  if(x.street&&y.street&&!sameAddress)return;
  if(sameAddress&&x.unit&&x.unit===y.unit)return 'Same normalized street address and explicit unit, with compatible rental facts';
- if(/representative|model (?:suite|unit)|similar (?:suite|unit)/i.test([a.evidence.photoProvenance,b.evidence.photoProvenance].join(' ')))return;
+ if(sharedGallery(a)||sharedGallery(b))return;
  const ap=photos(a),bp=photos(b),bkeys=new Set(bp.flatMap(photoKeys)),matched=ap.filter(p=>photoKeys(p).some(key=>bkeys.has(key)));
  // Count unique images, not repeated gallery slots or multiple URL/hash keys.
  const unique=(ps:Photo[])=>new Set(ps.map(p=>p.hash??p.sourceLocal??p.sourceUrl??p.url)).size;

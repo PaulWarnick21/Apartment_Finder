@@ -63,6 +63,13 @@ test('confirmed Zillow sale ads are non-rental failures while unknown statuses s
 test('Zillow discovery uses only visible same-site unit links',()=>{
  const page=capture(null,'Rental search','/vancouver-bc/rentals/');assert.deepEqual(discoverSource(page.html,sourceById('zillow')),[url]);assert.equal(page.images.length,0);
 });
+test('Zillow search diagnostics retain bounded schema keys without application values',()=>{
+ const data={props:{pageProps:{account:{email:'private@example.test'},searchPageState:{cat1:{searchResults:{listResults:[{privateValue:'do-not-copy'}],mapResults:[]}},csrfToken:'do-not-copy'}}}};
+ const document={title:'Rental search',body:{innerText:'Search'},querySelector:(selector:string)=>selector==='#__NEXT_DATA__'?{textContent:JSON.stringify(data)}:null,querySelectorAll:()=>[]};
+ const page=runInNewContext(readFileSync('extension/zillow-capture.js','utf8').replace('export function captureZillow','function captureZillow')+'\ncaptureZillow()',{URL,document,location:{origin:'https://www.zillow.com',pathname:'/vancouver-bc/rentals/'}});
+ assert.match(page.html,/searchPageState.cat1.searchResults.listResults/);
+ assert.ok(!page.html.includes('private@example.test'));assert.ok(!page.html.includes('do-not-copy'));assert.ok(!page.html.includes('privateValue'));
+});
 function setup(recovery=false){const db=new Store(':memory:');db.set('browserExtension',{id:'a'.repeat(32)});if(recovery)db.pause('zillow','Previous 403',true);const p=createPlan(db,{purpose:recovery?'access-check':'listings',sources:['zillow'],billingMode:'chatgpt',maxPages:recovery?1:2,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0},{accessRecovery:recovery});approvePlan(db,p.id,'APPROVE ONE SCAN');return {db,p,jobs:new ChromeJobs(db)};}
 test('Chrome jobs enforce approved source, matching origin, and source-specific warnings',async()=>{
  const {db,p,jobs}=setup();try{claimPlan(db,p.id);const budget=new Budget(db,p.id,p.caps);assert.throws(()=>jobs.request(budget,'https://www.apartments.com/unit/abcdefg/','listing',null,0),/not included/);

@@ -8,7 +8,7 @@ import type {SearchAreaPolicy} from '../server/search-area.ts';
 const [database,config]=process.argv.slice(2);
 if(!database||!config)throw Error('Usage: configure-source-filters.ts <database> <private route configuration>');
 const region=z.enum(['downtown-vancouver','north-vancouver','west-vancouver']);
-const input=z.object({regions:z.array(region).min(1),sourceRoutes:z.record(z.string(),z.array(z.object({url:z.url(),region})))})
+const input=z.object({regions:z.array(region).min(1),sourceRoutes:z.record(z.string(),z.array(z.object({url:z.url(),region,scope:z.literal('vancouver-approximate').optional()})))})
  .parse(JSON.parse(readFileSync(config,'utf8')));
 for(const [source,routes] of Object.entries(input.sourceRoutes))for(const route of routes)if(!allowedUrl(route.url,sourceById(source).hosts))throw Error('Source route host mismatch');
 const store=new Store(database);

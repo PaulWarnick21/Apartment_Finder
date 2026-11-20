@@ -82,7 +82,7 @@ test('inventory traverses pagination while a detail backlog exists, without scor
 });
 test('dynamic results without a supported continuation remain a coverage gap',async()=>{
  const store=new Store(':memory:');try{const plan=createPlan(store,{...caps,sources:['facebook'],maxPages:1});approvePlan(store,plan.id,'APPROVE ONE SCAN');claimPlan(store,plan.id);const b=new Budget(store,plan.id,plan.caps);
-  const result=await runInventorySource(store,sourceById('facebook'),b,mkdtempSync(join(tmpdir(),'inventory-dynamic-')),undefined,{session:()=>({stopped:false,start:async()=>{},close:async()=>{},html:async()=>{b.reserve('pages');return '<a href="https://www.facebook.com/marketplace/item/12345/">Apartment</a>';},resource:async()=>'',image:async()=>{throw Error('No photos')}})});
+  const result=await runInventorySource(store,sourceById('facebook'),b,mkdtempSync(join(tmpdir(),'inventory-dynamic-')),undefined,{session:()=>({stopped:false,start:async()=>{},close:async()=>{},html:async()=>{b.reserve('pages');return '<main role="main" aria-label="Collection of Marketplace items"><a href="https://www.facebook.com/marketplace/item/12345/">Apartment</a></main>';},resource:async()=>'',image:async()=>{throw Error('No photos')}})});
   assert.equal(result.state,'partial');assert.equal(inventoryRoutes(store,sourceById('facebook'))[0].status,'unverified');
  }finally{store.close();}
 });

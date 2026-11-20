@@ -3,7 +3,7 @@ const base='http://127.0.0.1:4317/api/browser-bridge/';
 const status=document.querySelector('#status');
 await chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'});
 async function request(path,body,token){
- const response=await fetch(base+path,{method:'POST',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json','X-AF-Extension-Id':chrome.runtime.id,...(token?{Authorization:`Bearer ${token}`}:{})},body:JSON.stringify(body)});
+ const response=await fetch(base+path,{method:'POST',credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json','X-AF-Extension-Id':chrome.runtime.id,'X-AF-Extension-Version':chrome.runtime.getManifest().version,...(token?{Authorization:`Bearer ${token}`}:{})},body:JSON.stringify(body)});
  const result=await response.json();if(!response.ok)throw new Error(result.error??'Local app request failed');return result;
 }
 async function run(work){document.querySelectorAll('button').forEach(b=>b.disabled=true);status.textContent='Working…';try{await work();}catch(e){status.textContent=e.message==='Failed to fetch'?'Open Apartment Finder and try again. The local app could not be reached.':e.message;}finally{document.querySelectorAll('button').forEach(b=>b.disabled=false);}}

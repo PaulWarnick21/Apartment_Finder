@@ -1,11 +1,15 @@
 import {load} from 'cheerio';
 import {allowedUrl,type Source} from './sources.ts';
 import {zumperState} from './zumper-extraction.ts';
+import {hydratedZumperRows} from './zumper-discovery.ts';
+import {facebookSearchSnapshot} from './facebook-discovery.ts';
+import {discoveryBedrooms} from './discovery-bedrooms.ts';
 import {parsePostingDate,postingAgeRank,sourcePostingDates} from './listing-age.ts';
-export type DiscoveryCard={url:string;title?:string;rent?:number|null;beds?:number|null;city?:string;area?:string;postedAt?:string;discoveredAt?:string;availability?:'available'|'unavailable'|'unknown';availabilityEvidence?:string;searchUrl?:string;searchRegion?:string};
+export type DiscoveryCard={url:string;title?:string;rent?:number|null;beds?:number|null;bedsConflict?:boolean;city?:string;area?:string;postedAt?:string;discoveredAt?:string;availability?:'available'|'unavailable'|'unknown';availabilityEvidence?:string;searchUrl?:string;searchRegion?:string};
 const paths:Record<string,RegExp>={craigslist:/\/\d+\.html$|^\/view\/d\/[^/]+\/[a-zA-Z0-9]+\/?$/,vada:/bedroom.*rental|rental.*bedroom/i,apartments:/^\/[^/]+\/[a-z0-9]{7}\/$/,zillow:/\/homedetails\/[^/]+\/\d+_zpid\//,zumper:/^\/(?:apartment-buildings\/p\d+\/|(?:apartments-for-rent|listings)\/\d+(?:p|\/))/,facebook:/\/marketplace\/item\/\d+\//,rew:/\/rentals\/\d+\//,kijiji:/\/v-apartments-condos\/[^/]+\/[^/]+\/\d+$/,hollyburn:/\/furnished_rental\/[^/]+\//,austeville:/\/property\/[^/]+\/suite-[^/]+\//,easyrent:/\/listings\/[^/]+\//,sunstar:/\/listings\/[^/]+\//};
-export function listingUrl(value:string,source:Source,base=source.search){try{const u=new URL(value,base);u.hash='';u.search='';return allowedUrl(u.href,source.hosts)&&(paths[source.id]?.test(u.pathname)||source.id==='hollyburn'&&source.coverageTrial&&/^\/building\/[^/]+\/$/.test(u.pathname))?u.href:null;}catch{return null;}}
+export function listingUrl(value:string,source:Source,base=source.search){try{const u=new URL(value,base);u.hash='';u.search='';return allowedUrl(u.href,source.hosts)&&(paths[source.id]?.test(u.pathname)||source.id==='hollyburn'&&/^\/building\/[^/]+\/$/.test(u.pathname))?u.href:null;}catch{return null;}}
 export function discoveryCards(html:string,source:Source,base=source.search,now=Date.now()):DiscoveryCard[]{
+ if(source.id==='facebook')return facebookSearchSnapshot(html,base).cards;
  const $=load(html),found=new Map<string,DiscoveryCard>();
  if(source.id==='easyrent'&&new URL(base).searchParams.has('_city')&&!$('.facetwp-template').length)return [];
  if(source.id==='craigslist'){const category=html.match(/['"]initialCategoryAbbr['"]\s*:\s*['"]([^'"]+)/)?.[1];if(category&&category!=='apa'||/for sale.*craigslist/i.test($('title').text()))return [];}
@@ -21,23 +25,28 @@ export function discoveryCards(html:string,source:Source,base=source.search,now=
   const scoped=rowUrls.size<=1?container:a;
   const time=scoped.find('time[datetime]').first(),label=(time.attr('itemprop')??'')+' '+time.parent().text();
   const datetime=/updated|modified|available|availability/i.test(label)||source.id!=='craigslist'&&!/posted|listed|published/i.test(label)?undefined:time.attr('datetime');
-  const card:DiscoveryCard={url,title:a.text().replace(/\s+/g,' ').trim().slice(0,500),rent:prices.length===1?prices[0]:null,beds:Number(text.match(/\b(\d+)\s*(?:bedrooms?|beds?|br)\b/i)?.[1])||null};
+  const card:DiscoveryCard={url,title:a.text().replace(/\s+/g,' ').trim().slice(0,500),rent:prices.length===1?prices[0]:null,beds:discoveryBedrooms(text)};
   if(source.id==='easyrent'||source.id==='sunstar')card.availability=unavailable?'unavailable':availabilityEvidence&&/^(?:available\s+now|now|immediately|January|February|March|April|May|June|July|August|September|October|November|December)\b/i.test(availabilityEvidence)?'available':'unknown';
   if(availabilityEvidence)card.availabilityEvidence=availabilityEvidence.slice(0,300);
   const city=text.match(/\b(North Vancouver|West Vancouver|New Westminster|Port Moody|Vancouver|Burnaby|Richmond|Coquitlam|Surrey|Calgary|Toronto|Ottawa|Edmonton|Victoria|Kelowna)\b/i)?.[0];if(city)card.city=city;
   const area=text.match(/\b(Coal Harbour|West End|Yaletown|Downtown(?: Vancouver)?|Kitsilano|Mount Pleasant|Olympic Village|Fairview)\b/i)?.[0];if(area)card.area=area;
   card.postedAt=parsePostingDate(datetime,now)??(source.id==='craigslist'?parsePostingDate(scoped.find('.result-posted-date').text(),now):undefined);
   const previous=found.get(url),availabilityCard=previous?.availabilityEvidence?previous:card;
-  found.set(url,{...card,...previous,rent:previous?.rent??card.rent,city:previous?.city??card.city,area:previous?.area??card.area,postedAt:previous?.postedAt??card.postedAt,availability:availabilityCard.availability,availabilityEvidence:availabilityCard.availabilityEvidence});
+  found.set(url,{...card,...previous,title:previous?.title||card.title,rent:previous?.rent??card.rent,beds:previous?.beds??card.beds,city:previous?.city??card.city,area:previous?.area??card.area,postedAt:previous?.postedAt??card.postedAt,availability:availabilityCard.availability,availabilityEvidence:availabilityCard.availabilityEvidence});
  });
  if(source.id==='zumper')try{
   // Current unit cards are buttons, with their source URLs in embedded search data.
   // Parse only the current results list; never evaluate page scripts or recommendations.
-  const rows=zumperState(html).currentSearch?.listables?.listables;
+  const rows=[...(zumperState(html).currentSearch?.listables?.listables??[]),...hydratedZumperRows(html,base)];
   if(Array.isArray(rows))for(const row of rows){
    if(typeof row?.url!=='string')continue;const url=listingUrl(row.url,source,base);if(!url)continue;
    const existing=found.get(url);
-   found.set(url,{url,title:typeof row.title==='string'?row.title.slice(0,500):undefined,rent:Number.isFinite(row.min_price)&&row.min_price===row.max_price?row.min_price:null,beds:Number.isFinite(row.min_bedrooms)&&row.min_bedrooms===row.max_bedrooms?row.min_bedrooms:null,city:typeof row.city==='string'?row.city:undefined,area:typeof row.neighborhood_name==='string'?row.neighborhood_name:undefined,...existing,postedAt:parsePostingDate(row.listed_on,now)??existing?.postedAt});
+   const rent=Number.isFinite(row.min_price)&&row.min_price===row.max_price?row.min_price:null;
+   const beds=Number.isFinite(row.min_bedrooms)&&row.min_bedrooms===row.max_bedrooms?row.min_bedrooms:null;
+   const bedsConflict=existing?.bedsConflict===true||existing?.beds!=null&&beds!=null&&existing.beds!==beds;
+   // Retain conflict evidence through repeated SSR/hydrated rows and saved queues.
+   // A null count alone would let intake infer the rejected count from the title.
+   found.set(url,{url,title:typeof row.title==='string'?row.title.slice(0,500):undefined,city:typeof row.city==='string'?row.city:undefined,area:typeof row.neighborhood_name==='string'?row.neighborhood_name:undefined,...existing,rent:existing?.rent??rent,beds:bedsConflict?null:existing?.beds??beds,...(bedsConflict?{bedsConflict:true}:{}),postedAt:parsePostingDate(row.listed_on,now)??existing?.postedAt});
   }
  }catch{/* Recognized visible links remain usable when embedded data is absent. */}
  for(const [url,date] of sourcePostingDates(html,source.id,[...found.keys()],now))found.get(url)!.postedAt=date;
@@ -60,8 +69,12 @@ export function discoveryEmpty(html:string,source:Source,url=source.search){
 export function facetPagination(html:string,source:Source){
  if(source.id!=='easyrent')return null;
  const $=load(html),pager=$('.facetwp-pager').first();
- if(!$('.facetwp-template').length||!pager.length)return null;
- const current=Number(pager.find('.facetwp-page.active').attr('data-page'));
+ if(!$('.facetwp-template').length||!pager.length||$('.facetwp-facet.is-loading,.facetwp-template.is-loading').length)return null;
+ // FacetWP immediately marks the clicked Next control active before replacing
+ // the old results. Only the settled numbered control identifies the current page.
+ const active=pager.find('.facetwp-page.active:not(.next):not(.prev):not(.dots)');
+ if(active.length!==1)return null;
+ const current=Number(active.attr('data-page'));
  const pages=pager.find('.facetwp-page[data-page]').map((_,el)=>Number($(el).attr('data-page'))).get();
  if(!Number.isSafeInteger(current)||current<1||pages.some(n=>!Number.isSafeInteger(n)||n<1))return null;
  const last=Math.max(current,...pages),next=Number(pager.find('.facetwp-page.next').attr('data-page'));
@@ -76,6 +89,19 @@ export function inventoryEndpoint(html:string,source:Source){if(source.id!=='aus
 export function inventoryUrls(json:string,source:Source){const rows=JSON.parse(json);if(!Array.isArray(rows))throw new Error('Inventory response was not recognized');return [...new Set(rows.filter(r=>r.status==='publish'&&Number(r.acf?.rent?.cost)>0&&r.acf?.available_at).map(r=>listingUrl(r.link,source)).filter((url):url is string=>!!url))];}
 /** Source-provided current-page totals, scoped to this exact search URL. */
 export function discoveryEnd(html:string,source:Source,url:string){
+ if(source.id==='rew'){
+  const $=load(html),pager=$('.paginator').first(),active=pager.find('.paginator-page.is-active a[href]');
+  if(!pager.length||active.length!==1)return null;
+  try{
+   const current=new URL(url),selected=new URL(active.attr('href')!,url);
+   if(selected.href!==current.href||!/^\/rentals\/areas\/[^/]+(?:\/page\/[1-9]\d*)?\/?$/.test(current.pathname))return null;
+   const next=pager.find('.paginator-next_page');
+   if(next.length!==1)return null;
+   // The source explicitly renders its disabled next control on the last page.
+   // This establishes only this neighbourhood catalogue's end, not all REW inventory.
+   return {total:undefined,exhausted:!next.find('a[href]').length&&!pager.find('a[rel="next"]').length};
+  }catch{return null;}
+ }
  if(source.id!=='kijiji')return null;
  try{const $=load(html),state=JSON.parse($('#__NEXT_DATA__').text()).props.pageProps.__APOLLO_STATE__.ROOT_QUERY,u=new URL(url),p=state['searchResultsPageByUrl:'+u.pathname+u.search]?.pagination;
   if(!p||![p.offset,p.limit,p.totalCount].every(n=>Number.isSafeInteger(n)&&n>=0)||p.limit<1)return null;

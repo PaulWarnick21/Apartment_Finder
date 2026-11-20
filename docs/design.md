@@ -1,5 +1,108 @@
 # Design
 
+November 19 availability monitor: an opt-in, persistent daily timer in the app runs at
+noon America/Toronto (DST-aware), catching up after noon when the app is running and the
+exclusive source lock becomes free. Startup itself stays offline. A persisted local-day
+claim prevents duplicate runs across app instances/restarts; incomplete runs do not silently
+retry that day. The schedule is separate from scanSchedule and is configured with
+scripts/configure-availability.ts --enable / --disable. It first becomes eligible at the next
+noon after enabling. The app and normal Chrome extension must remain running for Chrome sources.
+
+Each day snapshots Interested-and-later active homes and every confirmed posting, including
+aliases excluded from scoring aggregation. Bounds are 240 saved pages and 60 minutes, with
+zero discovery, photo downloads, address lookups or AI. Existing shared source pacing,
+access pauses, stop-on-warning and scan locks apply. Older observations get priority if
+capacity is insufficient. Incomplete and inaccessible checks are recorded as unknown.
+
+Availability observations are keyed by source + source ID, outside listing/decision fields;
+merges and splits therefore aggregate the current confirmed membership. Explicit scoped
+closure notices or matching structured closure states establish unavailable ads. 404/410,
+redirects, parse errors, missing units and challenges do not. Every confirmed ad must be
+unavailable to mark the home unavailable; any current live ad wins, and unresolved possible
+duplicates prevent a definitive closure. Observations expire to unknown after 36 hours.
+Only confirmed unavailable homes show an availability notice: cards use red styling plus
+status text, and details expose checked times and per-ad evidence. Available, unchecked and
+uncertain homes have no apartment-level availability badge.
+Activity exposes schedule and last-run coverage. Live adapter availability coverage is not
+claimed by the offline fixture tests; unsupported closure layouts remain unverified.
+
+
+Full-review duplicate preflight (`review-duplicates.ts`) runs in both queue admission and
+the selected-review worker, including direct plans, after photo collection and on completion.
+It extends exact identity matching with cached perceptual signatures of immutable local
+images: difference hashes plus a color-grid comparison, non-flat images, distinct one-to-one
+matches, at least four photos and three attributed interiors, and 80% of the smaller gallery.
+Known bedrooms, closely matching size/rent and substantial specific-description overlap
+must corroborate image matches; contradictory street/unit/floor facts block this path.
+An identical substantial specific rental description with exact street/rent/size can match
+a missing-gallery cross-post when the other gallery has attributed interiors. Multi-suite,
+floor-plan and representative advertising is excluded, including when described in text.
+The manual audit's duplicate multi-suite advertisement is intentionally not generalized.
+
+The check does no network or model work. Image signatures persist in local metadata and
+are reused across submissions. Files are read with bounded concurrency. Missing images
+remain insufficient evidence. Before merging after asynchronous reads, a transaction
+rechecks listing snapshots, current stages, aliases and explicit different-home decisions.
+Among active records the more advanced stage wins, with age breaking ties; separate rating
+feedback or conflicting/nontransferable appointments prevent automatic merging. Existing
+exact matching to closed decisions remains in force. Recoverable aliases, posting markers
+and merge history retain saved scores and notes, and cancel redundant scoring jobs.
+
+Discovery recognizes source bedroom labels including `bd`, hyphenated counts and written
+numbers, while ranges stay unknown. Empty links cannot overwrite later card bedroom
+facts, and empty visible Zumper fields cannot overwrite its structured search evidence.
+Saved discovery queues reapply the current intake checks before detail visits. Native
+bedroom search routes start their own pagination; prior geographic provenance and
+frontiers remain retained until filtered responses are validated.
+
+Zumper address pages can put a sibling apartment in their primary detail object. Unit
+extraction matches the requested permanent/listing identity against scoped active units;
+only that exact unit's facts and gallery are admitted. Missing or ambiguous identities
+fail explicitly instead of attaching sibling data to the requested URL.
+
+A user-authorized deadline extension resumes the same run snapshot with an appended authorization history. Preserve baseline IDs, accumulated plans/usage, retry state and inventory frontiers; never overwrite the original before-scan backup. Stop only the verified old supervisor, let its existing worker finish under its original bounded plan, and create later plans with the new stopAt. One replacement supervisor owns the run; no second scan or budget reset occurs.
+
+The scan coordinator waits for any approved/running work, scan lock or parallel-review
+membership before requesting a batch. A racing approval conflict may cancel only its own
+unchanged, zero-usage draft; that local deferral never becomes a website cooldown. Actual
+worker failures and user cancellations retain their normal guards. Resume-attempt counts
+advance only after approval. A same-run coordinator handoff verifies the old PID stopped,
+backs up current state separately, and can wait alongside existing cached user reviews
+without changing their plans or locks.
+
+Facebook inventory accumulates only public cards from the current Marketplace results container and a uniquely matched current feed. Every ordinary scroll spends the existing page/request allowance and respects persistent source pacing. Saved captures omit account/navigation state. Virtualized cards are unioned by canonical item URL, including a separate set of previously rendered URLs so cycling old cards is not progress. Maximum observed scroll depth survives batches; because there is no validated resumable page URL, later bounded batches replay visible results before extending deeper. No-progress is unverified coverage, never market exhaustion.
+
+Long-run snapshot replacement retries transient Windows file-sharing errors. A prolonged snapshot lock retains the last valid JSON and stops new approvals while the existing bounded worker can finish; it does not manufacture a website cooldown or reset counters. A failed supervisor restart requires evidence distinguishing a system cancellation from a user cancellation and preserves the original failure snapshot.
+
+November 19 discovery repair supersedes the strict source-filter exclusion below: approximate Vancouver routes may supply candidates without asserting that a broad search proves a Downtown address. Keep exact search provenance distinct from approximate fallback, favor supported local location evidence, and retain uncertainty rather than silently dropping a major source. Validate deployment as well as code: the running Chrome bridge version must be observable before relying on capture/warning changes.
+
+Source search routes are neighbourhood subsets of the user's selected region, not proof
+of complete region coverage. The November 18 boundary clarification is recorded privately.
+Add source-advertised missing routes to the private configuration and apply it while scans
+are idle. `inventoryRoutes` gives added routes their own pending frontier without resetting
+existing routes or treating earlier exhausted searches as exhaustion of the additions.
+
+Overnight quick-run recovery keeps one fixed deadline and aggregate budget across all
+continuation plans. Failed sources retry after five minutes, fifteen minutes, then at most
+once per hour; source-health cooldowns and attention flags take precedence. Quiet sources
+can be refreshed every thirty minutes. Every plan persists the same deadline. A known-closed
+worker releases only its own scan/area claims and becomes interrupted; this cleanup does
+not itself approve or restart work. Ordinary user cancellation ends the supervisor.
+
+An inventory route that fetched successfully but recognized no cards retains its frontier
+and retries after five minutes, fifteen minutes, then hourly. Successful recognition clears
+that route's failure count. This narrow retry does not reopen access warnings, cancellation
+or budget stops. Other configured routes continue while a route waits. Hollyburn's map
+search waits up to fifteen seconds for its observed loading indicator to disappear and
+scoped building links to render; a timeout remains incomplete coverage.
+
+Austeville's filtered page currently crashes on an invalid suite-to-suite parent relation.
+Its advertised JSON configuration must match the requested neighbourhood exactly before
+the inventory adapter reads the advertised property feed. Only published, available suite
+rows with a published top-level parent in that neighbourhood are admitted. Missing,
+conflicting and nested parent evidence is excluded; the full feed is never merged into a
+geographically scoped queue. A full 100-row page is incomplete, not exhausted coverage.
+
 `initialMoveShortTermException` opts into a narrow, 3.5-capped alternative to the nature
 view preference. The alternative uses non-view fit less the existing view-compromise
 deduction. It requires confirmed furnishing and short lease, supported modern interiors,
@@ -551,6 +654,28 @@ verified station/airport journey times remain future research. Current transit l
 manual planning aids, not computed travel-time evidence.
 
 ## 8. Sorting Desk and data ownership
+
+November 19 review reliability: opening quick details immediately displays the saved card
+and loads full evidence separately, without the global busy flag. Closing/switching cancels
+the old read, and late responses cannot reopen a dialog. Background state updates use React
+transitions and retain unchanged home objects; memoized cards preserve photo selection and
+avoid redrawing every gallery. New or newly eligible Unreviewed homes wait behind Show new
+apartments while that review view remains open; other stages continue refreshing normally.
+Routine whole-desk polls wait for five seconds without clicks, typing or scrolling; initial
+load, returning to the visible tab, and explicit mutation refreshes remain immediate.
+Failed saves have explicit Retry Save / Keep Current State controls on the affected card
+and in its details, replacing the disabled decision row. Only genuinely queued/saving
+requests display a waiting message. Immutable queue snapshots let memoized cards observe
+status changes. This prevents a failed save from appearing indefinitely stuck as pending.
+
+Decision transport reports unreadable/empty responses and HTTP errors explicitly. Recoverable
+failures (including scanner revision conflicts) first read the current apartment: a confirmed
+decision completes without another write, otherwise one revision-checked retry preserves the
+latest untouched fields and refuses conflicting stages or edited notes/dates. A final read can
+confirm a late commit; later polls also clear matching failed-save warnings. Retries are bounded,
+and other apartments remain available throughout. No server restart, scan, or AI call is needed
+to deploy these frontend changes. Offline desktop and phone-sized browser fixtures exercise
+500-card reviews with delayed refresh/detail/save responses and malformed acknowledgements.
 
 Interest decisions update the visible desk immediately and save through a browser queue
 with at most two requests in flight. Only that apartment is locked while saving; other

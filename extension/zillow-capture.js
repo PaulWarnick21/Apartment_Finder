@@ -10,6 +10,16 @@ export function captureZillow(){
  const nextLink=document.querySelector('a[rel="next"],a[aria-label="Next page"],a[title="Next page"]');
  if(nextLink?.href){try{const next=new URL(nextLink.href);if(next.origin===location.origin&&!next.username&&!next.password)html+=`<a rel="next" href="${escape(next.href)}">Next page</a>`;}catch{}}
  const id=location.pathname.match(/\/(\d+)_zpid\//)?.[1];
+ if(!id&&!warning){
+  // Key names only, bounded to the public search subtree. Never copy account data,
+  // cookies, CSRF values or the surrounding application state into diagnostics.
+  try{
+   const data=JSON.parse(document.querySelector('#__NEXT_DATA__')?.textContent??'{}'),pp=data.props?.pageProps;
+   const keyPaths=[];const walk=(value,path,depth)=>{if(depth>4||keyPaths.length>=100||!value||typeof value!=='object')return;for(const key of Object.keys(value).slice(0,40)){if(keyPaths.length>=100)break;keyPaths.push(path+'.'+key);if(!Array.isArray(value[key]))walk(value[key],path+'.'+key,depth+1);}};
+   walk(pp?.searchPageState,'searchPageState',0);
+   html+='<script id="af-zillow-search-keys" type="application/json">'+JSON.stringify({pagePropKeys:Object.keys(pp??{}).slice(0,40),searchKeyPaths:keyPaths}).replaceAll('<','\\u003c')+'</script>';
+  }catch{}
+ }
  if(id&&!warning){
   let cache;try{const next=JSON.parse(document.querySelector('#__NEXT_DATA__')?.textContent??'{}');const raw=next.props?.pageProps?.componentProps?.gdpClientCache;cache=typeof raw==='string'?JSON.parse(raw):raw;}catch{}
   const found=Object.values(cache??{}).map(v=>v?.property).find(p=>String(p?.zpid)===id);

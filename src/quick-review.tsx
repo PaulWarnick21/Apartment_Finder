@@ -1,4 +1,5 @@
 import type {Home} from './domain';
+import type {ReactNode} from 'react';
 import {PhotoGallery} from './photo-gallery';
 import {fullReviewLabels,reviewDecisions} from './review-presentation';
 
@@ -17,13 +18,13 @@ export function ReviewActions({home,busy,onDecision}:{home:Home;busy:boolean;onD
  return <div className="interest-actions">{reviewDecisions(home).map(({stage,label,disabled})=><button key={stage} disabled={busy||disabled} className={['Interested','Serious Candidates','Ready to Apply','In Progress'].includes(stage)?'primary':''} onClick={()=>onDecision(stage)}>{label}</button>)}</div>;
 }
 
-export function QuickReviewContent({home:h,busy,onDecision,onRetry}:{home:Home;busy:boolean;onDecision:(stage:Home['stage'])=>void;onRetry:()=>void}){
+export function QuickReviewContent({home:h,busy,onDecision,onRetry,decisionNotice}:{home:Home;busy:boolean;onDecision:(stage:Home['stage'])=>void;onRetry:()=>void;decisionNotice?:ReactNode}){
  const l=h.listing,known=l.photos.length,saved=l.photos.filter(p=>p.local).length;
  const money=l.rent===null?'Rent not listed':new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(l.rent);
  return <div className="quick-review-content">
   <div className="quick-review-facts"><div><span className="eyebrow">MONTHLY RENT</span><h3>{money}</h3></div><div><span className="eyebrow">LOCATION</span><p>{l.address||l.area||'Location not confirmed'}</p>{l.address&&l.area!=='Unknown'&&<small>{l.area}</small>}{l.evidence.searchAreaBasis&&<small className="quick-location-status">Area from website filter · exact address not independently verified</small>}{!l.evidence.searchAreaBasis&&l.evidence.addressLookupStatus&&<small className="quick-location-status">{l.evidence.addressLookupStatus==='verified'?'Address location verified':l.evidence.addressLookupDetail}</small>}</div><GradeBadge home={h}/></div>
   <p className="quick-review-explainer">{h.stage==='Interested'?'This apartment stays in Scoring in Progress until its full assessment is complete, then moves automatically to Interested for your review.':'Quick rank from listing details and saved evidence. Choose Interested to queue full scoring in Scoring in Progress.'}</p>
-  <ReviewActions home={h} busy={busy} onDecision={onDecision}/>
+  {decisionNotice??<ReviewActions home={h} busy={busy} onDecision={onDecision}/>}
   {h.deskExclusion&&<p className="warning" role="status">{h.deskExclusion}</p>}
   <FullReviewStatus home={h} busy={busy} retry={onRetry}/>
   {h.quickRank&&!h.quickRank.eligible&&h.quickRank.reasons.map(reason=><p className="warning" key={reason}>{reason}</p>)}
