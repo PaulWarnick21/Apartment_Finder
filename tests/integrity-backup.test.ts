@@ -35,3 +35,20 @@ test('full backup verifies media and private criteria and restores only to a new
  try{const id=store.ingest(listing('backup',{photos:[{id:'p',url:'https://example.com/p',local:filename,sourceLocal:filename}]})).id;store.update(id,0,{stage:'Interested',notes:'Preserved notes',followUp:'',viewing:'',rescued:false});await createFullBackup(store,data,bundle,priv);assert.equal((await verifyBackup(bundle)).valid,true);await restoreBackup(bundle,restore);const db=new DatabaseSync(join(restore,'apartments.sqlite'),{readOnly:true});try{assert.equal((db.prepare('SELECT notes FROM homes WHERE id=?').get(id) as any).notes,'Preserved notes');}finally{db.close();}assert.equal(await readFile(join(restore,'private','criteria.md'),'utf8'),'Private fixture criteria');await assert.rejects(()=>restoreBackup(bundle,restore),/exists/);await writeFile(join(bundle,'media',filename),'corrupted');await assert.rejects(()=>verifyBackup(bundle),/checksum/);
  }finally{store.close();}
 });
+
+test('large gallery backups retain every file across disk batches and reject missing evidence',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'finder-gallery-backup-')),data=join(root,'data');await mkdir(join(data,'media'),{recursive:true});
+ const photos=Array.from({length:35},(_,i)=>({id:`photo-${i}`,url:`https://example.com/${i}.jpg`,local:i.toString(16).padStart(64,'0')+'.jpg'}));
+ for(const photo of photos)await writeFile(join(data,'media',photo.local),photo.id);
+ const store=new Store(join(data,'apartments.sqlite'));
+ try{
+  store.ingest(listing('large',{photos}));
+  const bundle=join(root,'backup'),restored=join(root,'restored');
+  const result=await createFullBackup(store,data,bundle,join(root,'no-private'));assert.equal(result.media,35);
+  await restoreBackup(bundle,restored);
+  for(const photo of photos)assert.equal(await readFile(join(restored,'media',photo.local),'utf8'),photo.id);
+  store.ingest(listing('missing',{unit:'2',photos:[{id:'missing',url:'https://example.com/missing.jpg',local:'f'.repeat(64)+'.jpg'}]}));
+  await assert.rejects(()=>createFullBackup(store,data,join(root,'incomplete'),join(root,'no-private')),/ENOENT/);
+  await assert.rejects(()=>verifyBackup(join(root,'incomplete')),/ENOENT/);
+ }finally{store.close();}
+});
