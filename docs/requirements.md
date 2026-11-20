@@ -1,5 +1,12 @@
 # Requirements
 
+November 20 backup preference: prioritize a lightweight, assistant-independent recovery
+index for Interested and later-stage apartments. Preserve listing URLs, scores, stages,
+notes and enough basic metadata to recover the shortlist; full galleries and listing
+details are not required. The user chose the existing public repository and authorized
+publishing the lightweight index, including notes and ratings. Refresh and include it with
+every commit and push. Keep credentials, private criteria and full runtime data ignored.
+
 November 19 scan authorization preference: when the user instructs the assistant to start
 or continue a scan, choose suitable bounded limits and start without a second confirmation
 of those limits. The user explicitly delegates limit selection and will correct it if needed.

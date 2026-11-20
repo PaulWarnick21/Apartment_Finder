@@ -142,6 +142,28 @@ approve a new plan to continue. Access challenges require manual resolution, nev
 
 ## Private data and backups
 
+For a lightweight, tool-independent shortlist recovery file, run `npm run backup:shortlist`.
+It saves a dated JSON file under gitignored `data/backups/`, covering Interested and later
+stages (including queued assessments, Leased and Closed). It retains IDs, alias IDs, all
+saved posting URLs, score snapshots, quick grades, latest personal ratings, stages, notes,
+follow-up/viewing fields and basic rental facts. Another AI tool can read the JSON directly
+to rebuild a shortlist without Codex or this app. It omits photos, full descriptions,
+private scoring criteria, credentials and complete history; expired listing pages cannot
+be reconstructed from this file. There is no automatic full-app import.
+
+`npm run backup:shortlist -- data/backups/my-shortlist.json` chooses a new filename;
+existing files are never overwritten. Export reads the live database in one read-only
+transaction and makes no network, source or AI calls. A November 20, 2026 snapshot of
+54 saved homes was 61,823 bytes (about 62 KB).
+
+**GitHub recovery:** the user authorized the lightweight index, including notes and ratings,
+in this existing public repository on November 20. [backups/shortlist.json](backups/shortlist.json)
+is refreshed and staged by the pre-commit hook. Pre-push rejects an outgoing snapshot that
+does not match the current saved shortlist. npm prepare installs these hooks; existing
+installations should run `npm run setup:hooks`. Git history preserves previous snapshots.
+See [recovery instructions](backups/README.md). Full runtime data stays ignored, and only a
+successful push provides a remote backup. Hooks can be bypassed; agents must not bypass them.
+
 `private/settings.json` is imported on the live database's first startup. Later changes are
 saved in SQLite through Preferences. `private/criteria.md` remains the detailed reference.
 Both are gitignored, as are `.env`, `data/` and cached browser sessions. Only localhost is bound.

@@ -14,7 +14,11 @@
     "test": "tsx --test tests/*.test.ts",
     "worker": "tsx server/worker-cli.ts",
     "demo": "tsx server/index.ts --demo --dev",
-    "backup": "tsx scripts/backup.ts"
+    "backup": "tsx scripts/backup.ts",
+    "backup:shortlist": "tsx scripts/backup-shortlist.ts",
+    "backup:shortlist:tracked": "tsx scripts/git-shortlist.ts refresh",
+    "setup:hooks": "node scripts/install-git-hooks.mjs",
+    "prepare": "node scripts/install-git-hooks.mjs"
   },
   "dependencies": {
     "cheerio": "1.1.2",

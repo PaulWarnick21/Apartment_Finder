@@ -18,6 +18,14 @@ proprietary connectors, or manual detail collection as prerequisites.
 
 ## Conventions
 
+- Before every commit and push, refresh and include `backups/shortlist.json`. The user
+  authorized this lightweight recovery file in the existing public GitHub repository on
+  November 20, 2026, including notes, ratings and apartment choices. This is the sole
+  runtime-data exception; keep `data/`, `private/`, credentials and galleries gitignored.
+  Install `.githooks` with `npm run setup:hooks` (also run by npm's prepare script).
+  Pre-commit refreshes/stages the backup; pre-push rejects missing or stale snapshots.
+  Do not bypass these hooks. A missing database must not erase the recovery file.
+
 - A direct user instruction to start or continue scanning authorizes the assistant to choose
   suitable bounded scan limits and proceed without asking for separate approval of those
   limits (user preference, November 19, 2026). Record the chosen bounds and respect any

@@ -1,0 +1,3 @@
+#!/bin/sh
+set -eu
+exec "${AF_NODE:-node}" --import tsx scripts/git-shortlist.ts push

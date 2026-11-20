@@ -763,6 +763,22 @@ retains completed records and requires explicit recovery/new approval before fur
 
 ## 10. Backups, privacy, and restoration
 
+`npm run backup:shortlist` creates a small versioned JSON recovery index using a read-only
+SQLite transaction. It includes canonical homes in Interested and later stages, including
+Leased/Closed, their aliases and cross-post URLs, locally calculated score snapshots,
+preserved quick grades, assessment status, latest user rating, notes and basic facts.
+No galleries, descriptions, private criteria or credentials are exported. The file is
+readable by other tools without Codex; it supports shortlist reconstruction, not a full
+application restore. Existing destinations are refused. This command does not upload,
+schedule work, contact listing sources or call AI. The user subsequently authorized the
+same index at tracked `backups/shortlist.json` in the existing public repository.
+Versioned Git hooks refresh/stage it on commits and compare outgoing ref contents against
+a fresh read-only snapshot before pushes (ignoring only export time). Stale/missing backups
+or unavailable databases stop the operation. npm prepare installs hooks on clones;
+`npm run setup:hooks` installs them for existing dependencies. No source/AI requests or
+schedules are added. Git history retains prior versions. Hooks are local safeguards, not
+server enforcement. Full runtime data and private criteria remain gitignored.
+
 Live criteria/research are in gitignored `private/` and `data/`; optional API credentials
 are in `.env`. Connected ChatGPT credentials are Windows-DPAPI protected for the current
 Windows user. Credentials never enter browser bundles, model prompts, or ordinary logs.
