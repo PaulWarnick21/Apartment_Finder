@@ -12,5 +12,10 @@ export function homeAvailability(store:Store,id:number,possibleDuplicates:boolea
   const saved=store.get<AvailabilityObservation>(observationKey(p));
   return saved?.url===p.url?saved:{...p,status:'unknown' as const,checkedAt:'',runId:'',evidence:'Not checked yet'};
  });
- return summarizeAvailability(postings,possibleDuplicates);
+ const summary=summarizeAvailability(postings,possibleDuplicates);
+ if(summary?.status==='unavailable'){
+  const check=store.get<{state:string;checkedAt:string;detail:string}>(`availabilityCrossCheck:${id}`);
+  if(check?.state!=='checked'||Date.now()-Date.parse(check.checkedAt)>36*3600000)return {...summary,status:'unknown' as const,detail:check?.detail??'Saved posting expired; other sources still need checking before the apartment can be marked unavailable.'};
+ }
+ return summary;
 }

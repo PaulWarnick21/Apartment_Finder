@@ -133,7 +133,10 @@ export function extractTrial(html:string,url:string,source:Source,galleryXml?:st
    .filter(m=>{const prefix=description.slice(0,m.index).split(/[.;\n•*]/).at(-1)??'';return !/\b(?:parking|utilities?|internet|water|hydro|heating|storage|deposit|fees?|other (?:units|suites)|furnished option)\b/i.test(prefix.slice(-100));})
    .map(m=>n(m[1])).filter((amount):amount is number=>amount!==null);
   const structured=n(residence?.offers?.price),amounts=[...new Set([kijijiHeaderRent,structured,...advertised].filter((amount):amount is number=>amount!==null))];
-  if(amounts.length>1){l.rent=null;l.evidence.rent=`Listing header rent: ${kijijiHeaderRent===null?'unknown':'$'+kijijiHeaderRent}; structured rent: ${structured===null?'unknown':'$'+structured}; explicit description monthly rent: ${advertised.map(amount=>'$'+amount).join(' / ')}`;l.conflicts.push(`Monthly rent conflicts across the listing header and description: ${amounts.map(amount=>'$'+amount).join(' / ')}. Confirm current rent.`);}
+  // Preserve the advertised price even when the prose contains another monthly
+  // rate. The conflict remains evidence to confirm, not an absent-price claim.
+  // Without a header/offer, competing description rates still have no clear winner.
+  if(amounts.length>1){l.rent=kijijiHeaderRent??structured;l.evidence.rent=`Listing header rent: ${kijijiHeaderRent===null?'unknown':'$'+kijijiHeaderRent}; structured rent: ${structured===null?'unknown':'$'+structured}; explicit description monthly rent: ${advertised.map(amount=>'$'+amount).join(' / ')}`;l.conflicts.push(`Monthly rent conflicts across the listing header and description: ${amounts.map(amount=>'$'+amount).join(' / ')}. Confirm current rent.`);}
   else if(amounts.length===1){l.rent=amounts[0];l.evidence.rent=`Advertised apartment rent: $${l.rent}/month; separately described fees excluded.`;}
   const internetCharge=description.match(/\b(?:high[- ]speed\s+)?internet\b[^.!?\n]{0,80}\$([\d,]+(?:\.\d{1,2})?)\s*(?:CAD\s*)?(?:\/\s*(?:mo(?:nth)?|mth)\b|per\s+month\b|monthly\b)/i);
   if(internetCharge){l.evidence.internetCharge=internetCharge[0];l.internet=`Internet advertised separately at $${n(internetCharge[1])}/month; inclusion and whether it is optional require confirmation. Speed and reliability unverified.`;}

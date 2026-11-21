@@ -14,6 +14,12 @@ export function quickRank(input:Listing,criteria:Criteria,homeId=input.homeId):Q
  if(bedroomFailure){rank.eligible=false;rank.reasons=[bedroomFailure,...rank.reasons.filter(reason=>!/Bedroom count is outside/.test(reason))];}
  const mainlandFailure=mainlandExclusion(input,criteria.mainlandOnly);if(mainlandFailure){rank.eligible=false;rank.reasons=[mainlandFailure,...rank.reasons];}
  const flags=[...rank.flags];
+ // New quick ranks reward explicit unit facts without requiring an AI assessment.
+ let amenityBonus=0;
+ if(criteria.quickAmenityBonuses&&l.laundry==='in-unit'&&!l.conflicts.some(c=>/laundry|washer/i.test(c))){amenityBonus+=4;rank.reasons.push('In-unit laundry is advertised');}
+ if(criteria.quickAmenityBonuses&&['included','extra'].includes(l.parking)&&!l.conflicts.some(c=>/parking/i.test(c))&&parkingAssessment(l).penalty===0){amenityBonus+=4;rank.reasons.push('A parking space is advertised');}
+ rank.rankValue=Math.min(100,rank.rankValue+amenityBonus);
+ rank.grade=rank.rankValue>=85?'S':rank.rankValue>=70?'A':rank.rankValue>=55?'B':rank.rankValue>=40?'C':rank.rankValue>=25?'D':rank.rankValue>=15?'E':'F';
  const locationVerified=l.evidence.addressLookupStatus==='verified'&&l.downtownDistance!=='unknown';
  if(!locationVerified)flags.push(l.evidence.addressLookupDetail||'Exact address location has not been verified');
  const complete=l.galleryComplete&&l.photos.length>=2&&(l.expectedPhotos===null||l.photos.length>=l.expectedPhotos)

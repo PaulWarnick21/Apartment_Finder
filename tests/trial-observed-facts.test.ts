@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import {extractTrial} from '../server/trial-extraction.ts';
 import {extractSource} from '../server/regular-worker.ts';
 import {sourceById} from '../server/sources.ts';
+import {Store} from '../server/db.ts';
+import {cardSummary} from '../server/desk-state.ts';
 const fixture=(name:string)=>readFileSync('tests/fixtures/'+name+'.html','utf8');
 test('EasyRent labeled rows preserve unavailable status and exact unit facts despite adjacent HTML',()=>{
  const html=fixture('easyrent-labeled-status'),source=sourceById('easyrent'),url='https://www.easyrent.ca/listings/example/';
@@ -17,9 +19,25 @@ test('Austeville geography comes from the actual unit header and civic address, 
  const l=extractSource(source,html,url);assert.equal(l.area,'West Vancouver');assert.equal(l.address,'2020 Example Avenue, West Vancouver, BC V7V 1B8');assert.equal(l.unit,'405');assert.equal(l.location,'outside');assert.equal(l.downtownDistance,'far');assert.equal(l.floorLevel,null);assert.equal(l.rent,2400);assert.equal(l.available,'now');
  const downtown=extractSource(source,html.replaceAll('West Vancouver','Coal Harbour, Vancouver'),url);assert.equal(downtown.location,'downtown');assert.equal(downtown.downtownDistance,'downtown');
 });
-test('Kijiji retains a monthly rent conflict without substituting the nightly rate',()=>{
+test('Kijiji displays the advertised price while retaining conflicting monthly prose',()=>{
  const l=extractTrial(fixture('kijiji-monthly-rent-conflict'),'https://www.kijiji.ca/v-apartments-condos/vancouver/example/12345678',sourceById('kijiji'));
- assert.equal(l.rent,null);assert.match(l.conflicts.join(' '),/\$2450 \/ \$2650/);assert.match(l.evidence.rent,/explicit description monthly rent: \$2650/);assert.equal(l.parkingCount,1);assert.equal(l.parking,'included');assert.equal(l.photos.length,1);
+ assert.equal(l.rent,2450);assert.match(l.conflicts.join(' '),/\$2450 \/ \$2650/);assert.match(l.evidence.rent,/explicit description monthly rent: \$2650/);assert.equal(l.parkingCount,1);assert.equal(l.parking,'included');assert.equal(l.photos.length,1);
+ const store=new Store(':memory:');try{
+  const {id}=store.ingest({...l,rent:null,photos:l.photos.map(p=>({...p,local:'saved.jpg',status:'reviewed' as const}))});
+  const before=store.update(id,store.home(id)!.revision,{stage:'Interested',notes:'Keep my notes',followUp:'',viewing:'',rescued:false});
+  store.ingest(l,{preservePhotos:true});const home=store.home(id)!;
+  assert.equal(home.listing.rent,2450);assert.equal(cardSummary(home).listing.rent,2450);
+  assert.deepEqual(home.listing.conflicts,l.conflicts);assert.equal(home.stage,before!.stage);assert.equal(home.notes,'Keep my notes');
+  assert.equal(store.postingDetails(id)[0].listing.rent,2450);
+ }finally{store.close();}
+});
+
+test('Kijiji offer fallback retains price, while competing prose-only rates remain unresolved',()=>{
+ const html=fixture('kijiji-monthly-rent-conflict'),source=sourceById('kijiji'),url='https://www.kijiji.ca/v-apartments-condos/vancouver/example/12345678';
+ const noHeader=html.replace('<span class="price">$2,450</span>','');
+ assert.equal(extractSource(source,noHeader,url).rent,2450);
+ const proseOnly=noHeader.replace('"offers":{"price":2450},','').replace('$100 CAD per night','$2,450 CAD per month');
+ const ambiguous=extractSource(source,proseOnly,url);assert.equal(ambiguous.rent,null);assert.match(ambiguous.conflicts.join(' '),/Monthly rent conflicts/);
 });
 test('Kijiji zero parking and studio labels survive zero values, while fees do not become rent conflicts',()=>{
  const l=extractTrial(fixture('kijiji-studio-zero-parking'),'https://www.kijiji.ca/v-apartments-condos/vancouver/example/12345679',sourceById('kijiji'));

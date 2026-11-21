@@ -10,8 +10,9 @@ try { $workspaceId = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::
 finally { $sha.Dispose() }
 
 function Get-AppHealth {
+    param([int]$TimeoutSeconds = 2)
     try {
-        $health = Invoke-RestMethod -Uri "$appUrl/api/health" -TimeoutSec 2 -ErrorAction Stop
+        $health = Invoke-RestMethod -Uri "$appUrl/api/health" -TimeoutSec $TimeoutSeconds -ErrorAction Stop
         if ($health.app -eq 'apartment-finder' -and $health.demo -eq $false -and $health.workspaceId -eq $workspaceId) { return $health }
     } catch { }
     return $null
@@ -29,9 +30,17 @@ try {
     if ($Stop) {
         $owned = Get-OwnedServer
         if (-not $owned) { Write-Output 'No app server started by this launcher is running.'; exit 0 }
-        if (-not (Get-AppHealth)) { throw 'Could not verify this app server. It was left running.' }
-        $state = Invoke-RestMethod -Uri "$appUrl/api/state" -TimeoutSec 3
-        if (@($state.plans | Where-Object { $_.state -in @('running','approved') }).Count -gt 0) { throw 'A scan is active or approved. Cancel it in Activity before stopping the app.' }
+        $health = Get-AppHealth -TimeoutSeconds 10
+        if (-not $health) { throw 'Could not verify this app server. It was left running.' }
+        if ($null -ne $health.canStop) {
+            if ($health.canStop -ne $true) { throw 'A scan is active, approved, or needs interrupted-run recovery. Resolve it in Activity before stopping the app.' }
+        } else {
+            # Compatibility with a server started before the lightweight stop check was installed.
+            try { $state = Invoke-RestMethod -Uri "$appUrl/api/state?compact=1" -TimeoutSec 30 -ErrorAction Stop }
+            catch { throw 'Could not check for active scans within 30 seconds. The app was left running. Wait a moment and try Stop Apartment Finder again.' }
+            if ($null -eq $state.plans) { throw 'Could not verify active scans. The app was left running.' }
+            if (@($state.plans | Where-Object { $_.state -in @('running','approved') }).Count -gt 0) { throw 'A scan is active or approved. Cancel it in Activity before stopping the app.' }
+        }
         Stop-Process -Id $owned.Id
         Remove-Item -LiteralPath $pidFile -ErrorAction SilentlyContinue
         Write-Output 'Apartment Finder stopped. Your saved apartments and notes are kept.'

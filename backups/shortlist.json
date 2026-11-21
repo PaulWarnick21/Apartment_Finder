@@ -1,9 +1,424 @@
 {
   "format": "apartment-finder-shortlist",
   "version": 1,
-  "exportedAt": "2026-11-20T13:49:24.823Z",
+  "exportedAt": "2026-11-21T16:38:40.878Z",
   "coverage": "Current Interested and later stages, including pending assessments, Leased and Closed; canonical homes with all saved cross-post URLs and alias IDs.",
   "recovery": "Use apartments to rebuild a shortlist in any tool. Preserve IDs, stages, notes and score snapshots. Scores reflect saved evidence at export time; assessmentStatus distinguishes incomplete reviews. Source pages may expire. No automatic full-app import is provided.",
+  "buildings": [
+    {
+      "key": "address:vancouver|1277 hornby st",
+      "label": "1277 Hornby St, Vancouver",
+      "homeIds": [
+        16
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1920 alberni st",
+      "label": "1920 Alberni Street, Vancouver",
+      "homeIds": [
+        1038,
+        1039
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:36",
+      "label": "825 Nicola St",
+      "homeIds": [
+        36
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:56",
+      "label": "Building for apartment #56",
+      "homeIds": [
+        56
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:89",
+      "label": "Building for apartment #89",
+      "homeIds": [
+        89
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:west vancouver|2020 bellevue ave",
+      "label": "2020 Bellevue Avenue, West Vancouver",
+      "homeIds": [
+        203
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|977 mainland st",
+      "label": "977 Mainland St, Vancouver",
+      "homeIds": [
+        1587
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1770 barclay st",
+      "label": "1770 Barclay St, Vancouver",
+      "homeIds": [
+        117
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:258",
+      "label": "531 Beatty St",
+      "homeIds": [
+        258
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1889 alberni st",
+      "label": "1889 Alberni St, Vancouver",
+      "homeIds": [
+        410
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:504",
+      "label": "1932 Alberni Street",
+      "homeIds": [
+        504
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:663",
+      "label": "1550 Fern St",
+      "homeIds": [
+        663
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:706",
+      "label": "1011 Beach Avenue",
+      "homeIds": [
+        706
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:709",
+      "label": "1889 Alberni Street",
+      "homeIds": [
+        709
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:720",
+      "label": "531 Beatty Street",
+      "homeIds": [
+        720
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:755",
+      "label": "1529 West Pender Street",
+      "homeIds": [
+        755
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1238 richards st",
+      "label": "1238 Richards Street, Vancouver",
+      "homeIds": [
+        802
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1763 comox st",
+      "label": "1763 Comox Street, Vancouver",
+      "homeIds": [
+        853
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1770 pendrell st",
+      "label": "1770 Pendrell St, Vancouver",
+      "homeIds": [
+        874,
+        2002
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:910",
+      "label": "Building for apartment #910",
+      "homeIds": [
+        910
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:914",
+      "label": "Building for apartment #914",
+      "homeIds": [
+        914
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1600 beach ave",
+      "label": "1600 Beach Avenue, Vancouver",
+      "homeIds": [
+        915,
+        928,
+        938
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:945",
+      "label": "1770 Barclay Street",
+      "homeIds": [
+        945
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1033 nelson st",
+      "label": "1033 Nelson Street, Vancouver",
+      "homeIds": [
+        985
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1063",
+      "label": "Building for apartment #1063",
+      "homeIds": [
+        1063
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|3438 vanness ave",
+      "label": "3438 Vanness Avenue, Vancouver",
+      "homeIds": [
+        1071
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|288 e 8th ave",
+      "label": "288 E 8th Avenue, Vancouver",
+      "homeIds": [
+        1121
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1127",
+      "label": "Building for apartment #1127",
+      "homeIds": [
+        1127
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1147",
+      "label": "Building for apartment #1147",
+      "homeIds": [
+        1147
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1155",
+      "label": "Building for apartment #1155",
+      "homeIds": [
+        1155
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|189 national ave",
+      "label": "189 National Avenue, Vancouver",
+      "homeIds": [
+        1173
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1465 w 12th ave",
+      "label": "1465 West 12th Avenue, Vancouver",
+      "homeIds": [
+        1280
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1261",
+      "label": "Building for apartment #1261",
+      "homeIds": [
+        1261
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1068 hornby st",
+      "label": "1068 Hornby Street, Vancouver",
+      "homeIds": [
+        1270
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|5380 oben st",
+      "label": "5380 Oben Street, Vancouver",
+      "homeIds": [
+        1293
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|2488 granville st",
+      "label": "2488 Granville Street, Vancouver",
+      "homeIds": [
+        1296
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|384 e 1st ave",
+      "label": "384 E 1st Ave, Vancouver",
+      "homeIds": [
+        1467
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|2511 quebec st",
+      "label": "2511 Quebec St, Vancouver",
+      "homeIds": [
+        1616
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|285 e 10th ave",
+      "label": "285 East 10th Avenue, Vancouver",
+      "homeIds": [
+        1670
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1463 w 8th ave",
+      "label": "1463 West 8th Avenue, Vancouver",
+      "homeIds": [
+        1683,
+        1803
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1704",
+      "label": "Building for apartment #1704",
+      "homeIds": [
+        1704
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1712",
+      "label": "Building for apartment #1712",
+      "homeIds": [
+        1712
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1022 nelson st",
+      "label": "1022 Nelson Street, Vancouver",
+      "homeIds": [
+        1713
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|5938 olive ave",
+      "label": "5938 Olive Ave, Vancouver",
+      "homeIds": [
+        1881
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1890",
+      "label": "Building for apartment #1890",
+      "homeIds": [
+        1890
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:1913",
+      "label": "Building for apartment #1913",
+      "homeIds": [
+        1913
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|5083 joyce st",
+      "label": "5083 Joyce St, Vancouver",
+      "homeIds": [
+        1924
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1239 w georgia st",
+      "label": "1239 West Georgia Street, Vancouver",
+      "homeIds": [
+        1995
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|8433 ash st",
+      "label": "8433 Ash St, Vancouver",
+      "homeIds": [
+        2090
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2109",
+      "label": "612 Elmwood St",
+      "homeIds": [
+        2109
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2151",
+      "label": "435 Boundary Rd",
+      "homeIds": [
+        2151
+      ],
+      "notes": ""
+    }
+  ],
   "omitted": [
     "photos",
     "full descriptions",
@@ -15,8 +430,12 @@
   "apartments": [
     {
       "id": 16,
+      "buildingKey": "address:vancouver|1277 hornby st",
       "aliases": [],
       "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": true,
+      "tagUnfurnished": true,
       "title": "BRAND NEW 2 BURRARD | 1BED (+2nd sleeping) + DEN | SPECTACULAR VIEW",
       "address": "1277 Hornby Street, Vancouver",
       "unit": "",
@@ -36,8 +455,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.8,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
@@ -45,20 +464,24 @@
       "assessmentStatus": "complete",
       "userRating": {
         "score": 3.8,
-        "reason": "For one bedroom, $3,180 is expensive despite the gas stove and fairly nice view.",
-        "at": "2026-11-14T18:43:51.611Z"
+        "reason": "Dropping to a 3.8 for now since this is not furnished and quite expensive",
+        "at": "2026-11-20T20:31:27.957Z"
       },
-      "notes": "",
+      "notes": "Good view, but expensive. Parking is included.",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-11T21:04:45.000Z",
       "listingUpdatedAt": "2026-11-14T18:43:51.525Z",
-      "revision": 7
+      "revision": 11
     },
     {
       "id": 36,
+      "buildingKey": "home:36",
       "aliases": [],
       "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": true,
+      "tagUnfurnished": true,
       "title": "Chronicle: Junior 1 Bedroom (unit unconfirmed)",
       "address": "825 Nicola St",
       "unit": "",
@@ -78,25 +501,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.5,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "B",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 3.5,
+        "reason": "Unsure on the views",
+        "at": "2026-11-20T21:25:27.546Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-11T21:10:52.210Z",
       "listingUpdatedAt": "2026-11-14T18:43:51.517Z",
-      "revision": 5
+      "revision": 6
     },
     {
       "id": 56,
+      "buildingKey": "home:56",
       "aliases": [],
-      "stage": "Serious Candidates",
+      "stage": "Ready to Apply",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1 Bed 1 Bath - Apartment",
       "address": "",
       "unit": "",
@@ -116,30 +547,34 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
       "quickGrade": "S",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "Short term lease (up to 3 months)! Likely will be furnished.",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-14T20:08:33.434Z",
       "listingUpdatedAt": "2026-11-14T20:09:15.841Z",
-      "revision": 4
+      "revision": 6
     },
     {
       "id": 89,
+      "buildingKey": "home:89",
       "aliases": [],
-      "stage": "Serious Candidates",
+      "stage": "Ready to Apply",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Downtown Vancouver Loft for Sublease | Fully Furnished",
       "address": "Vancouver, BC V6B 6L6",
       "unit": "",
       "area": "Unknown",
-      "rent": null,
+      "rent": 2450,
       "beds": 1,
       "baths": 1,
       "sqft": 635,
@@ -154,8 +589,8 @@
         }
       ],
       "score": {
-        "value": 0.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
@@ -166,17 +601,21 @@
         "reason": "I'm increasing the score because this is a very nice apartment, the price is good, it's furnished, and this if for a short term sublease. Short term rentals that are still nice and furnished are exactly what I'm looking for initially when moving to Vancouver. Consider this in future scorings",
         "at": "2026-11-18T20:59:13.556Z"
       },
-      "notes": "",
+      "notes": "Small TV. ",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-14T23:13:51.045Z",
-      "listingUpdatedAt": "2026-11-18T15:13:27.529Z",
-      "revision": 5
+      "listingUpdatedAt": "2026-11-20T21:38:45.236Z",
+      "revision": 8
     },
     {
       "id": 117,
+      "buildingKey": "address:vancouver|1770 barclay st",
       "aliases": [],
       "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Barclay House in The West End 1 Bedroom Apartments For Rent in Vancouver",
       "address": "1770 Barclay Street, Vancouver, BC, V6G 1K5",
       "unit": "",
@@ -196,25 +635,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.3,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 3.3,
+        "reason": "Dated, not a perfect view. Will consider again later.",
+        "at": "2026-11-20T21:22:50.227Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-15T22:37:50.262Z",
       "listingUpdatedAt": "2026-11-15T22:40:19.820Z",
-      "revision": 4
+      "revision": 5
     },
     {
       "id": 203,
+      "buildingKey": "address:west vancouver|2020 bellevue ave",
       "aliases": [],
       "stage": "Serious Candidates",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1 Bedroom w/ city/mountain/ocean view",
       "address": "2020 Bellevue Avenue, West Vancouver, BC V7V 1B8",
       "unit": "1803",
@@ -251,8 +698,12 @@
     },
     {
       "id": 258,
+      "buildingKey": "home:258",
       "aliases": [],
-      "stage": "Serious Candidates",
+      "stage": "Ready to Apply",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Furnished 1 Bed + Den Downtown Condo - 2 Parking Included",
       "address": "",
       "unit": "",
@@ -272,8 +723,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
@@ -285,12 +736,16 @@
       "viewing": "",
       "firstSeen": "2026-11-16T04:18:44.794Z",
       "listingUpdatedAt": "2026-11-18T14:58:55.438Z",
-      "revision": 5
+      "revision": 6
     },
     {
       "id": 410,
+      "buildingKey": "address:vancouver|1889 alberni st",
       "aliases": [],
-      "stage": "Serious Candidates",
+      "stage": "Ready to Apply",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1889 Alberni St #1101",
       "address": "1889 Alberni St, Vancouver, BC",
       "unit": "1101",
@@ -315,25 +770,29 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
       "quickGrade": "S",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "Pretty small apartment but still great. Parking unsure",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-16T18:34:41.158Z",
       "listingUpdatedAt": "2026-11-18T14:49:46.757Z",
-      "revision": 6
+      "revision": 8
     },
     {
       "id": 504,
+      "buildingKey": "home:504",
       "aliases": [],
       "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "✨Beautifully renovated 1 bedroom with STUNNING VIEWS!✨",
       "address": "1932 Alberni Street\n        \n            google map",
       "unit": "1003",
@@ -353,25 +812,33 @@
         }
       ],
       "score": {
-        "value": 3.9,
+        "value": 3.7,
         "eligible": true,
         "uncertain": true,
         "view": "Nature dominates"
       },
       "quickGrade": "S",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 3.7,
+        "reason": "Great location and view, dated enough that I'm dropping this down to a 3.7. Also it's unfurnished and almost certainly a longer term lease. Marking as revisit later.",
+        "at": "2026-11-20T21:05:30.631Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-16T21:05:19.617Z",
       "listingUpdatedAt": "2026-11-18T14:49:41.112Z",
-      "revision": 6
+      "revision": 7
     },
     {
       "id": 663,
+      "buildingKey": "home:663",
       "aliases": [],
       "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1550 Fern St Unit Furnished 1 Bedroom Condo with Mountain Views, North Vancouver, BC V7J 0A9",
       "address": "1550 Fern St",
       "unit": "",
@@ -399,17 +866,21 @@
       "quickGrade": "A",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "North Van",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T16:58:20.892Z",
       "listingUpdatedAt": "2026-11-18T17:23:20.381Z",
-      "revision": 7
+      "revision": 9
     },
     {
       "id": 706,
+      "buildingKey": "home:706",
       "aliases": [],
       "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1011 Beach Avenue, Vancouver, BC, V6E 1T8",
       "address": "1011 Beach Avenue",
       "unit": "",
@@ -429,25 +900,33 @@
         }
       ],
       "score": {
-        "value": 4.3,
+        "value": 3.4,
         "eligible": true,
         "uncertain": true,
         "view": "Nature dominates"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 3.4,
+        "reason": "Decent location but likely a worse view than initially thought. The view is only good while looking out a specific way of the windows. Also the apartment is a bit dated.",
+        "at": "2026-11-20T20:41:10.600Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T18:12:40.607Z",
       "listingUpdatedAt": "2026-11-18T19:08:34.067Z",
-      "revision": 6
+      "revision": 7
     },
     {
       "id": 709,
+      "buildingKey": "home:709",
       "aliases": [],
       "stage": "Closed",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1889 Alberni Street, Vancouver, BC, V6G 3G7",
       "address": "1889 Alberni Street",
       "unit": "",
@@ -484,8 +963,12 @@
     },
     {
       "id": 720,
+      "buildingKey": "home:720",
       "aliases": [],
-      "stage": "Serious Candidates",
+      "stage": "Ready to Apply",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "504-531 Beatty Street, Vancouver, BC, V6B 0C5",
       "address": "531 Beatty Street",
       "unit": "504",
@@ -505,25 +988,29 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "Minimum 3 month lease.",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T18:15:57.447Z",
       "listingUpdatedAt": "2026-11-18T19:06:56.336Z",
-      "revision": 6
+      "revision": 8
     },
     {
       "id": 755,
+      "buildingKey": "home:755",
       "aliases": [],
       "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1109-1529 West Pender Street, Vancouver, BC, V6G 3J3",
       "address": "1529 West Pender Street",
       "unit": "1109",
@@ -543,25 +1030,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 4.2,
+        "reason": "Moving up to a 4.1. This is a great location, decent price, great views, and parking is available. It's likely unfurnished and only available for a long term lease so I'll move it to revisit later",
+        "at": "2026-11-20T21:00:50.799Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T18:26:22.836Z",
       "listingUpdatedAt": "2026-11-18T18:43:20.536Z",
-      "revision": 6
+      "revision": 7
     },
     {
       "id": 802,
+      "buildingKey": "address:vancouver|1238 richards st",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Serious Candidates",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1808-1238 Richards Street, Vancouver, BC, V6B 6M6",
       "address": "1238 Richards Street",
       "unit": "1808",
@@ -581,7 +1076,7 @@
         }
       ],
       "score": {
-        "value": 0.6,
+        "value": 2.9,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -593,13 +1088,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T19:32:55.003Z",
-      "listingUpdatedAt": "2026-11-18T21:42:23.315Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:54.260Z",
+      "revision": 6
     },
     {
       "id": 853,
+      "buildingKey": "address:vancouver|1763 comox st",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "911-1763 Comox Street, Vancouver, BC, V6G 1P5",
       "address": "1763 Comox Street",
       "unit": "911",
@@ -619,25 +1118,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.2,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 3.2,
+        "reason": "This view looks pretty great and the location is good and the price is good, but this looks like a studio (although other units look like their available). Moving to revisit later since the lease length and furnishing aren't confirmed.",
+        "at": "2026-11-20T20:56:15.389Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T22:03:47.941Z",
-      "listingUpdatedAt": "2026-11-19T13:06:33.737Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:52.944Z",
+      "revision": 7
     },
     {
       "id": 874,
+      "buildingKey": "address:vancouver|1770 pendrell st",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1770 Pendrell Street, Vancouver, BC, V6G 1T1",
       "address": "1770 Pendrell Street",
       "unit": "",
@@ -657,8 +1164,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.8,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
@@ -669,51 +1176,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T22:07:56.412Z",
-      "listingUpdatedAt": "2026-11-19T13:11:19.249Z",
-      "revision": 4
-    },
-    {
-      "id": 876,
-      "aliases": [],
-      "stage": "Interested",
-      "title": "2204-1160 Haro Street, Vancouver, BC, V6E 1E2",
-      "address": "1160 Haro Street",
-      "unit": "2204",
-      "area": "West End",
-      "rent": 2325,
-      "beds": 1,
-      "baths": 1,
-      "sqft": 500,
-      "url": "https://www.rew.ca/rentals/7628500/2204-1160-haro-street-vancouver-bc",
-      "source": "rew",
-      "sourceId": "7628500",
-      "postings": [
-        {
-          "source": "rew",
-          "sourceId": "7628500",
-          "url": "https://www.rew.ca/rentals/7628500/2204-1160-haro-street-vancouver-bc"
-        }
-      ],
-      "score": {
-        "value": 0.8,
-        "eligible": false,
-        "uncertain": true,
-        "view": "Unverified"
-      },
-      "quickGrade": "A",
-      "assessmentStatus": "complete",
-      "userRating": null,
-      "notes": "",
-      "followUp": "",
-      "viewing": "",
-      "firstSeen": "2026-11-18T22:08:20.108Z",
-      "listingUpdatedAt": "2026-11-19T13:05:48.630Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:51.992Z",
+      "revision": 6
     },
     {
       "id": 910,
+      "buildingKey": "home:910",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "C Plan-1668 Davie Street, Vancouver, BC, V6G 0C4",
       "address": "C Plan-1668 Davie Street",
       "unit": "",
@@ -733,8 +1206,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.2,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
@@ -745,13 +1218,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T22:25:38.687Z",
-      "listingUpdatedAt": "2026-11-19T13:06:14.655Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:38.906Z",
+      "revision": 6
     },
     {
       "id": 914,
+      "buildingKey": "home:914",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "D Plan-1668 Davie Street, Vancouver, BC, V6G 0C4",
       "address": "D Plan-1668 Davie Street",
       "unit": "",
@@ -771,25 +1248,29 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.8,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "5 months free?? Make sure the view is okay though.",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T22:26:52.625Z",
-      "listingUpdatedAt": "2026-11-19T13:11:44.098Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:38.906Z",
+      "revision": 7
     },
     {
       "id": 915,
+      "buildingKey": "address:vancouver|1600 beach ave",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Serious Candidates",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1600 L Beach Avenue, Vancouver, BC, V6G 1Y6",
       "address": "1600 L Beach Avenue",
       "unit": "",
@@ -809,25 +1290,29 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.3,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "Similar to other units in this building",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T22:27:48.126Z",
-      "listingUpdatedAt": "2026-11-19T12:50:12.656Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:37.802Z",
+      "revision": 7
     },
     {
       "id": 928,
+      "buildingKey": "address:vancouver|1600 beach ave",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Serious Candidates",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Cypress House-1600 L Beach Avenue, Vancouver, BC, V6G 1Y6",
       "address": "Cypress House-1600 L Beach Avenue",
       "unit": "",
@@ -847,25 +1332,33 @@
         }
       ],
       "score": {
-        "value": 3.9,
+        "value": 3.5,
         "eligible": true,
         "uncertain": true,
         "view": "Nature dominates"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 3.5,
+        "reason": "Great view but this listing shows multiple apartments. I'm not sure if the view I want will be available. Also the apartment itself is a bit dated. Dropping down the score and moving to section 3 of the sorting desk",
+        "at": "2026-11-20T16:49:20.075Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T22:32:21.207Z",
       "listingUpdatedAt": "2026-11-19T13:05:06.320Z",
-      "revision": 3
+      "revision": 4
     },
     {
       "id": 938,
+      "buildingKey": "address:vancouver|1600 beach ave",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Maple & Larch House-1600 L Beach Avenue, Vancouver, BC, V6G 1Y6",
       "address": "Maple & Larch House-1600 L Beach Avenue",
       "unit": "",
@@ -885,25 +1378,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
-      "userRating": null,
-      "notes": "",
+      "userRating": {
+        "score": 4,
+        "reason": "Raising score to a 4.0. Although the apartment is dated, the views are great and it's very affordable.",
+        "at": "2026-11-20T20:52:44.536Z"
+      },
+      "notes": "Good price, good view. Weird apartment, dated.",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T22:36:34.569Z",
-      "listingUpdatedAt": "2026-11-19T12:50:09.279Z",
-      "revision": 6
+      "listingUpdatedAt": "2026-11-20T18:29:37.802Z",
+      "revision": 11
     },
     {
       "id": 945,
+      "buildingKey": "home:945",
       "aliases": [],
       "stage": "Closed",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1770 Barclay Street, Vancouver, BC, V6G 1K5",
       "address": "1770 Barclay Street",
       "unit": "",
@@ -940,8 +1441,12 @@
     },
     {
       "id": 985,
+      "buildingKey": "address:vancouver|1033 nelson st",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Apartment",
       "address": "1033 Nelson Street #2005",
       "unit": "",
@@ -961,29 +1466,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.3,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
       "quickGrade": "B",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "Weird apartment, but a decent view",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T00:22:58.116Z",
-      "listingUpdatedAt": "2026-11-19T13:21:05.376Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:45.214Z",
+      "revision": 7
     },
     {
       "id": 1038,
+      "buildingKey": "address:vancouver|1920 alberni st",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Serious Candidates",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Unit #1502 in Harbourview",
       "address": "",
       "unit": "1502",
-      "area": "Unknown",
+      "area": "West End",
       "rent": 3300,
       "beds": 1,
       "baths": null,
@@ -999,29 +1508,37 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.6,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "B",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 3.3,
+        "reason": "Bumping this up to a 3.3 because it's furnished, in a pretty great location, and has a pretty good view.",
+        "at": "2026-11-20T19:11:26.461Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T09:30:41.446Z",
-      "listingUpdatedAt": "2026-11-19T13:19:44.755Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:36.700Z",
+      "revision": 6
     },
     {
       "id": 1039,
+      "buildingKey": "address:vancouver|1920 alberni st",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Ready to Apply",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Unit #1105 in Harbourview",
       "address": "",
       "unit": "1105",
-      "area": "Unknown",
+      "area": "West End",
       "rent": 3150,
       "beds": 1,
       "baths": null,
@@ -1037,25 +1554,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.7,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "B",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 3.7,
+        "reason": "Not the greatest view and parking isn't confirmed, but the short term rental + being furnished is pretty good",
+        "at": "2026-11-20T20:49:52.973Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T09:30:56.940Z",
-      "listingUpdatedAt": "2026-11-19T13:16:52.578Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:36.700Z",
+      "revision": 7
     },
     {
       "id": 1063,
+      "buildingKey": "home:1063",
       "aliases": [],
       "stage": "Closed",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1bd+den 1bth FURNISHED PENTHOUSE apt with PRIVATE ROOFTOP PATIO",
       "address": "Vancouver, BC V5T 0G5",
       "unit": "",
@@ -1075,7 +1600,7 @@
         }
       ],
       "score": {
-        "value": 2.9,
+        "value": 3.3,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -1092,8 +1617,12 @@
     },
     {
       "id": 1071,
+      "buildingKey": "address:vancouver|3438 vanness ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "3438 Vanness Avenue, Vancouver, BC, V5R 6E7",
       "address": "3438 Vanness Avenue",
       "unit": "",
@@ -1113,7 +1642,7 @@
         }
       ],
       "score": {
-        "value": 0.1,
+        "value": 1.1,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -1125,13 +1654,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T09:39:15.766Z",
-      "listingUpdatedAt": "2026-11-19T13:13:39.193Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:44.521Z",
+      "revision": 5
     },
     {
       "id": 1121,
+      "buildingKey": "address:vancouver|288 e 8th ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "902-288 E 8th Avenue, Vancouver, BC, V5T 4S8",
       "address": "288 E 8th Avenue",
       "unit": "902",
@@ -1151,29 +1684,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.2,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
-      "quickGrade": "A",
+      "quickGrade": "B",
       "assessmentStatus": "complete",
       "userRating": null,
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T09:50:45.473Z",
-      "listingUpdatedAt": "2026-11-19T13:25:24.243Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:43.314Z",
+      "revision": 5
     },
     {
       "id": 1127,
+      "buildingKey": "home:1127",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "938 Kingsway, Vancouver, BC, V5V 3C4",
       "address": "938 Kingsway",
       "unit": "",
-      "area": "Fraser East",
+      "area": "Kensington-Cedar Cottage",
       "rent": 3225,
       "beds": 2,
       "baths": 2,
@@ -1189,7 +1726,7 @@
         }
       ],
       "score": {
-        "value": 2.9,
+        "value": 2,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -1201,17 +1738,21 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T09:52:16.365Z",
-      "listingUpdatedAt": "2026-11-19T13:23:16.428Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:35.599Z",
+      "revision": 5
     },
     {
       "id": 1147,
+      "buildingKey": "home:1147",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "938 Kingsway, Vancouver, BC, V5V 3C4",
       "address": "938 Kingsway",
       "unit": "",
-      "area": "Fraser East",
+      "area": "Kensington-Cedar Cottage",
       "rent": 3225,
       "beds": 2,
       "baths": 2,
@@ -1227,7 +1768,7 @@
         }
       ],
       "score": {
-        "value": 2.9,
+        "value": 2,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -1239,17 +1780,21 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T09:55:49.403Z",
-      "listingUpdatedAt": "2026-11-19T13:23:18.087Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:35.599Z",
+      "revision": 5
     },
     {
       "id": 1155,
+      "buildingKey": "home:1155",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "938 Kingsway, Vancouver, BC, V5V 3C4",
       "address": "938 Kingsway",
       "unit": "",
-      "area": "Fraser East",
+      "area": "Kensington-Cedar Cottage",
       "rent": 1995,
       "beds": null,
       "baths": 1,
@@ -1265,7 +1810,7 @@
         }
       ],
       "score": {
-        "value": 2.9,
+        "value": 2.7,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -1277,17 +1822,21 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T09:57:53.734Z",
-      "listingUpdatedAt": "2026-11-19T13:17:55.620Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:35.599Z",
+      "revision": 5
     },
     {
       "id": 1173,
+      "buildingKey": "address:vancouver|189 national ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Apartment",
       "address": "1102 National Avenue #189",
       "unit": "",
-      "area": "Downtown Vancouver",
+      "area": "Downtown",
       "rent": 2300,
       "beds": 1,
       "baths": 1,
@@ -1303,29 +1852,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "Not the greatest location. Close to Skytrain, but I'd have to take a transfer to get to the airport.",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T10:00:35.267Z",
-      "listingUpdatedAt": "2026-11-19T13:02:56.033Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:30:54.639Z",
+      "revision": 7
     },
     {
       "id": 1261,
+      "buildingKey": "home:1261",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Jr 1 Bedroom Apartment - Olympic Village",
       "address": "Vancouver, BC V6A 0G1",
       "unit": "",
-      "area": "Unknown",
+      "area": "Mount Pleasant",
       "rent": 2200,
       "beds": 1,
       "baths": 1,
@@ -1341,8 +1894,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
@@ -1353,13 +1906,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T10:16:31.939Z",
-      "listingUpdatedAt": "2026-11-19T20:09:24.051Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:30:54.662Z",
+      "revision": 6
     },
     {
       "id": 1270,
+      "buildingKey": "address:vancouver|1068 hornby st",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Serious Candidates",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Apartment",
       "address": "1068 Hornby Street #2607",
       "unit": "",
@@ -1379,25 +1936,29 @@
         }
       ],
       "score": {
-        "value": 0.6,
+        "value": 2.9,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
       },
-      "quickGrade": "A",
+      "quickGrade": "B",
       "assessmentStatus": "complete",
       "userRating": null,
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T10:17:52.459Z",
-      "listingUpdatedAt": "2026-11-19T13:12:30.674Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:37.756Z",
+      "revision": 6
     },
     {
       "id": 1280,
+      "buildingKey": "address:vancouver|1465 w 12th ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "402-1465 West 12th Avenue, Vancouver, BC, V6H 1M7",
       "address": "1465 West 12th Avenue",
       "unit": "402",
@@ -1417,8 +1978,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.4,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
@@ -1429,17 +1990,21 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T10:18:31.078Z",
-      "listingUpdatedAt": "2026-11-19T13:19:01.946Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:36.562Z",
+      "revision": 5
     },
     {
       "id": 1293,
+      "buildingKey": "address:vancouver|5380 oben st",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "2102-5380 Oben Street, Vancouver, BC, V5R 6H7",
       "address": "5380 Oben Street",
       "unit": "2102",
-      "area": "Collingwood",
+      "area": "Renfrew-Collingwood",
       "rent": 2250,
       "beds": 1,
       "baths": 1,
@@ -1455,7 +2020,7 @@
         }
       ],
       "score": {
-        "value": 0.3,
+        "value": 1,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -1467,13 +2032,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T10:21:29.273Z",
-      "listingUpdatedAt": "2026-11-19T13:16:01.224Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:33.386Z",
+      "revision": 5
     },
     {
       "id": 1296,
+      "buildingKey": "address:vancouver|2488 granville st",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1408-2488 Granville Street, Vancouver, BC, V6H 0E2",
       "address": "2488 Granville Street",
       "unit": "1408",
@@ -1493,67 +2062,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.3,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
-      "quickGrade": "A",
+      "quickGrade": "B",
       "assessmentStatus": "complete",
       "userRating": null,
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T10:31:07.335Z",
-      "listingUpdatedAt": "2026-11-19T13:21:21.444Z",
-      "revision": 4
-    },
-    {
-      "id": 1325,
-      "aliases": [],
-      "stage": "Interested",
-      "title": "Apartment",
-      "address": "555 Jervis Street #304",
-      "unit": "",
-      "area": "Downtown",
-      "rent": 2950,
-      "beds": 1,
-      "baths": 1,
-      "sqft": 600,
-      "url": "https://www.zumper.com/listings/65756575/1-bedroom-downtown-vancouver-vancouver-bc",
-      "source": "zumper",
-      "sourceId": "65756575",
-      "postings": [
-        {
-          "source": "zumper",
-          "sourceId": "65756575",
-          "url": "https://www.zumper.com/listings/65756575/1-bedroom-downtown-vancouver-vancouver-bc"
-        }
-      ],
-      "score": {
-        "value": 0.5,
-        "eligible": false,
-        "uncertain": true,
-        "view": "Unverified"
-      },
-      "quickGrade": "A",
-      "assessmentStatus": "complete",
-      "userRating": null,
-      "notes": "",
-      "followUp": "",
-      "viewing": "",
-      "firstSeen": "2026-11-19T10:39:46.456Z",
-      "listingUpdatedAt": "2026-11-19T13:12:57.839Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:34.300Z",
+      "revision": 5
     },
     {
       "id": 1467,
+      "buildingKey": "address:vancouver|384 e 1st ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1 Bed, 1 Bath + Den FURNISHED PENTHOUSE apt with PRIVATE ROOFTOP PATIO",
       "address": "384 E 1st Ave.\n        \n            google map",
       "unit": "",
-      "area": "Mount Pleasant",
+      "area": "Strathcona",
       "rent": 3400,
       "beds": 1,
       "baths": 1,
@@ -1569,29 +2104,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.2,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
-      "quickGrade": "A",
+      "quickGrade": "B",
       "assessmentStatus": "complete",
       "userRating": null,
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T11:45:34.194Z",
-      "listingUpdatedAt": "2026-11-19T13:30:13.871Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:32.295Z",
+      "revision": 5
     },
     {
       "id": 1587,
+      "buildingKey": "address:vancouver|977 mainland st",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1 BEDROOM + DEN IN YALETOWN | PANORAMA VIEW",
       "address": "977 Mainland St\n        \n            google map",
       "unit": "1609",
-      "area": "Yaletown",
+      "area": "Downtown",
       "rent": 2500,
       "beds": 1,
       "baths": 1,
@@ -1607,25 +2146,33 @@
         }
       ],
       "score": {
-        "value": 1.1,
-        "eligible": false,
+        "value": 3.4,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
-      "userRating": null,
+      "userRating": {
+        "score": 2.5,
+        "reason": "This has been dropped way too much for not facing nature. These units can still be interesting to me. I'm marking this to revisit it later.",
+        "at": "2026-11-20T19:18:48.267Z"
+      },
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T12:39:06.717Z",
-      "listingUpdatedAt": "2026-11-19T13:07:44.769Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:26:31.031Z",
+      "revision": 5
     },
     {
       "id": 1616,
+      "buildingKey": "address:vancouver|2511 quebec st",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Quebec St",
       "address": "2511 Quebec St #313",
       "unit": "",
@@ -1645,8 +2192,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
@@ -1657,13 +2204,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T12:52:00.498Z",
-      "listingUpdatedAt": "2026-11-19T13:15:13.949Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:30.143Z",
+      "revision": 5
     },
     {
       "id": 1670,
+      "buildingKey": "address:vancouver|285 e 10th ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "285 East 10th Avenue, Vancouver, BC",
       "address": "285 East 10th Avenue",
       "unit": "FURNISHED",
@@ -1683,8 +2234,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.6,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
@@ -1695,13 +2246,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T13:53:14.228Z",
-      "listingUpdatedAt": "2026-11-19T20:06:24.444Z",
-      "revision": 4
+      "listingUpdatedAt": "2026-11-20T18:26:29.426Z",
+      "revision": 5
     },
     {
       "id": 1683,
+      "buildingKey": "address:vancouver|1463 w 8th ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Apartment",
       "address": "1463 West 8th Avenue #1503",
       "unit": "1503",
@@ -1721,29 +2276,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.1,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
-      "quickGrade": "A",
+      "quickGrade": "B",
       "assessmentStatus": "complete",
       "userRating": null,
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T14:00:46.031Z",
-      "listingUpdatedAt": "2026-11-19T20:11:38.800Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:28.956Z",
+      "revision": 5
     },
     {
       "id": 1704,
+      "buildingKey": "home:1704",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Luxury 14th-Floor 1BR Condo | Stunning Ocean, City & Mountain Views |",
       "address": "138 EAST ESPLANADE",
       "unit": "1401",
-      "area": "Lower Lonsdale",
+      "area": "North Vancouver",
       "rent": 2995,
       "beds": 1,
       "baths": 1,
@@ -1759,7 +2318,7 @@
         }
       ],
       "score": {
-        "value": 2.9,
+        "value": 2.4,
         "eligible": false,
         "uncertain": true,
         "view": "Partial nature"
@@ -1771,17 +2330,21 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T14:30:26.678Z",
-      "listingUpdatedAt": "2026-11-19T20:06:38.426Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:31.248Z",
+      "revision": 5
     },
     {
       "id": 1712,
+      "buildingKey": "home:1712",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "2 Bed 2 Bath Condo w/ River & Mountain Views - 5233 Gilbert Rd",
       "address": "Gilbert Rd near River Rd\n        \n            google map",
       "unit": "1610",
-      "area": "Oval Village",
+      "area": "Richmond",
       "rent": 2650,
       "beds": 2,
       "baths": 2,
@@ -1797,7 +2360,7 @@
         }
       ],
       "score": {
-        "value": 2.9,
+        "value": 2.8,
         "eligible": false,
         "uncertain": true,
         "view": "Partial nature"
@@ -1809,17 +2372,21 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T14:32:12.018Z",
-      "listingUpdatedAt": "2026-11-19T19:52:14.359Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:30.053Z",
+      "revision": 5
     },
     {
       "id": 1713,
+      "buildingKey": "address:vancouver|1022 nelson st",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Fitness Facility, Vancouver BC, 1 BD",
       "address": "1022 Nelson Street\n        \n            google map",
       "unit": "",
-      "area": "1022 Nelson Street, Vancouver, BC",
+      "area": "West End",
       "rent": 2550,
       "beds": 1,
       "baths": 1,
@@ -1835,8 +2402,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
@@ -1847,13 +2414,17 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T14:37:01.593Z",
-      "listingUpdatedAt": "2026-11-19T19:59:23.747Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:26:24.921Z",
+      "revision": 5
     },
     {
       "id": 1803,
+      "buildingKey": "address:vancouver|1463 w 8th ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Apartment",
       "address": "1463 West 8th Avenue #907",
       "unit": "907",
@@ -1873,8 +2444,8 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.7,
+        "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
       },
@@ -1885,93 +2456,21 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T15:24:12.932Z",
-      "listingUpdatedAt": "2026-11-19T20:07:37.439Z",
-      "revision": 3
-    },
-    {
-      "id": 1842,
-      "aliases": [],
-      "stage": "Interested",
-      "title": "Belcarra ocean view, furnished 2b/2b luxury suite",
-      "address": "google map",
-      "unit": "",
-      "area": "Belcarra",
-      "rent": 3500,
-      "beds": 2,
-      "baths": 2,
-      "sqft": 1550,
-      "url": "https://www.craigslist.org/view/d/belcarra-belcarra-ocean-view-furnished/fxgS4q5FcpHHdCCNborsFC",
-      "source": "craigslist",
-      "sourceId": "5ee2008b725d71ee",
-      "postings": [
-        {
-          "source": "craigslist",
-          "sourceId": "5ee2008b725d71ee",
-          "url": "https://www.craigslist.org/view/d/belcarra-belcarra-ocean-view-furnished/fxgS4q5FcpHHdCCNborsFC"
-        }
-      ],
-      "score": {
-        "value": 3.3,
-        "eligible": true,
-        "uncertain": true,
-        "view": "Nature dominates"
-      },
-      "quickGrade": "A",
-      "assessmentStatus": "paused",
-      "userRating": null,
-      "notes": "",
-      "followUp": "",
-      "viewing": "",
-      "firstSeen": "2026-11-19T15:56:10.185Z",
-      "listingUpdatedAt": "2026-11-19T20:08:53.092Z",
-      "revision": 3
-    },
-    {
-      "id": 1850,
-      "aliases": [],
-      "stage": "Interested",
-      "title": "2 bedroom + 2 full bath + Den + Storage room",
-      "address": "602 Citadel Parade near Dunsmuir Viaduct\n        \n            google map",
-      "unit": "",
-      "area": "Citadel Parade Vancouver downtown",
-      "rent": 3300,
-      "beds": 2,
-      "baths": 2,
-      "sqft": 861,
-      "url": "https://www.craigslist.org/view/d/vancouver-bedroom-full-bath-den-storage/gATV5vNevd8jnyhBACnE6j",
-      "source": "craigslist",
-      "sourceId": "eb968eb81cf447c3",
-      "postings": [
-        {
-          "source": "craigslist",
-          "sourceId": "eb968eb81cf447c3",
-          "url": "https://www.craigslist.org/view/d/vancouver-bedroom-full-bath-den-storage/gATV5vNevd8jnyhBACnE6j"
-        }
-      ],
-      "score": {
-        "value": 0.2,
-        "eligible": false,
-        "uncertain": true,
-        "view": "Unverified"
-      },
-      "quickGrade": "C",
-      "assessmentStatus": "complete",
-      "userRating": null,
-      "notes": "",
-      "followUp": "",
-      "viewing": "",
-      "firstSeen": "2026-11-19T16:11:02.396Z",
-      "listingUpdatedAt": "2026-11-19T20:11:22.410Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:28.956Z",
+      "revision": 5
     },
     {
       "id": 1881,
+      "buildingKey": "address:vancouver|5938 olive ave",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "BRAND NEW High-Floor Luxury 2Bed+1Den+2Bath Corner Unit with A/C@Perla",
       "address": "5938 Olive Ave\n        \n            google map",
       "unit": "",
-      "area": "Metrotown, Patterson",
+      "area": "Burnaby",
       "rent": 3200,
       "beds": 2,
       "baths": 2,
@@ -1987,29 +2486,33 @@
         }
       ],
       "score": {
-        "value": 2.9,
+        "value": 2.2,
         "eligible": false,
         "uncertain": true,
         "view": "Partial nature"
       },
       "quickGrade": "A",
-      "assessmentStatus": "paused",
+      "assessmentStatus": "complete",
       "userRating": null,
       "notes": "",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T17:12:18.861Z",
-      "listingUpdatedAt": "2026-11-19T20:08:14.936Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:27.841Z",
+      "revision": 6
     },
     {
       "id": 1890,
+      "buildingKey": "home:1890",
       "aliases": [],
       "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "1 bedroom plus den in resort-style residence",
       "address": "668 Whiting Way near North Road\n        \n            google map",
       "unit": "",
-      "area": "Burquitlam/Lougheed Town Centre",
+      "area": "Coquitlam",
       "rent": 2400,
       "beds": 1,
       "baths": 1,
@@ -2025,7 +2528,7 @@
         }
       ],
       "score": {
-        "value": 2.9,
+        "value": 2.6,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -2037,17 +2540,21 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T17:27:59.738Z",
-      "listingUpdatedAt": "2026-11-19T19:49:39.080Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:29:26.852Z",
+      "revision": 5
     },
     {
       "id": 1913,
+      "buildingKey": "home:1913",
       "aliases": [],
-      "stage": "Interested",
+      "stage": "Serious Candidates",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
       "title": "Furnished 2 Level Loft | City View Office | 16' Ceilings | Jan 1",
       "address": "1238 Seymour\n        \n            google map",
       "unit": "",
-      "area": "Yaletown",
+      "area": "Downtown",
       "rent": 3195,
       "beds": 1,
       "baths": 1,
@@ -2063,7 +2570,7 @@
         }
       ],
       "score": {
-        "value": 0.2,
+        "value": 2.5,
         "eligible": false,
         "uncertain": true,
         "view": "Unverified"
@@ -2075,8 +2582,267 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T18:58:11.346Z",
-      "listingUpdatedAt": "2026-11-19T20:09:51.639Z",
-      "revision": 3
+      "listingUpdatedAt": "2026-11-20T18:26:19.183Z",
+      "revision": 5
+    },
+    {
+      "id": 1924,
+      "buildingKey": "address:vancouver|5083 joyce st",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Convenient in-suite laundry, 1bd 1ba, In Vancouver",
+      "address": "5083 Joyce St\n        \n            google map",
+      "unit": "",
+      "area": "Renfrew-Collingwood",
+      "rent": 2455,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 489,
+      "url": "https://www.craigslist.org/view/d/vancouver-convenient-in-suite-laundry/264dEd11B9obtDFJprAYRt",
+      "source": "craigslist",
+      "sourceId": "fe3078d254715335",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "fe3078d254715335",
+          "url": "https://www.craigslist.org/view/d/vancouver-convenient-in-suite-laundry/264dEd11B9obtDFJprAYRt"
+        }
+      ],
+      "score": {
+        "value": 2.4,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "complete",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-19T20:53:46.030Z",
+      "listingUpdatedAt": "2026-11-20T18:26:17.741Z",
+      "revision": 4
+    },
+    {
+      "id": 1995,
+      "buildingKey": "address:vancouver|1239 w georgia st",
+      "aliases": [
+        1171
+      ],
+      "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": true,
+      "tagUnfurnished": true,
+      "title": "Apartment",
+      "address": "1239 West Georgia Street #1806",
+      "unit": "1806",
+      "area": "Downtown",
+      "rent": 2150,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 428,
+      "url": "https://www.zumper.com/listings/14919426p/1-bedroom-downtown-vancouver-vancouver-bc",
+      "source": "zumper",
+      "sourceId": "49739934",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "2991cfb0199fe7d9",
+          "url": "https://www.craigslist.org/view/d/vancouver-vancouver-downtown-venus-1br/b5H5Ur4dwfF6gKJ9akXCDE"
+        },
+        {
+          "source": "zumper",
+          "sourceId": "49739934",
+          "url": "https://www.zumper.com/listings/14919426p/1-bedroom-downtown-vancouver-vancouver-bc"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": true,
+        "uncertain": true,
+        "view": "Partial nature"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "complete",
+      "userRating": null,
+      "notes": "Dated, but pretty cheap and a pretty great view.",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-19T23:53:52.056Z",
+      "listingUpdatedAt": "2026-11-20T20:55:14.409Z",
+      "revision": 11
+    },
+    {
+      "id": 2002,
+      "buildingKey": "address:vancouver|1770 pendrell st",
+      "aliases": [],
+      "stage": "Serious Candidates",
+      "revisitLater": true,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "1770 Pendrell St, Vancouver, BC V6G 0C5",
+      "address": "1770 Pendrell St",
+      "unit": "",
+      "area": "West End",
+      "rent": 2700,
+      "beds": 1,
+      "baths": 1,
+      "sqft": null,
+      "url": "https://www.apartments.com/1770-pendrell-st-vancouver-bc/w28r3sh/",
+      "source": "apartments",
+      "sourceId": "w28r3sh",
+      "postings": [
+        {
+          "source": "apartments",
+          "sourceId": "w28r3sh",
+          "url": "https://www.apartments.com/1770-pendrell-st-vancouver-bc/w28r3sh/"
+        }
+      ],
+      "score": {
+        "value": 3.8,
+        "eligible": true,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "complete",
+      "userRating": null,
+      "notes": "Likely unfurnished and long term lease",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-20T00:06:31.389Z",
+      "listingUpdatedAt": "2026-11-20T18:26:16.616Z",
+      "revision": 10
+    },
+    {
+      "id": 2090,
+      "buildingKey": "address:vancouver|8433 ash st",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Brand-New Rentals with Rooftop Lounge, Gym + Coworking",
+      "address": "8433 Ash St\n        \n            google map",
+      "unit": "",
+      "area": "Marpole",
+      "rent": 2825,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 530,
+      "url": "https://www.craigslist.org/view/d/vancouver-brand-new-rentals-with/8zHPSHDrhiwa1vKoDkGz8a",
+      "source": "craigslist",
+      "sourceId": "0e0412b0bf432452",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "0e0412b0bf432452",
+          "url": "https://www.craigslist.org/view/d/vancouver-brand-new-rentals-with/8zHPSHDrhiwa1vKoDkGz8a"
+        }
+      ],
+      "score": {
+        "value": 2.1,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "B",
+      "assessmentStatus": "complete",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-20T03:01:29.985Z",
+      "listingUpdatedAt": "2026-11-20T18:29:24.495Z",
+      "revision": 5
+    },
+    {
+      "id": 2109,
+      "buildingKey": "home:2109",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Brand New Burquitlam Condo with AC & Internet Included – Steps to SkyT",
+      "address": "612 Elmwood St",
+      "unit": "",
+      "area": "Coquitlam",
+      "rent": 2100,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 529,
+      "url": "https://www.craigslist.org/view/d/coquitlam-north-brand-new-burquitlam/c4Aqu1DZzYyqHynRZf14zC",
+      "source": "craigslist",
+      "sourceId": "5e4e3fa97a30e1f2",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "5e4e3fa97a30e1f2",
+          "url": "https://www.craigslist.org/view/d/coquitlam-north-brand-new-burquitlam/c4Aqu1DZzYyqHynRZf14zC"
+        }
+      ],
+      "score": {
+        "value": 2.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Partial nature"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "complete",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-20T03:40:50.722Z",
+      "listingUpdatedAt": "2026-11-20T18:30:54.332Z",
+      "revision": 5
+    },
+    {
+      "id": 2151,
+      "buildingKey": "home:2151",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "1 Bd 1BATH Stylish look apartment in Vancouver  A1301 A1101",
+      "address": "435 Boundary Rd\n        \n            google map",
+      "unit": "",
+      "area": "Vancouver",
+      "rent": 2275,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 584,
+      "url": "https://www.craigslist.org/view/d/burnaby-bd-1bath-stylish-look-apartment/chMhte55X3B341mvkAhiWr",
+      "source": "craigslist",
+      "sourceId": "dada3512f969f737",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "dada3512f969f737",
+          "url": "https://www.craigslist.org/view/d/burnaby-bd-1bath-stylish-look-apartment/chMhte55X3B341mvkAhiWr"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-21T03:35:33.504Z",
+      "listingUpdatedAt": "2026-11-21T03:35:43.173Z",
+      "revision": 2
     }
   ]
 }

@@ -42,6 +42,14 @@ test('Not Interested cancels a running job and an in-flight result cannot resurr
  const f=setup();try{f.change('Interested');await f.service.tick();const planId=f.store.home(f.id)!.fullReview!.planId!;f.change('Not Interested');assert.equal(getPlan(f.store,planId).state,'cancelled');f.finish(true);await f.service.tick();assert.equal(f.store.home(f.id)!.fullReview!.status,'cancelled');assert.equal(deskCategory(f.store.home(f.id)!),'Closed');assert.equal(f.research(),0);}finally{await f.service.close();f.store.close();}
 });
 
+test('completed hard-filtered reviews still verify the address',async()=>{
+ const f=setup();try{
+  f.change('Interested');await f.service.tick();f.finish(true);
+  const job=f.store.home(f.id)!.fullReview!;f.store.set(`fullReviewResult:${job.planId}:${f.id}`,{complete:true,hardFiltered:true,detail:'Saved hard-filter evidence reviewed.'});
+  await f.service.tick();assert.equal(f.research(),1);assert.equal(f.store.home(f.id)!.fullReview!.status,'complete');
+ }finally{await f.service.close();f.store.close();}
+});
+
 test('partial evidence pauses, explicit retry resumes, and stale decisions cannot spend twice',async()=>{
  const f=setup();try{f.change('Interested');await f.service.tick();f.finish(false);await f.service.tick();assert.equal(f.store.home(f.id)!.fullReview!.status,'paused');const revision=f.store.home(f.id)!.revision;f.change('Interested');assert.throws(()=>f.service.retry(f.id,revision),/changed/);f.service.retry(f.id,f.store.home(f.id)!.revision);await f.service.tick();assert.equal(f.starts(),2);assert.equal(f.store.home(f.id)!.notes,'Keep my note');}finally{await f.service.close();f.store.close();}
 });

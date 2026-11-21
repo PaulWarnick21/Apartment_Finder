@@ -1,5 +1,109 @@
 # Design
 
+Compact building groups (November 20): BuildingGroupCards renders the highest numeric
+full score among the already-filtered group, with apartment ID breaking ties consistently.
+Local expansion state survives background refreshes and sort changes; new mounts default
+to collapsed. Unrendered siblings retain their stored decisions and remain accessible
+through the disclosure and building context. Collapsed groups occupy one normal grid
+column; expanded groups span the grid. Single-visible-unit buckets render HomeCard directly.
+The full-scoring gate, furthest-section projection and Revisit Later priority are unchanged.
+
+Building placement refinement (November 20): buildingPlacements projects completed active
+units into the furthest active section, with any deferred member at that destination
+placing the group in Revisit Later. It leaves all saved unit fields untouched and does
+not use Closed/Excluded as promotion targets. The group destination is calculated before
+search filtering. buildingReady gates adjacent cards and explicit confirmation/assignment
+on full scoring and departure from Unreviewed/Scoring in Progress. Incomplete units remain
+individual cards. Researched addresses require verified status plus source/date, and travel
+through compact state. Manual assignment supports explicitly confirmed property families
+with malformed addresses; it persists membership without merging unit records.
+
+Building desk context (November 20): src/buildings.ts resolves normalized street and
+municipality identities locally from saved listings. Incomplete addresses have per-home
+identities and exact-street suggestions, with municipality conflicts blocking matches.
+Explicit unit prefixes are removed; ambiguous numeric address ranges remain suggestions.
+Meta buildingDesk stores shared notes, confirmed links, stable assignments, dismissals and
+reversible per-unit separation under one optimistic revision. PATCH /api/buildings validates
+keys against current canonical homes and uses the existing CSRF gate and transaction.
+No unit records, scores, duplicate decisions or stages are rewritten. Compact state includes
+a building index and latest user ratings; UI groups only the already-filtered/sorted cards.
+Cross-stage context includes rejected units without adding them to the current section.
+Editors retain drafts on failure/conflict and in tab session storage when navigating away.
+Exports include building memory; shortlist recovery includes relevant building notes/keys
+and shortlisted membership only. Full SQLite backups retain all grouping decisions.
+
+Full-view relaxation (November 20): `fullViewPenaltyCap` is nullable for historical
+criteria snapshots and activated at 1 for this search. When set, full scoring bypasses
+legacy view exclusion/caps and uses one supported outlook deduction, bounded by the cap.
+View-specific 4.0+/premium gates are superseded; complete galleries, supported floor
+height and independent premium interior requirements remain. `legacyViewFeedbackThrough`
+keeps older weak/unknown-view anchors from reintroducing superseded penalties. Original
+ratings and factual corrections are retained. Quick ranking does not use this policy.
+Activation backs up SQLite/settings and recalculates locally from existing evidence.
+
+Revisit Later is a sub-group within Interested and Serious Candidates, not a lifecycle stage. `homes.revisit_later`
+defaults to false on migration and is a user-owned decision field. Existing revision,
+history, optimistic saves and rating-before-decision behavior cover toggles. Listing
+ingestion does not touch it; stage exits clear it. Same-stage duplicate merges retain a
+deferral from either record, with split history restoring the original state. Shortlist
+backups include it. Search and sorting apply within the active stage’s main and deferred groups; deferred
+apartments always render below the main review list. No scan or AI call is added by a toggle.
+
+Personal tags use user-owned `tag_long_term_lease` and `tag_unfurnished` booleans,
+defaulting to false on migration. They travel through revision checks, optimistic saves,
+history/undo and backup. Only edited tags are submitted, preventing unrelated note or
+stage saves from overwriting concurrent tag changes. Merge retains selected tags from
+either home; split restores originals. Listing evidence and scores never use these tags.
+
+Full-scoring address verification (November 20): the bounded public research phase
+requires an exact civic/street/municipality match and rejects ambiguous map results.
+If the map cannot resolve the building, use the second allowed request for the BC
+Address Geocoder; defer permits in that case. Respect service cooldowns. Apply the
+verified neighbourhood and City boundary classification before permit work, even if
+permits are paused/unavailable. Persist source/date and explicit inside/outside-downtown
+evidence. Failed address checks cannot leave search-filter downtown claims confirmed
+in full scoring. Completed hard-filtered assessments also receive the address check.
+Tests and startup remain offline; quick intake still makes no address requests.
+BC geocoder requests use the canonical province abbreviation without a country suffix;
+the map-oriented "British Columbia, Canada" string returned no >=95 matches in live
+validation even for 8433 Ash Street. Versioned caches invalidate those earlier failures.
+Explicit rental address lines can supply missing civic/city data; agency office addresses
+and transit descriptions cannot. Online-researched address corrections retain their source.
+Detail maps use sourced address corrections and reuse exact coordinates from full address
+research, including BC geocoder fallback results, replacing cached failed map lookups.
+
+Recurring discovery (November 20): DiscoveryScheduler is a deterministic app timer with
+Toronto/DST-aware windows. Startup itself is offline; the first timer tick is after one
+minute. Up to three distinct source workers share an approved parallel group, with the
+existing shared Chrome lane guard. Every source batch ends within eight minutes or at the
+window boundary, whichever is earlier. Budget.check independently enforces the saved
+schedule and window on every reservation, even without the coordinator. Disabling the
+schedule stops further work; interrupted scheduled locks can recover only after a stale
+heartbeat, no owned child process and an expired batch. Manual/review locks are untouched.
+
+Persistent scheduled_discovery_runs reserves full outstanding caps and counts completed
+usage for the prior 24 hours, including across midnight and restarts. Maximums: 600 pages,
+300 candidate attempts, 6,000 photos globally; 150/100/1,800 per ordinary source; Facebook
+40/30/600. Per batch: at most 20 pages (Facebook 12), 12 candidates, 400 photos; inventory
+batches have zero photos. All scheduled intake has zero AI/address requests. The separate
+authorized noon availability monitor gets priority over new discovery batches.
+
+Yield accounting credits distinct eligible homes with saved photos once, preserving
+current duplicate/exclusion checks. Indexed local yield summaries avoid materializing all
+galleries on every tick. Source state persists cadence, dry streak, next check and review
+pause. Empty discovery and incomplete coverage never establish market exhaustion.
+Rejected unit outcomes are cached seven days (existing outcomes one day), scoped to the
+criteria/area policy; multi-suite inventories use suite-specific keys and daily building
+refreshes. Explicit retry clears a unit rejection; network failures are never remembered
+as removal. Partial galleries retain up to three bounded scheduled continuation attempts.
+
+scripts/configure-discovery.ts --enable/--disable/--status is configuration-only. Activation
+backs up runtime data, freezes old quick ranks, records criteria and seeds recent yield.
+The Windows host starts/reuses the app, keeps Windows awake only within allowed windows,
+and can open the normal Chrome profile if needed. Windows logon/window-start triggers
+restore the host; app-level budgets remain authoritative. Codex window checks are health
+checks only, never an alternate source of scan authorization or budget resets.
+
 November 19 availability monitor: an opt-in, persistent daily timer in the app runs at
 noon America/Toronto (DST-aware), catching up after noon when the app is running and the
 exclusive source lock becomes free. Startup itself stays offline. A persisted local-day
@@ -8,21 +112,42 @@ retry that day. The schedule is separate from scanSchedule and is configured wit
 scripts/configure-availability.ts --enable / --disable. It first becomes eligible at the next
 noon after enabling. The app and normal Chrome extension must remain running for Chrome sources.
 
+November 20 cross-post recovery extends the following monitor: on expiry, scan saved
+records across stages for exact unit identity or matching specific rental text with the
+same verified street and rental facts. Revisit candidates live before merging them.
+Explicit different-home decisions and more advanced peer stages prevent an automatic
+merge. Reversible merge snapshots preserve prior decisions and assessments; live source
+facts update the retained record and primary URL without replacing its reviewed gallery.
+If saved records do not establish a live alternative, use up to three supported public
+source searches and two relevant detail candidates per search, capped at eight recovery
+pages per home inside the same daily budget. These bounded inventory checks can find a
+replacement but cannot prove internet-wide absence. Interrupted, blocked, ambiguous or
+incomplete verification leaves an amber notice. A red unavailable conclusion requires
+explicit closure across confirmed postings on multiple sources and no unresolved identity.
+Live replacements suppress the card warning; details retain expired-source history with
+“Still advertised elsewhere.” Exact Zumper address redirects are accepted only when both
+the query and extracted unit identity match; a sibling's availability cannot count.
+
 Each day snapshots Interested-and-later active homes and every confirmed posting, including
 aliases excluded from scoring aggregation. Bounds are 240 saved pages and 60 minutes, with
-zero discovery, photo downloads, address lookups or AI. Existing shared source pacing,
+zero general intake, photo downloads, address lookups or AI. Targeted cross-post search
+is included only after expiry. Existing shared source pacing,
 access pauses, stop-on-warning and scan locks apply. Older observations get priority if
 capacity is insufficient. Incomplete and inaccessible checks are recorded as unknown.
 
 Availability observations are keyed by source + source ID, outside listing/decision fields;
 merges and splits therefore aggregate the current confirmed membership. Explicit scoped
-closure notices or matching structured closure states establish unavailable ads. 404/410,
+closure notices or matching structured closure states establish unavailable ads. Availability
+checks retain 404/410 response bodies and inspect them for explicit closure evidence;
+the status code alone remains unknown, and error bodies cannot establish a live ad. Bare 404/410,
 redirects, parse errors, missing units and challenges do not. Every confirmed ad must be
 unavailable to mark the home unavailable; any current live ad wins, and unresolved possible
 duplicates prevent a definitive closure. Observations expire to unknown after 36 hours.
-Only confirmed unavailable homes show an availability notice: cards use red styling plus
-status text, and details expose checked times and per-ad evidence. Available, unchecked and
-uncertain homes have no apartment-level availability badge.
+Confirmed unavailable homes use red card styling plus status text; details expose checked
+times and per-ad evidence. Expired ads with incomplete cross-source verification show amber
+“Other postings need verification.” A live confirmed posting suppresses the card notice;
+details show “Still advertised elsewhere” and retain the expired posting history. Generic
+available, unchecked and uncertain results without confirmed closed postings have no badge.
 Activity exposes schedule and last-run coverage. Live adapter availability coverage is not
 claimed by the offline fixture tests; unsupported closure layouts remain unverified.
 
@@ -324,6 +449,10 @@ does not establish complete market coverage or a guaranteed two-day catch-up.
   and reset redemption are unavailable. `server/account-usage.ts` reads the installed Codex
   app-server's account/rateLimits/read RPC without starting chats or model work. Tests use
   fixture readings. Actual calls require ordinary included usage and a fresh per-call reading.
+  On Windows, the monitor resolves the current registered Codex Store installation on
+  connection instead of depending on a versioned executable path. An obsolete Store
+  override recovers after an app update; missing custom overrides fail explicitly.
+  Executable discovery does not change the authorized account, usage reserve or billing mode.
 - `server/source-yield.ts` attributes each distinct home to its primary discovery source.
   Recent explicit Interested / Not Interested decisions take precedence over model scores.
   `server/source-feedback.ts` reads actual stage-change dates, ignoring note edits, scanner
@@ -639,6 +768,10 @@ location. Exact pins require matching street/house-number evidence in the Vancou
 region; approximate areas have no apartment pin. Lookups are cached, serialized/paced,
 and paused after access warnings. Demo/startup/list refreshes do not initiate map lookups.
 Map failures do not prevent apartment review.
+When the street field omits its municipality, use the saved area or listing title before
+defaulting to Vancouver. Match official municipal prefixes (such as District of North
+Vancouver) without conflating North/West Vancouver with Vancouver. The municipality is
+part of the query/cache key, so an old wrong-city failure cannot suppress the corrected map.
 
 The separate building-research action requires approval for at most two public requests:
 an address lookup if not cached, and a bounded City of Vancouver issued-permit query.
@@ -654,6 +787,20 @@ verified station/airport journey times remain future research. Current transit l
 manual planning aids, not computed travel-time evidence.
 
 ## 8. Sorting Desk and data ownership
+
+November 20 section references: `src/desk-sections.ts` fixes the numbered tabs at
+1 Unreviewed, 1.5 Scoring in Progress, 2 Interested, 3 Serious Candidates,
+4 Ready to Apply, 5 In Progress, 6 Excluded and 7 Closed. The auxiliary scoring queue
+stays between Unreviewed and Interested; its automatic workflow is unchanged.
+RatingPanel has no separate Submit button. Stage decisions (including rejection) and
+Save Changes validate feedback locally and synchronously enqueue the decision, closing
+the dialog and projecting the new stage immediately. The decision queue owns feedback
+after unmount, saves it before the stage, and retains submission IDs across bounded retries.
+Failed saves restore the confirmed stage and show the retained rating/reason beside Retry
+Save. Stage-only polling cannot clear an unconfirmed feedback save. Unchanged ratings are
+not resubmitted; acknowledged feedback is not replayed when retrying a stage. Feedback starts
+the existing server-side calibration/review without blocking the UI on requests or refreshes.
+Invalid feedback keeps the draft and stage. Pending saves retain the navigation warning.
 
 November 19 review reliability: opening quick details immediately displays the saved card
 and loads full evidence separately, without the global busy flag. Closing/switching cancels
@@ -685,7 +832,7 @@ Failed saves restore that home's last confirmed state and retain explicit Retry 
 Keep Current State controls. Retries first read the current home, recognize an already-saved
 decision after a lost response, and preserve concurrent notes or report conflicts. Pending
 decisions stay in the open tab; navigating away warns while saves remain unresolved.
-Edited full-detail ratings still validate and save before queuing a decision.
+Edited full-detail ratings validate locally and join the same optimistic decision queue.
 
 The current private view-first policy (`requireNiceViewForDesk`) disables the historical
 interior tradeoff. Without a reviewed actual-unit window nature view rated >=4, resolved

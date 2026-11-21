@@ -18,6 +18,7 @@ export function diagnosticUrl(value:string){try{const u=new URL(value);return u.
 export type AccessDiagnostic={url:string;status:number;resourceType:string;mainDocument:boolean;sourceResource:boolean};
 export type InventoryContinuation={end:boolean;url:string;total?:number;deferred?:boolean;html?:string;unverified?:string};
 export class SourceSession {
+ lastResponseStatus?:number;
  context?:BrowserContext;page?:Page;stopped=false;pages=0;browserRequests=0;stopReason='Source paused';
  facebookInventoryHtml?:string;facebookScrolls=0;facebookNoProgress=0;
  diagnostics:AccessDiagnostic[]=[];
@@ -33,10 +34,17 @@ export class SourceSession {
  async waitForAccess(kind:'page'|'image'){
   await waitForSourceAccess(this.budget,this.source.id,kind,()=>{this.checkSource();if(this.stopped)throw new Error(this.stopReason);});
  }
- async html(url:string){if(!allowedUrl(url,this.source.hosts))throw new Error('Source URL not allowed');this.budget.check();this.checkSource();if(this.stopped)throw new Error('Source paused');if(!sessionTraffic(this.budget.caps)&&this.pages>=5)throw new Error('Per-source page cap reached');this.budget.reserve('pages');if(sessionTraffic(this.budget.caps))this.budget.reserve('requests');this.record('page');this.pages++;
+ async html(url:string,options:{availability?:boolean}={}){this.lastResponseStatus=undefined;if(!allowedUrl(url,this.source.hosts))throw new Error('Source URL not allowed');this.budget.check();this.checkSource();if(this.stopped)throw new Error('Source paused');if(!sessionTraffic(this.budget.caps)&&this.pages>=5)throw new Error('Per-source page cap reached');this.budget.reserve('pages');if(sessionTraffic(this.budget.caps))this.budget.reserve('requests');this.record('page');this.pages++;
  if(this.source.id==='facebook'){this.facebookInventoryHtml=undefined;this.facebookScrolls=0;this.facebookNoProgress=0;}
  await this.waitForAccess('page');
- const started=Date.now();try{const response=await this.page!.goto(url,{waitUntil:'domcontentloaded',timeout:30000});if(!this.stopped)await timers.setTimeout(4000);if(this.stopped)throw new Error(this.stopReason);if(response&&[404,410].includes(response.status()))return null;await this.waitForSearchRendering(url);let html=await this.page!.content();if(this.source.id==='zumper')html=await completeZumperSearch(this.page!,html,url,async()=>{await this.waitForAccess('page');this.budget.reserve('pages');this.budget.reserve('requests');this.record('page');this.pages++;},()=>{this.budget.check();this.checkSource();if(this.stopped)throw Error(this.stopReason);});const body=await this.page!.locator('body').innerText();if(/unusual traffic|verify (?:you are|you're) human|(?:complete|solve|enter) (?:the |a )?captcha|access denied|too many requests|temporarily unavailable|press (?:and|&) hold/i.test(body)){this.warn('Human verification or traffic warning',true);throw new Error('Source access challenge');}if(response&&response.status()>=400){this.warn(`Unexpected HTTP ${response.status()}`);throw new Error('Source error');}recordAccessSuccess(this.budget,this.source.id,'page',Date.now()-started);return html;}catch(e){if(!this.stopped&&!isLocalScanStop(e)){this.stopped=true;pauseTransport(this.budget,this.source.id,'Navigation transport failed; five-minute backoff');}throw e;}}
+ const started=Date.now();try{const response=await this.page!.goto(url,{waitUntil:'domcontentloaded',timeout:30000});this.lastResponseStatus=response?.status();if(!this.stopped)await timers.setTimeout(4000);if(this.stopped)throw new Error(this.stopReason);
+ const missing=response&&[404,410].includes(response.status());
+ if(missing&&!options.availability)return null;
+ if(!missing)await this.waitForSearchRendering(url);let html=await this.page!.content();if(!missing&&this.source.id==='zumper')html=await completeZumperSearch(this.page!,html,url,async()=>{await this.waitForAccess('page');this.budget.reserve('pages');this.budget.reserve('requests');this.record('page');this.pages++;},()=>{this.budget.check();this.checkSource();if(this.stopped)throw Error(this.stopReason);});const body=await this.page!.locator('body').innerText();if(/unusual traffic|verify (?:you are|you're) human|(?:complete|solve|enter) (?:the |a )?captcha|access denied|too many requests|temporarily unavailable|press (?:and|&) hold/i.test(body)){this.warn('Human verification or traffic warning',true);throw new Error('Source access challenge');}
+ // Expired ads can return 404/410 with an explicit closure notice. Retain that
+ // evidence for availability checks, without treating the HTTP status as closure.
+ if(missing)return html;
+ if(response&&response.status()>=400){this.warn(`Unexpected HTTP ${response.status()}`);throw new Error('Source error');}recordAccessSuccess(this.budget,this.source.id,'page',Date.now()-started);return html;}catch(e){if(!this.stopped&&!isLocalScanStop(e)){this.stopped=true;pauseTransport(this.budget,this.source.id,'Navigation transport failed; five-minute backoff');}throw e;}}
  async image(url:string){
   this.budget.check();this.checkSource();if(this.stopped)throw new Error('Source paused');if(!allowedUrl(url,this.source.mediaHosts))throw new Error('Image host not allowed');
   return fetchSourcePhoto(this.budget,this.source,async()=>{

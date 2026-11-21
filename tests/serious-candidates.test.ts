@@ -13,10 +13,10 @@ test('every forward skip and backward review-stage transition is rejected',()=>{
  for(const stage of flow){assert.ok(canTransition(stage,'Not Interested'));assert.equal(stageOptions(stage).filter(s=>flow.includes(s as typeof flow[number])).length,stage==='In Progress'?1:2);}
  assert.equal(canTransition('Ready to Apply','Leased'),false);
 });
-test('cards offer only the next review stage and Not Interested',()=>{
+test('cards offer the next review stage, Interested deferral, and Not Interested',()=>{
  for(let i=0;i<flow.length-1;i++){
   const h={stage:flow[i],reviewMode:'full',fullReview:{status:'complete'}} as Home;
-  assert.deepEqual(reviewDecisions(h).map(d=>d.stage),[flow[i+1],'Not Interested']);
+  assert.deepEqual(reviewDecisions(h).map(d=>d.stage),['Interested','Serious Candidates'].includes(flow[i])?[flow[i+1],flow[i],'Not Interested']:[flow[i+1],'Not Interested']);
  }
 });
 test('migration moves old approvals once and preserves notes, evidence, grades, dates and historical meaning',()=>{

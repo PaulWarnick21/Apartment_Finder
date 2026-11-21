@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Store} from '../server/db.ts';
 import {Budget,approvePlan,claimPlan,createPlan,getPlan} from '../server/plans.ts';
 import {listingSchema,type Listing} from '../src/domain.ts';
-import {matchQuickAddress,quickAddressQuery,resolveQuickLocation} from '../server/quick-location.ts';
+import {bcAddressString,matchQuickAddress,quickAddressQuery,resolveQuickLocation} from '../server/quick-location.ts';
 
 const listing=(patch:Partial<Listing>={})=>listingSchema.parse({source:'craigslist',sourceId:'location',url:'https://example.test/listing',title:'Apartment',address:'1200 W Georgia St, Vancouver, BC',rent:2400,beds:1,...patch});
 const response=(patch:Record<string,unknown>={},coordinates=[-123.123,49.287])=>({features:[{type:'Feature',geometry:{type:'Point',coordinates},properties:{score:100,matchPrecision:'CIVIC_NUMBER',civicNumber:1200,civicNumberSuffix:'',streetName:'Georgia',streetType:'St',streetDirection:'W',localityName:'Vancouver',provinceCode:'BC',faults:[],...patch}}]});
@@ -27,6 +27,17 @@ test('exact geocoding classifies the neighbourhood; weak, wrong-city and ambiguo
  const ambiguous={features:[...response().features,...response({},[-123.13,49.28]).features]};assert.equal(matchQuickAddress(ambiguous,query).status,'unavailable');
  const burnaby=matchQuickAddress(response({localityName:'Burnaby'},[-122.99,49.26]),quickAddressQuery(listing({address:'1200 W Georgia St, Burnaby, BC'}))!);
  assert.equal(burnaby.area,'Burnaby');assert.equal(burnaby.distance,'far');
+});
+
+test('full address queries use explicit rental address lines and provincial API syntax',()=>{
+ const q=quickAddressQuery(listing({address:'612 Elmwood St',description:'Address: 8**-612 Elmwood St, Coquitlam, BC\nQuick access to downtown Vancouver.'}))!;
+ assert.equal(q.city,'Coquitlam');assert.equal(bcAddressString(q),'612 Elmwood St, Coquitlam, BC');
+ assert.equal(bcAddressString(quickAddressQuery(listing({address:'8433 Ash St\n google map'}))!),'8433 Ash St, Vancouver, BC');
+ assert.match(quickAddressQuery(listing({address:'Gilbert Rd near River Rd',description:'Property Details:\nLocation: #1610-5233 Gilbert Rd, Richmond BC'}))!.query,/5233 Gilbert Rd, Richmond/);
+ assert.match(quickAddressQuery(listing({address:'138 EAST ESPLANADE',description:'1401-138 East Esplanade Ave, North Vancouver, BC'}))!.query,/North Vancouver/);
+ assert.match(quickAddressQuery(listing({address:'D Plan-1668 Davie Street'}))!.query,/^1668 Davie Street/);
+ assert.match(quickAddressQuery(listing({address:'602 Citadel Parade near Dunsmuir Viaduct'}))!.query,/^602 Citadel Parade, Vancouver/);
+ assert.equal(quickAddressQuery(listing({address:'',title:'Apartment',description:'Managed by Example Realty at 100 Office St, Richmond BC'})),null);
 });
 
 test('bounded lookups are counted, cached and reused; exhaustion and old approvals make no request',async()=>{

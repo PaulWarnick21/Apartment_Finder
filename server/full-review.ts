@@ -74,7 +74,7 @@ export class FullReviewService{
    const latest=this.store.get<FullReviewState>(`fullReview:${job.id}`);if(latest?.status!=='running')continue;
    await deduplicateForFullReview(this.store,job.id,this.dataDir);if(this.store.resolveHomeId(job.id)!==job.id||this.store.home(job.id)?.stage!=='Interested'||this.store.get<FullReviewState>(`fullReview:${job.id}`)?.status!=='running')continue;
    let researchDetail='';
-   if(result?.complete&&!result.hardFiltered&&this.deps.research){
+   if(result?.complete&&this.deps.research){
     const key=`fullReviewResearch:${plan.id}:${job.id}`;
     let research=this.store.get<{status:string;notes:string[];requestCount:number}>(key);
     if(!research){try{research=await this.deps.research(job.id);}catch{research={status:'unavailable',notes:['An exact advertised address or public records could not be verified; location uncertainty is retained.'],requestCount:0};}this.store.set(key,research);}

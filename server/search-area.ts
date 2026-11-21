@@ -5,11 +5,11 @@ import {mainlandExclusion,type MainlandLocationFields} from './mainland-location
 
 export type SearchRegion='downtown-vancouver'|'west-vancouver'|'north-vancouver';
 export type AreaSearchRoute={url:string;region:SearchRegion;scope?:'vancouver-approximate'};
-export type SearchAreaPolicy={regions:SearchRegion[];existingHomeIds:number[];configuredAt:string;mode?:'address'|'source-filters';sourceRoutes?:Record<string,AreaSearchRoute[]>};
+export type SearchAreaPolicy={regions:SearchRegion[];existingHomeIds:number[];configuredAt:string;allowNearbyFallback?:boolean;mode?:'address'|'source-filters';sourceRoutes?:Record<string,AreaSearchRoute[]>};
 const labels:Record<SearchRegion,string>={'downtown-vancouver':'Downtown Vancouver','west-vancouver':'West Vancouver','north-vancouver':'North Vancouver'};
 const normalize=(text:string)=>text.toLowerCase().replace(/[-_]/g,' ').replace(/\s+/g,' ').trim();
 const municipalities=/\b(?:north vancouver|west vancouver|port coquitlam|port moody|new westminster|vancouver|burnaby|richmond|coquitlam|surrey|delta|langley|white rock|ubc|victoria|kelowna|toronto|calgary|ottawa|edmonton)\b/gi;
-const downtown=new Set(['downtown','downtown vancouver','west end','coal harbour','coal harbor','yaletown','gastown','english bay','davie village']);
+const downtown=new Set(['downtown','downtown vancouver','west end','coal harbour','coal harbor','yaletown','gastown','english bay','davie village','city gate','citygate']);
 // These neighbourhoods border the core. A name alone is approximate evidence, not
 // proof of a measured four-kilometre radius or an exact address.
 const nearby=new Set(['fairview','kitsilano','mount pleasant','strathcona','false creek','olympic village','chinatown','downtown eastside']);
@@ -82,6 +82,9 @@ export function scanAreaExclusion(store:Store,listing:Listing){return searchArea
 export function searchAreaExclusion(store:Store,listing:Listing,requireKnown=false){
  const mainlandFailure=mainlandExclusion(listing,store.criteria.mainlandOnly);if(mainlandFailure)return mainlandFailure;
  const policy=store.get<SearchAreaPolicy>('searchAreaPolicy');
+ // Exact full-scoring research supersedes historical admission/search provenance,
+ // including grandfathered homes, without altering the user's saved stage or notes.
+ if(policy?.regions.length===1&&policy.regions[0]==='downtown-vancouver'&&listing.evidence.addressLookupStatus==='verified'&&['nearby','far'].includes(listing.downtownDistance))return 'Verified address is outside the downtown Vancouver peninsula.';
  if(!policy?.regions.length||listing.homeId!==undefined&&policy.existingHomeIds.includes(listing.homeId))return undefined;
  const failure=areaFailure(policy,listing,false,approximateSearchRoute(store,listing));if(failure)return failure;
  if(policy.mode==='source-filters'){
@@ -103,7 +106,7 @@ function areaFailure(policy:SearchAreaPolicy,fields:LocationFields,requireKnown:
   // disabled North/West regions and distant Vancouver neighbourhoods still win.
   if(region==='unknown'||region==='downtown-vancouver')return undefined;
   const cities=[...new Set(normalize(fields.city||fields.address||fields.area||'').match(municipalities)??[])];
-  if(region==='outside'&&nearby.has(areaName(fields))&&cities.every(city=>city==='vancouver'))return undefined;
+  if(policy.allowNearbyFallback!==false&&region==='outside'&&nearby.has(areaName(fields))&&cities.every(city=>city==='vancouver'))return undefined;
  }
  if(region==='unknown')return requireKnown?'Location is not confirmed within your selected search areas; held out of the active list.':undefined;
  return region==='outside'||!policy.regions.includes(region)?'Outside your selected search areas.':undefined;

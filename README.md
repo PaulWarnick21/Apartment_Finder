@@ -38,8 +38,11 @@ each time, and opening the app never starts a scan.
 
 Closing the browser leaves the local app running. Double-click `Stop Apartment Finder.cmd`
 to stop it when finished; saved data is retained. The stop button refuses to interrupt an active
-scan. Logs are in the gitignored `data/launcher/` directory. Nothing starts automatically when
-Windows starts. The commands below are for development or a fresh installation.
+scan. Logs are in the gitignored `data/launcher/` directory. The opt-in November 20 recurring
+schedule restores the app after Windows sign-in and runs bounded quick discovery only in
+its authorized windows. See `docs/design.md` for windows, adaptive source pauses and limits.
+Use `scripts/configure-discovery.ts --disable` to turn recurring discovery off. The commands
+below are for development or a fresh installation.
 
 For private access from Chrome on iPhone, see [Phone access](docs/mobile-access.md).
 Tailscale Serve connects the phone to this PC's existing app and database. The PC must
@@ -68,7 +71,9 @@ powershell -File scripts/start.ps1
 powershell -File scripts/start.ps1 -Demo -Dev
 ```
 
-Stop the server with Ctrl+C. Nothing is installed into Windows startup or Task Scheduler.
+Stop the server with Ctrl+C during development. On this configured PC, the opt-in
+`Apartment Finder - Scheduled Discovery` Windows task restores the production app; disable
+the recurring schedule first when intentionally stopping that background service.
 
 ## Implemented
 

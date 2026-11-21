@@ -2,11 +2,12 @@ import type {Listing} from '../src/domain.ts';
 import {createHash} from 'node:crypto';
 import {locationQuery} from './location-map.ts';
 
-export type VerifiedLocation={area:string;downtownDistance:'downtown'|'nearby'|'far';checkedAt:string;source:string};
+export type VerifiedLocation={area:string;downtownDistance:'downtown'|'nearby'|'far';checkedAt:string;source:string;addressSource?:string};
 export function verifiedLocationKey(listing:Listing){const query=locationQuery(listing);return query?.street?'verifiedLocation:'+createHash('sha256').update(query.query.toLowerCase().replace(/\s+/g,' ').trim()).digest('hex'):null;}
 export function applyVerifiedLocation(listing:Listing,saved:VerifiedLocation|undefined):Listing{
  if(!saved)return listing;
- return {...listing,area:saved.area,downtownDistance:saved.downtownDistance,location:saved.downtownDistance==='downtown'?'downtown':'unknown',evidence:{...listing.evidence,location:`Address match and City of Vancouver boundary: ${saved.area}; checked ${saved.checkedAt}`,locationSource:saved.source}};
+ const detail=`Address match and City of Vancouver boundary: ${saved.area}; ${saved.downtownDistance==='downtown'?'inside':'outside'} the downtown Vancouver peninsula; checked ${saved.checkedAt}`;
+ return {...listing,area:saved.area,downtownDistance:saved.downtownDistance,location:saved.downtownDistance==='downtown'?'downtown':'unknown',evidence:{...listing.evidence,location:detail,locationSource:saved.source,addressLookupStatus:'verified',addressLookupDetail:detail,addressLookupCheckedAt:saved.checkedAt,...(saved.addressSource?{addressLookupSource:saved.addressSource}:{})}};
 }
 
 /** Scoped saved advertising only. No visits, geocoding, or inference of missing facts. */

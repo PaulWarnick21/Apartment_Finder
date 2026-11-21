@@ -19,6 +19,7 @@ const html=readFileSync('tests/fixtures/craigslist.html','utf8');
 const source=sourceById('craigslist');
 const listing=(id='1234567890')=>parseListing(html,`https://vancouver.craigslist.org/van/apa/d/example/${id}.html`,source);
 const closed='<html><body><div class="removed">This posting has been deleted by its author.</div></body></html>';
+const expired=readFileSync('tests/fixtures/craigslist-expired.html','utf8');
 const schedule:AvailabilitySchedule={enabled:true,timeZone:'America/Toronto',hour:12,authorizedAt:'2026-11-19T15:00:00Z',notBefore:'2026-11-19T17:00:00Z'};
 const noon='2026-11-19T17:00:00Z';
 function seed(store:Store){const {id}=store.ingest(listing());store.ingest(listing('1234567891'));store.db.prepare("UPDATE homes SET stage='Interested',notes='Keep notes',follow_up='2026-12-01' WHERE id=?").run(id);store.set('availabilitySchedule',schedule);return id;}
@@ -54,6 +55,32 @@ test('Zillow and Facebook closure data must match the saved source identity',()=
  assert.equal(inspectAvailability('<script type="application/json">{"id":"43","is_sold":true}</script>',f,fb).status,'unknown');
 });
 
+test('Craigslist expiry notice survives 410; bare errors and live-looking error bodies remain unknown',()=>{
+ for(const status of [200,404,410])assert.deepEqual(inspectAvailability(expired,source,listing(),status),{status:'unavailable',evidence:'This posting has expired.'});
+ for(const status of [404,410]){
+  assert.equal(inspectAvailability('<h1>Not found</h1>',source,listing(),status).status,'unknown');
+  assert.equal(inspectAvailability(html,source,listing(),status).status,'unknown');
+ }
+ assert.equal(inspectAvailability('<h1>Access denied</h1>'+expired,source,listing(),410).status,'unknown');
+ assert.equal(inspectAvailability(html+'<aside>'+expired+'</aside>',source,listing()).status,'available');
+});
+
+test('daily monitor retains expiry evidence but requires other-source verification before a red closure warning',async t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date(noon)});const store=new Store(':memory:');
+ try{
+  const id=seed(store),before=store.home(id)!;
+  const deps={session:(_s:any,b:any)=>({lastResponseStatus:410,start:async()=>{},html:async(_url:string,options?:{availability?:boolean})=>{assert.equal(options?.availability,true);b.reserve('pages');return expired;},close:async()=>{}})};
+  const run=await runAvailabilityCheck(store,'unused',undefined,deps),home=store.home(id)!;
+  assert.equal(run?.unknown,0);assert.equal(home.availability?.status,'unknown');assert.equal(run?.state,'partial');
+  assert.equal(home.stage,before.stage);assert.equal(home.notes,before.notes);assert.equal(home.revision,before.revision);assert.deepEqual(home.listing,before.listing);assert.deepEqual(home.score,before.score);
+  for(const details of [false,true]){
+   const markup=renderToStaticMarkup(createElement(AvailabilityStatus,{home,details}));
+   assert.match(markup,/availability-unknown/);assert.match(markup,/Other postings need verification/);
+   if(details)assert.match(markup,/This posting has expired/);
+  }
+ }finally{store.close();}
+});
+
 test('all duplicates must close; an active duplicate wins; missing, stale or unconfirmed duplicates remain uncertain',()=>{
  const at=new Date().toISOString();
  const a:AvailabilityObservation={source:'craigslist',sourceId:'1',url:listing().url,status:'unavailable',checkedAt:at,runId:'x',evidence:'Removed'};
@@ -64,6 +91,28 @@ test('all duplicates must close; an active duplicate wins; missing, stale or unc
  assert.equal(summarizeAvailability([a],false,Date.now()+37*3600000)?.status,'unknown');
 });
 
+test('confirmed expired postings remain visible when possible or live duplicates prevent apartment closure',()=>{
+ const store=new Store(':memory:');try{
+  const id=seed(store),home=store.home(id)!;
+  const observation:AvailabilityObservation={source:'craigslist',sourceId:'1',url:listing().url,status:'unavailable',checkedAt:new Date().toISOString(),runId:'x',evidence:'This posting has expired.'};
+  for(const availability of [summarizeAvailability([observation],true),summarizeAvailability([observation,{...observation,sourceId:'2',status:'available'}])]){
+   home.availability=availability;
+   for(const details of [false,true]){
+    const markup=renderToStaticMarkup(createElement(AvailabilityStatus,{home,details}));
+    if(availability!.status==='available'&&!details){assert.equal(markup,'');continue;}
+    assert.match(markup,availability!.status==='available'?/Still advertised elsewhere/:/Other postings need verification/);
+    assert.ok(!markup.includes('<strong>Unavailable</strong>'));
+    assert.match(markup,availability!.status==='available'?/superseded by a live listing/:/not confirmed unavailable/);
+    if(details)assert.match(markup,/This posting has expired/);
+   }
+  }
+  for(const status of ['available','unknown'] as const){
+   home.availability=summarizeAvailability([{...observation,status}]);
+   assert.equal(renderToStaticMarkup(createElement(AvailabilityStatus,{home,details:true})),'');
+  }
+ }finally{store.close();}
+});
+
 test('daily run checks every confirmed posting, preserves decisions/ranks and does not repeat after reopening the database',async t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date(noon)});
  const path=join(mkdtempSync(join(tmpdir(),'af-availability-')),'db.sqlite');let store=new Store(path);
@@ -72,7 +121,7 @@ test('daily run checks every confirmed posting, preserves decisions/ranks and do
   const deps={session:(_s:any,b:any)=>({start:async()=>{},html:async(url:string)=>{calls++;b.reserve('pages');return url.includes('1234567890')?closed:html;},close:async()=>{}})};
   const result=await runAvailabilityCheck(store,'unused',undefined,deps);
   assert.equal(result?.checked,2);assert.equal(calls,2);assert.equal(store.home(id)!.availability?.status,'available');
-  assert.equal(store.home(id)!.stage,before.stage);assert.equal(store.home(id)!.revision,before.revision);assert.equal(store.home(id)!.notes,'Keep notes');assert.equal(store.home(id)!.followUp,'2026-12-01');assert.deepEqual(store.home(id)!.score,before.score);assert.deepEqual(store.home(id)!.listing,before.listing);
+  assert.equal(store.home(id)!.stage,before.stage);assert.equal(store.home(id)!.revision,before.revision+1);assert.equal(store.home(id)!.notes,'Keep notes');assert.equal(store.home(id)!.followUp,'2026-12-01');assert.deepEqual(store.home(id)!.score,before.score);assert.deepEqual(store.home(id)!.listing.photos,before.listing.photos);assert.match(store.home(id)!.listing.url,/1234567891/);
   const usage=JSON.parse((store.db.prepare('SELECT usage FROM plans WHERE id=?').get(result!.planId!) as any).usage);assert.equal(usage.aiCalls,0);assert.equal(usage.photos,0);assert.equal(usage.pages,2);
   store.close();store=new Store(path);await runAvailabilityCheck(store,'unused',undefined,deps);assert.equal(calls,2);
   assert.equal(cardSummary(store.home(id)!).availability?.status,'available');
@@ -96,18 +145,19 @@ test('only active Interested and later stages are selected; unavailable markup u
   const id=seed(store);for(const stage of ['Unreviewed','Not Interested','Closed','Leased']){store.db.prepare('UPDATE homes SET stage=? WHERE id=?').run(stage,id);assert.equal(availabilityTargets(store).length,0);}
   for(const stage of ['Interested','Serious Candidates','Ready to Apply','In Progress','Inquiry Sent','Viewing Booked','Applied']){store.db.prepare('UPDATE homes SET stage=? WHERE id=?').run(stage,id);assert.equal(availabilityTargets(store).length,2);}
   for(const p of availabilityTargets(store))store.set(observationKey(p),{...p,status:'unavailable',checkedAt:new Date().toISOString(),runId:'x',evidence:'<script>bad()</script>'});
+  store.set(`availabilityCrossCheck:${id}`,{state:'checked',checkedAt:new Date().toISOString(),urls:[],detail:'Verified other sources'});
   const home=store.home(id)!;assert.equal(homeAvailability(store,id,false)?.status,'unavailable');
   const markup=renderToStaticMarkup(createElement(AvailabilityStatus,{home,details:true}));assert.match(markup,/Unavailable/);assert.match(markup,/availability-unavailable/);assert.ok(!markup.includes('<script>bad'));
  }finally{store.close();}
 });
 
-test('all closed ads produce unavailable and the next daily check can restore availability',async t=>{
+test('closed ads on only one source remain unverified and the next daily check can restore availability',async t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date(noon)});const store=new Store(':memory:');
  try{
   const id=seed(store);let content=closed;
   const deps={session:(_s:any,b:any)=>({start:async()=>{},html:async()=>{b.reserve('pages');return content;},close:async()=>{}})};
   await Promise.all([runAvailabilityCheck(store,'unused',undefined,deps),runAvailabilityCheck(store,'unused',undefined,deps)]);
-  assert.equal(store.home(id)!.availability?.status,'unavailable');assert.equal((store.db.prepare('SELECT count(*) AS n FROM plans').get() as any).n,1);
+  assert.equal(store.home(id)!.availability?.status,'unknown');assert.equal((store.db.prepare('SELECT count(*) AS n FROM plans').get() as any).n,1);
   t.mock.timers.setTime(new Date('2026-11-20T17:00:00Z').getTime());content=html;
   await runAvailabilityCheck(store,'unused',undefined,deps);assert.equal(store.home(id)!.availability?.status,'available');assert.equal(store.home(id)!.stage,'Interested');
  }finally{store.close();}
@@ -130,6 +180,7 @@ test('confirmed merge and split aggregate current postings, not stale home-level
   const first=store.ingest(listing()).id,other=store.ingest({...listing('1234567891'),address:'102 Example Street'}).id;
   store.db.prepare("UPDATE homes SET stage='Interested'").run();
   for(const p of availabilityTargets(store))store.set(observationKey(p),{...p,status:p.homeId===first?'unavailable':'available',checkedAt:new Date().toISOString(),runId:'x'});
+  store.set(`availabilityCrossCheck:${first}`,{state:'checked',checkedAt:new Date().toISOString(),urls:[],detail:'Verified other sources'});
   const a=store.home(first)!,b=store.home(other)!;
   const merge=store.mergeHomes(first,other,{keep:a.revision,duplicate:b.revision});
   assert.equal(store.home(first)!.availability?.status,'available');assert.equal(availabilityTargets(store).length,2);

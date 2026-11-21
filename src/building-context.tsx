@@ -1,0 +1,45 @@
+import React,{useEffect,useRef,useState} from 'react';
+import type {Home} from './domain';
+import {buildingReady,type BuildingGroup,type BuildingIndex,type BuildingPlacement} from './buildings';
+import {deskSections} from './desk-sections';
+import {reviewLabel} from './review-presentation';
+import {deskCategory} from './desk-category';
+
+export type BuildingChange=(patch:Record<string,unknown>)=>Promise<BuildingIndex>;
+const draftKey=(key:string)=>'building-note-draft:'+key;
+function savedDraft(key:string):{text:string;revision:number}|null{try{const value=JSON.parse(sessionStorage.getItem(draftKey(key))??'null');return value&&typeof value.text==='string'&&Number.isInteger(value.revision)?value:null;}catch{return null;}}
+function keepDraft(key:string,value:{text:string;revision:number}|null){try{if(value)sessionStorage.setItem(draftKey(key),JSON.stringify(value));else sessionStorage.removeItem(draftKey(key));}catch{}}
+type Props={compact?:boolean;placement?:BuildingPlacement;group:BuildingGroup;index:BuildingIndex;homes:Home[];visibleIds?:number[];currentId?:number;onOpen:(home:Home)=>void;onChange:BuildingChange};
+export function BuildingContext({compact=false,placement,group,index,homes,visibleIds=[],currentId,onOpen,onChange}:Props){
+ const [initialDraft]=useState(()=>savedDraft(group.key));
+ const [expanded,setExpanded]=useState(!!initialDraft),[editing,setEditing]=useState(!!initialDraft),[draft,setDraft]=useState(initialDraft?.text??group.notes),[revision,setRevision]=useState(initialDraft?.revision??index.revision),[saving,setSaving]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false),[allSuggestions,setAllSuggestions]=useState(false),[targetId,setTargetId]=useState('');
+ const dirty=editing&&draft!==group.notes,dirtyRef=useRef(dirty);dirtyRef.current=dirty;
+ useEffect(()=>{if(!dirtyRef.current){setDraft(group.notes);setRevision(index.revision);}},[group.notes,index.revision]);
+ useEffect(()=>{if(!dirty)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty]);
+ const byId=new Map(homes.map(h=>[h.id,h])),peers=group.homeIds.map(id=>byId.get(id)).filter((h):h is Home=>!!h);
+ const rejected=peers.filter(h=>h.stage==='Not Interested').length,reviewed=peers.filter(h=>h.id!==currentId&&h.stage!=='Unreviewed').length;
+ const suggestions=index.suggestions.filter(p=>p.a===group.key||p.b===group.key).map(p=>index.groups.find(g=>g.key===(p.a===group.key?p.b:p.a))).filter((g):g is BuildingGroup=>!!g);
+ async function change(patch:Record<string,unknown>){setSaving(true);setError('');setSaved(false);try{const next=await onChange({...patch,revision:patch.action==='notes'?revision:index.revision});setRevision(next.revision);if(patch.action==='notes'){keepDraft(group.key,null);setEditing(false);setSaved(true);}}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setSaving(false);}}
+ return <div className={`building-context${compact?' building-context-compact':''}${expanded?' context-open':''}`} aria-label={`Building: ${group.label}`}>
+  <div className="building-heading"><div><span className="eyebrow">BUILDING</span><h3>{group.label}</h3><p hidden={compact}>{visibleIds.length?`${visibleIds.length} ${visibleIds.length===1?'unit':'units'} in this group · `:''}{group.homeIds.length} saved {group.homeIds.length===1?'unit':'units'}{reviewed>0?` · ${reviewed} ${currentId?'other ':''}previously reviewed`:''}{rejected>0?` · ${rejected} rejected`:''}</p></div><div className="building-buttons"><button aria-label={expanded?'Hide building context':'Building notes & other units'} aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?'Hide building context':compact?'Notes & history':'Building notes & other units'}</button></div></div>
+  {(!compact||expanded)&&placement&&currentId===undefined&&group.homeIds.length>1&&<p className="building-placement">Fully scored active units stay together in {deskSections.find(s=>s.title===placement.section)?.number}. {placement.section}{placement.revisitLater?' · Revisit Later':''}. Revisit Later takes priority within the destination section. Each unit keeps its own decision; unfinished and closed units stay in their sections.</p>}
+  {group.notes&&!editing&&<p className="building-note prewrap"><b>Building notes: </b>{group.notes}</p>}
+  {saved&&<p role="status">Building notes saved.</p>}
+  {expanded&&<div className="building-expanded">
+   <p className="footnote">Shared reminders for this building. Each apartment keeps its own score, notes and actions.</p>
+   {editing?<><label>Shared building notes<textarea rows={3} maxLength={10000} value={draft} disabled={saving} onChange={e=>{setDraft(e.target.value);keepDraft(group.key,{text:e.target.value,revision});setSaved(false);}}/></label><div className="building-buttons"><button className="primary" disabled={saving} onClick={()=>void change({action:'notes',key:group.key,notes:draft})}>{saving?'Saving…':'Save building notes'}</button><button disabled={saving} onClick={()=>{keepDraft(group.key,null);setEditing(false);setDraft(group.notes);setError('');}}>Cancel edit</button>{error&&<button disabled={saving} onClick={()=>{keepDraft(group.key,null);setDraft(group.notes);setRevision(index.revision);setError('');}}>Reload saved notes</button>}</div></>:<button onClick={()=>{setDraft(group.notes);setRevision(index.revision);setEditing(true);setSaved(false);}}>{group.notes?'Edit building notes':'Add building notes'}</button>}
+   {group.key.startsWith('separate:')&&<p><button disabled={saving||dirty} onClick={()=>void change({action:'restore',homeId:group.homeIds[0]})}>Undo building separation</button></p>}
+   {currentId!==undefined&&<details className="building-manual"><summary>Group with another saved apartment</summary><p>Use this for a confirmed building or property match that the saved addresses do not recognize. Apartment records stay separate.</p><label>Group apartment #{currentId} with apartment #<input inputMode="numeric" value={targetId} onChange={e=>setTargetId(e.target.value.replace(/[^0-9]/g,''))}/></label><button disabled={saving||dirty||!byId.has(Number(targetId))||![currentId,Number(targetId)].every(id=>byId.has(id)&&buildingReady(byId.get(id)!))} onClick={()=>void change({action:'assign',homeId:currentId,targetHomeId:Number(targetId),confirmation:'SAME BUILDING GROUP'})}>Group this unit</button><p className="footnote">Both apartments must be fully scored and outside sections 1 and 1.5.</p></details>}
+   {peers.length>1&&<div className="building-units" role="list" aria-label="Units in this building">{peers.map(h=><div role="listitem" className={h.id===currentId?'building-unit current':'building-unit'} key={h.id}>
+    <div><button disabled={h.id===currentId||dirty||saving} onClick={()=>onOpen(h)}>#{h.id}{h.listing.unit?` · Suite ${h.listing.unit}`:' · Unit unspecified'}</button><span>{h.stage==='Not Interested'?'Not Interested':deskCategory(h)}{h.revisitLater?' · Revisit Later':''}{h.id===currentId?' · Current unit':visibleIds.includes(h.id)?' · Shown below':''}</span></div>
+    <p>{h.listing.rent!==null?`$${h.listing.rent.toLocaleString('en-CA')}/month · `:''}{reviewLabel(h)}{index.ratings[h.id]?` · Your score ${index.ratings[h.id].score.toFixed(1)} / 5`:''}</p>
+    {h.notes&&<p className="prewrap"><b>Unit notes: </b>{h.notes}</p>}{index.ratings[h.id]?.reason&&<p className="prewrap"><b>Your score reason: </b>{index.ratings[h.id].reason}</p>}
+    <button className="building-separate" disabled={saving||dirty} onClick={()=>void change({action:'separate',homeId:h.id})}>Different building — separate this unit</button>
+   </div>)}</div>}
+   {(allSuggestions?suggestions:suggestions.slice(0,5)).map(other=><div className="building-suggestion" key={other.key}><b>Possible same building: {other.label}</b><p>Apartment{other.homeIds.length===1?'':'s'} {other.homeIds.map(id=>`#${id}`).join(', ')}. Saved addresses may match; confirm before sharing a group. Grouping becomes available after full scoring and leaving sections 1 and 1.5.</p><div className="building-buttons">{other.homeIds.slice(0,3).map(id=>byId.has(id)&&<button key={id} disabled={dirty||saving} onClick={()=>onOpen(byId.get(id)!)}>Review #{id}</button>)}<button disabled={saving||dirty||![group,other].every(g=>g.homeIds.some(id=>byId.has(id)&&buildingReady(byId.get(id)!)))} onClick={()=>void change({action:'confirm',a:group.key,b:other.key})}>Same building</button><button disabled={saving||dirty} onClick={()=>void change({action:'dismiss',a:group.key,b:other.key})}>Dismiss match</button></div></div>)}
+   {!allSuggestions&&suggestions.length>5&&<button onClick={()=>setAllSuggestions(true)}>Show all {suggestions.length} possible matches</button>}
+  </div>}
+  {!expanded&&suggestions.length>0&&<button className="building-match-notice" onClick={()=>setExpanded(true)}>{suggestions.length} possible same-building {suggestions.length===1?'match':'matches'} to review</button>}
+  {error&&<p className="warning" role="alert">{error}</p>}
+ </div>;
+}

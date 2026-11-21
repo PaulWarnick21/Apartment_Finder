@@ -1,5 +1,128 @@
 # Requirements
 
+November 20 compact building groups: a group defaults to one card showing its highest
+full-scored matching unit, regardless of the selected desk sort. Expand to see its other
+units and collapse again. Collapsed groups share the normal card grid with ungrouped
+apartments; a single visible unit renders as an ordinary card without a building wrapper.
+Keep To Pursue/To Review and Revisit Later distinctly separated, preserve group placement
+and every unit decision, and keep shared notes/history accessible. Searching for a lower
+scored unit must show that match rather than hide it behind a nonmatching representative.
+
+November 20 building grouping refinement: group separate apartments, never combine
+distinct unit records. Grouped cards require completed full scoring and departure from
+Unreviewed/Scoring in Progress (sections 1/1.5). Show completed active units together only
+in the furthest active section reached by a member (2–5), with Revisit Later taking
+priority within that destination section. Preserve each unit's actual stage, deferral,
+notes, score, ratings and assessments; disclose its individual decision on relocated cards.
+Excluded and Closed members remain in their own sections, accessible as prior-review context.
+Turning grouping off restores individual placement. Sorting/search operate within the
+group's destination without changing its destination based on the search result subset.
+
+Use the saved verified researched address and its source/date when advertised addresses
+are missing or malformed. The user requested #1038 (Harbourview 1502) and #1039 (Harbourview
+1105) together under Ready to Apply; #928, #938 and #915 form one Beach Avenue property
+group under Serious Candidates / Revisit Later. Keep all individual records. Explicit
+property grouping can handle named towers/marketing addresses without asserting exact
+unit identity. Manual grouping also requires full scoring and departure from 1/1.5.
+
+Building grouping is enabled by default with a remembered toggle. Share building notes
+and prior unit decisions/ratings, including rejected units. Ambiguous matches remain
+confirmable/dismissible; preserve concurrent note-save protection and recovery backups.
+No general intake, photo download or model work is authorized by these grouping changes.
+
+November 20 cross-post expiry workflow supersedes the earlier warning-only correction:
+before marking an apartment unavailable, check other postings of that same unit. Search
+saved records across stages, then supported public sources within the daily availability
+budget when necessary. Merge a verified live replacement into the retained apartment and
+refresh its advertised facts and primary link, preserving personal decisions, ratings and
+photo assessments. Keep expired posting evidence as history; suppress red expiry warnings
+when another verified posting is live. Unknown identity, blocked sources and incomplete
+coverage remain unverified. The user explicitly retained #1995 and merged #1171 into it.
+
+November 20 expired-posting warning correction: show confirmed expired/removed posting
+evidence on cards and in details even when unresolved or live duplicate ads prevent an
+apartment-wide unavailable conclusion. Label that warning “Posting unavailable” and
+explain the overall uncertainty or live cross-post. Generic unknown/unchecked availability
+still has no badge. Preserve stages, notes, scores and duplicate decisions.
+
+November 20 Serious Candidates revisit and personal tags: section 3 also has a
+bottom Revisit Later group, separate from candidates to pursue now. Review Now returns
+a home to the main group; Ready to Apply and Not Interested remain available. Deferral
+is local to its current stage and clears on promotion or rejection, including #2 to #3.
+Add Long Term Lease and Unfurnished checkboxes beside notes in the full detail view.
+Save with notes or a stage action, display selected tags prominently on overview cards,
+and retain tags across stage changes, restarts, listing updates and shortlist backups.
+Tags are personal reminders, independent of source facts and automated scoring.
+
+
+
+November 20 full-scoring view relaxation: the user now screens outlooks manually during
+quick ranking. Supersede the older view-first exclusions and stacked view ceilings with
+one evidence-based poor/limited-view deduction of at most 1 point. Unknown, representative
+or conflicting views stay uncertain rather than being treated as poor. Retain photo
+evidence, independent rent/location/interior/parking rules and saved user decisions.
+Retire pre-change weak/unknown-view calibration anchors while retaining original ratings;
+new explicit feedback still applies. No new scan, gallery review or AI request is required.
+
+
+November 20 Revisit Later: fully scored apartments in section 2 (Interested) can be
+set aside without promotion to Serious Candidates. Show them in a separate Revisit Later
+group at the bottom of section 2, apart from the main To Review list and new arrivals.
+Persist the choice across refreshes, restarts and listing updates. Allow Review Now to
+return to the main group, and retain Serious Candidates / Not Interested actions in both
+groups. Save edited notes and optional rating feedback through the existing decision path.
+Clear the deferral when leaving Interested; preserve all other user decisions and evidence.
+
+November 20 full-scoring address clarification: research the advertised street address
+online, establish the actual municipality/neighbourhood and explicitly determine whether
+it lies within the user's downtown Vancouver peninsula. Search filters, city names and
+"minutes to downtown" advertising cannot establish downtown location. Record sources,
+check dates and uncertainty, and use the verified result in location scoring. The user's
+example, 8433 Ash Street, is in South Vancouver near Marine Drive Station, outside downtown.
+Keep quick intake free of address requests; preserve saved user decisions and ratings.
+The user also requested rerunning this check on every apartment currently in section
+2 (Interested), excluding confirmed outside-downtown homes while retaining notes/ratings.
+Boundary clarification: include City Gate near Science World as downtown. The user
+explicitly retained suite 1102 at 189 National Avenue (#1173) during this address audit.
+
+November 20 Sorting Desk review: label sections with stable numbers as well as titles:
+1 Unreviewed, 1.5 Scoring in Progress, 2 Interested, 3 Serious Candidates,
+4 Ready to Apply, 5 In Progress, 6 Excluded, 7 Closed. Section references use this mapping.
+Stage buttons, including Not Interested, validate locally and move the apartment immediately.
+Changed personal scores, explanations and stage decisions save in the background, with
+feedback persisted before the stage and the existing scoring review started automatically.
+Remove the separate Submit Rating button. Save Changes uses the same background queue.
+Untouched ratings are optional; invalid drafts stay open. Failed saves restore the confirmed
+stage and retain feedback for Retry Save. Do not duplicate ratings or reviews on retries.
+
+November 20 recurring quick discovery: enabled indefinitely until the user turns it off.
+Use America/Toronto: every day 21:00–03:00, plus 05:00–13:00 Monday through Thursday
+(the morning window follows the current calendar weekday). Recover the app after sign-in;
+resume only scheduled work within an authorized window and retained rolling allowances.
+No catching up outside windows, automatic access-warning recovery or purchased AI fallback.
+Quick scans add to Unreviewed using local ranks, never automatically promote homes.
+
+Source checks adapt to distinct valid photo-collected additions, not discovered URLs or
+excluded/duplicate records. Healthy sources can run every 30 minutes; weak sources slow
+to two, six or twenty-four hours. After at least three completed checks and seventy-two
+hours, fewer than two valid additions in the rolling three-day period pauses a source for
+review. Keep coverage/access failures distinct from exhausted inventory. Persist rejected
+candidate outcomes to prevent repeated out-of-area/room checks; allow expiry, criteria
+changes and explicit retries. A building's rejected suite cannot reject other suites.
+
+New intake is 1–2 bedrooms and $1,500–$3,500 advertised monthly rent, inclusive; the user
+explicitly chose to exclude under-$1,500 apartments. Use downtown-peninsula source filters
+and cheap existing location facts; reject clearly outside-downtown neighbourhoods even on
+broad fallback routes. Uncertain downtown location is flagged for full scoring, not invented.
+Advertised unit parking and in-unit laundry improve quick ranking. Preserve existing ranks,
+stages and notes. Existing laundry, whole-apartment, mainland, photo and duplicate guards
+remain; full-scoring view/quality rules are not prerequisites for initial discovery.
+
+The user requires lightweight scans: if an added qualification check materially slows
+per-candidate work by over roughly 30%, defer that expensive check to full scoring.
+Keep cheap hard filters, budget/deadline guards and rejection memory in intake; adaptive
+waiting between unproductive source checks is intentional. No intake AI or address lookup.
+
 November 20 backup preference: prioritize a lightweight, assistant-independent recovery
 index for Interested and later-stage apartments. Preserve listing URLs, scores, stages,
 notes and enough basic metadata to recover the shortlist; full galleries and listing

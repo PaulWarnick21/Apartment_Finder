@@ -33,7 +33,7 @@ export function scoringFacts(input:Listing):Listing{
  if(l.downtownDistance==='unknown'){
   if(/\b(North Vancouver|West Vancouver|Burnaby|Richmond|Port Moody|Coquitlam|Surrey|New Westminster|UBC|Kerrisdale|Marpole|Renfrew[ -]Collingwood|Riley Park|Oakridge)\b/i.test(place))l.downtownDistance='far';
   else if(/\b(Kitsilano|Mount Pleasant|Fairview|Olympic Village|South False Creek)\b/i.test(place))l.downtownDistance='nearby';
-  else if(['downtown','preferred'].includes(l.location)||/\b(Coal Harbour|West End|Yaletown|Downtown Vancouver)\b/i.test(place))l.downtownDistance='downtown';
+  else if(['downtown','preferred'].includes(l.location)||/\b(Coal Harbour|West End|Yaletown|Downtown Vancouver|City\s?Gate)\b/i.test(place))l.downtownDistance='downtown';
   else if(l.location==='outside')l.downtownDistance='far';
   if(l.downtownDistance!=='unknown')l.evidence.downtownDistance=`Search-area classification from: ${place.trim()}`;
  }
@@ -41,6 +41,11 @@ export function scoringFacts(input:Listing):Listing{
   const floor=unitFloor(l.title,l.description);
   if(floor.value!==null){l.floorLevel=floor.value;l.evidence.floorLevel=floor.evidence;}
   else if(floor.conflict&&!l.conflicts.includes(floor.conflict))l.conflicts.push(floor.conflict);
+ }
+ // A website filter/marketing label cannot survive a failed full address check as
+ // confirmed downtown evidence. Retain explicit outside-area facts conservatively.
+ if(l.evidence.addressLookupStatus==='unavailable'&&l.downtownDistance==='downtown'){
+  l.downtownDistance='unknown';l.location='unknown';
  }
  return l;
 }

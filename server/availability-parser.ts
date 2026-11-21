@@ -4,14 +4,28 @@ import type {AvailabilityObservation} from '../src/availability.ts';
 import type {Source} from './sources.ts';
 import {extractSourceOfferings} from './regular-worker.ts';
 import {listingUnavailable} from './listing-availability.ts';
+import {zumperState} from './zumper-extraction.ts';
 
 type Finding=Pick<AvailabilityObservation,'status'|'evidence'>;
+export function availabilityRedirectMatches(html:string|null,source:Source,saved:Listing,finalUrl:string){
+ try{
+  const before=new URL(saved.url),after=new URL(finalUrl);
+  if(before.origin===after.origin&&before.pathname===after.pathname)return true;
+  const unit=before.pathname.match(/^\/(?:listings|apartments-for-rent)\/(\d+p?)(?:\/|$)/)?.[1];
+  if(!html||source.id!=='zumper'||after.origin!==before.origin||!after.pathname.startsWith('/address/')||!unit||after.searchParams.get('listing_id')!==`l-${unit}`)return false;
+  return extractSourceOfferings(source,html,saved.url).some(l=>l.sourceId===saved.sourceId);
+ }catch{return false;}
+}
 /** Only listing-scoped notices count. Navigation, related ads and free-form descriptions do not. */
-export function inspectAvailability(html:string|null,source:Source,saved:Listing):Finding{
+export function inspectAvailability(html:string|null,source:Source,saved:Listing,httpStatus?:number):Finding{
  if(!html)return {status:'unknown',evidence:'Listing page returned no content (including 404/410); availability is unverified.'};
  const $=load(html);
  const visible=$('body').clone();visible.find('script,style,nav,footer,aside,form').remove();
  if(/verify (?:you are|you're) human|access denied|unusual traffic|temporarily unavailable|log in to continue/i.test(visible.text()))return {status:'unknown',evidence:'Access or temporary error page; availability is unverified.'};
+ if(source.id==='zumper')try{
+  const state=zumperState(html),active=state.permanentAddress?.activeListings??state.detail?.activeListings;
+  if(Array.isArray(active)&&!active.some((row:any)=>String(row.listing_id)===saved.sourceId))return {status:'unknown',evidence:'The saved Zumper unit is absent from active listings; sibling units cannot establish availability.'};
+ }catch{/* The normal scoped extractor below will retain uncertainty. */}
  // Structured status must belong to the exact saved ad, never a recommended property.
  if(source.id==='zillow')try{
   const next=JSON.parse($('#__NEXT_DATA__').text()),cache=JSON.parse(next.props.pageProps.componentProps.gdpClientCache);
@@ -30,8 +44,9 @@ export function inspectAvailability(html:string|null,source:Source,saved:Listing
  // Explicit page-level closure notices are valid even after the original facts disappear.
  for(const element of [...notices,...$('h1').toArray()]){
   const text=$(element).text().replace(/\s+/g,' ').trim();
-  if(/^(?:(?:sorry[,!]?\s*)?(?:this |the )?(?:posting|listing|rental|apartment|property|ad) (?:has been |is |was )?(?:removed|deleted|expired|rented|leased|no longer available|no longer for rent)|(?:rented|leased|no longer available))[.!\s]*$/i.test(text)||source.id==='craigslist'&&/^This posting has been (?:deleted by its author|expired|flagged for removal)[.!\s]*$/i.test(text))return {status:'unavailable',evidence:text.slice(0,300)};
+  if(/^(?:(?:sorry[,!]?\s*)?(?:this |the )?(?:posting|listing|rental|apartment|property|ad) (?:has been |has |is |was )?(?:removed|deleted|expired|rented|leased|no longer available|no longer for rent)|(?:rented|leased|no longer available))[.!\s]*$/i.test(text)||source.id==='craigslist'&&/^This posting has been (?:deleted by its author|expired|flagged for removal)[.!\s]*$/i.test(text))return {status:'unavailable',evidence:text.slice(0,300)};
  }
+ if(httpStatus&&[404,410].includes(httpStatus))return {status:'unknown',evidence:`HTTP ${httpStatus} without an explicit listing closure notice; availability is unverified.`};
  try{
   const listing=extractSourceOfferings(source,html,saved.url).find(l=>l.sourceId===saved.sourceId);
   if(!listing)return {status:'unknown',evidence:'The saved unit was not found in this page; missing inventory is not proof of closure.'};

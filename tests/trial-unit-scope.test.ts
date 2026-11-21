@@ -11,7 +11,7 @@ test('Kijiji scoped header and structured rent win over optional internet charge
  const noStructured=html.replace('"offers":{"price":"2000"},','');assert.equal(extractTrial(noStructured,url,source).rent,2000);
  const noHeader=html.replace('<p data-testid="vip-price">$2,000</p>','');assert.equal(extractTrial(noHeader,url,source).rent,2000);
  const feeOnly=noStructured.replace('<p data-testid="vip-price">$2,000</p>','');assert.equal(extractTrial(feeOnly,url,source).rent,null);
- const conflict=extractTrial(html.replace('<p data-testid="vip-price">$2,000</p>','<p data-testid="vip-price">$2,100</p>'),url,source);assert.equal(conflict.rent,null);assert.match(conflict.conflicts.join(' '),/\$2100 \/ \$2000/);
+ const conflict=extractTrial(html.replace('<p data-testid="vip-price">$2,000</p>','<p data-testid="vip-price">$2,100</p>'),url,source);assert.equal(conflict.rent,2100);assert.match(conflict.conflicts.join(' '),/\$2100 \/ \$2000/);
 });
 test('Hollyburn About this rental determines studio facts while display-suite provenance survives',()=>{
  const l=extractTrial(fixture('hollyburn-unit-studio'),'https://www.hollyburn.com/furnished_rental/unit-8-in-example/',sourceById('hollyburn'));

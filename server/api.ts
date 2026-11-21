@@ -1,3 +1,4 @@
+import {buildingDesk,updateBuildingDesk} from './building-desk.ts';
 import {AvailabilityMonitor} from './availability-monitor.ts';
 import {searchAreaSummary} from './search-area.ts';
 import {areaMixSettings,updateAreaMixSettings} from './area-mix-settings.ts';
@@ -31,8 +32,9 @@ import {createFullBackup} from './full-backup.ts';
 import {retryCandidate} from './discovery-queue.ts';
 import {requestAccess,type RemoteAccess} from './request-access.ts';
 import {FullReviewService} from './full-review.ts';
+import {DiscoveryScheduler,discoveryScheduleStatus} from './discovery-scheduler.ts';
 import {closeAccountUsage} from './account-usage.ts';
-const decisionSchema=z.object({revision:z.number().int(),stage:stageSchema,notes:z.string().max(10000),followUp:z.string().max(40),viewing:z.string().max(40),rescued:z.boolean()}).strict();
+const decisionSchema=z.object({revision:z.number().int(),stage:stageSchema,notes:z.string().max(10000),followUp:z.string().max(40),viewing:z.string().max(40),rescued:z.boolean(),revisitLater:z.boolean().optional(),tagLongTermLease:z.boolean().optional(),tagUnfurnished:z.boolean().optional()}).strict();
 async function body(req:IncomingMessage,maxBytes=100000){const chunks:Buffer[]=[];let size=0;for await(const chunk of req){const b=Buffer.from(chunk);size+=b.length;if(size>maxBytes)throw new Error('Request too large');chunks.push(b);}return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');}
 const calendarEscape=(s:string)=>s.replace(/\\/g,'\\\\').replace(/[\r\n]+/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
 export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedbackReviewer,remoteAccess=null}:{demo?:boolean;dev?:boolean;feedbackReviewer?:FeedbackReviewer;remoteAccess?:RemoteAccess|null}={}){
@@ -45,6 +47,7 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  const buildingResearch=new BuildingResearchService(store,locationMaps,demo);
  const fullReviews=new FullReviewService(store,dataDir,scanProcesses,demo,{research:id=>buildingResearch.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS')});
  const availabilityMonitor=new AvailabilityMonitor(store,dataDir,chromeJobs,demo);
+ const discoveryScheduler=new DiscoveryScheduler(store,scanProcesses,{demo});
  const server=createServer(async(req,res)=>{const host=req.headers.host??'';
  const send=(status:number,value:unknown)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
  try{
@@ -52,7 +55,7 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  const url=new URL(req.url??'/',access.origin),path=url.pathname;
  if(url.origin!==access.origin)return send(403,{error:'Origin not allowed'});
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Frame-Options','DENY');
- if(path==='/api/health'&&req.method==='GET')return send(200,{app:'apartment-finder',demo,workspaceId:createHash('sha256').update(resolve(dataDir).toLowerCase()).digest('hex')});
+ if(path==='/api/health'&&req.method==='GET')return send(200,{app:'apartment-finder',demo,workspaceId:createHash('sha256').update(resolve(dataDir).toLowerCase()).digest('hex'),canStop:!scanProcesses.hasActive&&!store.db.prepare("SELECT 1 FROM plans WHERE state IN ('approved','running') LIMIT 1").get()&&!store.db.prepare('SELECT 1 FROM scan_lock LIMIT 1').get()&&!store.db.prepare('SELECT 1 FROM parallel_scan_members LIMIT 1').get()});
  // Separate capability-authenticated extension endpoints. Never relax the app's CSRF gate.
  if(path.startsWith('/api/browser-bridge/')){
   if(access.remote)return send(403,{error:'The Chrome extension connects only on the desktop.'});
@@ -86,11 +89,13 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  }
  if(path==='/api/state'&&req.method==='GET'){
   const homes=store.homes(),criteria=store.criteria,chatgpt=await connectionStatus.get(),mode=aiMode();
-  const value={csrf,demo,availabilitySchedule:store.get('availabilitySchedule'),availabilityRun:store.get('availabilityRun'),searchAreaSummary:searchAreaSummary(store),areaMix:areaMixSettings(store),homes:url.searchParams.get('compact')==='1'?homes.map(cardSummary):homes,criteria,criteriaRevision:preferencesRevision(criteria),sources:sourceStatuses(store,Date.now(),homes),events:store.events(),plans:(store.db.prepare('SELECT id FROM plans ORDER BY created_at DESC LIMIT 30').all() as any[]).map(p=>getPlan(store,p.id)),providerReady:mode==='api'?!!process.env.OPENAI_API_KEY&&!!process.env.OPENAI_MODEL:!chatgpt.pending&&chatgpt.sharing&&!!chatgpt.model,aiMode:mode,chatgpt,schedule:store.get('scanSchedule')??{enabled:false,reason:'Recurring scans are not enabled. Each run needs bounded approval.'}};
+  const value={csrf,demo,buildings:buildingDesk(store,homes),availabilitySchedule:store.get('availabilitySchedule'),availabilityRun:store.get('availabilityRun'),searchAreaSummary:searchAreaSummary(store),areaMix:areaMixSettings(store),homes:url.searchParams.get('compact')==='1'?homes.map(cardSummary):homes,criteria,criteriaRevision:preferencesRevision(criteria),sources:sourceStatuses(store,Date.now(),homes),events:store.events(),plans:(store.db.prepare('SELECT id FROM plans ORDER BY created_at DESC LIMIT 30').all() as any[]).map(p=>getPlan(store,p.id)),providerReady:mode==='api'?!!process.env.OPENAI_API_KEY&&!!process.env.OPENAI_MODEL:!chatgpt.pending&&chatgpt.sharing&&!!chatgpt.model,aiMode:mode,chatgpt,schedule:store.get('scanSchedule')??{enabled:false,reason:'Recurring scans are not enabled. Each run needs bounded approval.'}};
   const content=JSON.stringify(value),etag='"'+createHash('sha256').update(content).digest('hex')+'"';res.setHeader('ETag',etag);
   if(req.headers['if-none-match']===etag){res.writeHead(304,{'Cache-Control':'private, no-cache'});return res.end();}
   res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'private, no-cache'});return res.end(content);
  }
+ if(path==='/api/buildings'&&req.method==='PATCH')return send(200,updateBuildingDesk(store,await body(req)));
+ if(path==='/api/discovery-schedule'&&req.method==='GET')return send(200,discoveryScheduleStatus(store));
  if(path==='/api/browser/state'&&req.method==='GET')return send(200,browserBridge.state());
  if(path==='/api/area-mix'&&req.method==='PATCH')return send(200,updateAreaMixSettings(store,await body(req)));
  if((path==='/api/browser/recover-zillow'||path==='/api/browser/recover-apartments')&&req.method==='POST'){
@@ -160,12 +165,12 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  if(path==='/api/duplicates/different'&&req.method==='POST'){const {a,b}=z.object({a:z.number().int().positive(),b:z.number().int().positive()}).parse(await body(req));if(a===b||!store.home(a)||!store.home(b))throw new Error('Choose two different apartments');store.db.prepare('INSERT OR REPLACE INTO duplicate_decisions VALUES (?,?,?)').run(Math.min(a,b),Math.max(a,b),'different');return send(200,{ok:true});}
  if(path==='/api/duplicates/merge'&&req.method==='POST'){const input=z.object({keepId:z.number().int().positive(),duplicateId:z.number().int().positive(),revisions:z.object({keep:z.number().int(),duplicate:z.number().int()}).strict(),confirmation:z.literal('SAME APARTMENT')}).strict().parse(await body(req));const result=store.transaction(()=>{const merged=store.mergeHomes(input.keepId,input.duplicateId,input.revisions);store.set('criteria',rebuildLearning(store).criteria);return merged;});return send(200,result);}
  if(path==='/api/duplicates/split'&&req.method==='POST'){const {mergeId}=z.object({mergeId:z.number().int().positive()}).strict().parse(await body(req));const result=store.transaction(()=>{const split=store.splitMerge(mergeId);store.set('criteria',rebuildLearning(store).criteria);return split;});return send(200,result);}
- if(path==='/api/export'&&req.method==='GET'){res.setHeader('Content-Disposition','attachment; filename="apartment-finder-export.json"');return send(200,{exportedAt:new Date().toISOString(),criteria:store.criteria,homes:store.homes(),ratings:feedback.list(),calibrationHistory:store.db.prepare('SELECT * FROM calibration_changes ORDER BY id DESC').all()});}
+ if(path==='/api/export'&&req.method==='GET'){res.setHeader('Content-Disposition','attachment; filename="apartment-finder-export.json"');return send(200,{exportedAt:new Date().toISOString(),buildingMemory:store.get('buildingDesk'),buildings:buildingDesk(store),criteria:store.criteria,homes:store.homes(),ratings:feedback.list(),calibrationHistory:store.db.prepare('SELECT * FROM calibration_changes ORDER BY id DESC').all()});}
  if(path==='/api/backup'&&req.method==='POST'){const destination=join(dataDir,'backups',`backup-${Date.now()}`);await createFullBackup(store,dataDir,destination,demo?join(dataDir,'no-private-criteria'):resolve('private'));return send(200,{message:`Complete backup saved to ${destination}`});}
  if(path.startsWith('/api/'))return send(404,{error:'Unknown API route'});
  if(path.startsWith('/media/')){if(req.method!=='GET'&&req.method!=='HEAD')return send(405,{error:'Method not allowed'});if(!await photoDelivery.serve(req,res,path.slice(7),url.searchParams))return send(404,{error:'Image unavailable'});return;}
  if(dev){if(!vite){const {createServer}=await import('vite');vite=await createServer({server:{middlewareMode:true},appType:'spa'});}return vite.middlewares(req,res,()=>send(404,{error:'Not found'}));}
  const root=resolve('dist');const file=resolve(root,'.'+decodeURIComponent(path));if(file!==root&&!file.startsWith(root+sep))return send(403,{error:'Invalid path'});const actual=existsSync(file)&&extname(file)?file:join(root,'index.html');if(!existsSync(actual))return send(503,{error:'Run npm run build first'});const mime:Record<string,string>={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'};res.writeHead(200,{'Content-Type':mime[extname(actual)]??'application/octet-stream'});res.end(readFileSync(actual));
  }catch(e){const message=e instanceof Error?e.message:'Unexpected error';send(/changed|already|running/.test(message)?409:400,{error:message});}finally{if(req.method==='POST'&&req.url?.startsWith('/api/chatgpt/'))connectionStatus.invalidate();}});
- return {server,close:async()=>{await availabilityMonitor.close();await fullReviews.close();await feedback.close();chromeJobs.fail('Server stopped');await scanProcesses.close();closeAccountUsage();chatGpt(dataDir).close();await vite?.close();await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}};
+ return {server,close:async()=>{discoveryScheduler.close();await availabilityMonitor.close();await fullReviews.close();await feedback.close();chromeJobs.fail('Server stopped');await scanProcesses.close();closeAccountUsage();chatGpt(dataDir).close();await vite?.close();await new Promise<void>((resolve,reject)=>server.close(e=>e?reject(e):resolve()));}};
 }

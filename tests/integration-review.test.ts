@@ -93,7 +93,7 @@ test('a failed public-record check can recover after its cooldown instead of reu
   const maps={get:async()=>({status:'ready',label:'100 Example Street',lat:49.2828,lon:-123.1207,approximate:false})} as unknown as LocationMaps;
   const service=new BuildingResearchService(store,maps,false,(async()=>{requests++;return requests===1?new Response('Temporary error',{status:503}):new Response(JSON.stringify({results:[],total_count:0}),{status:200});}) as typeof fetch);
   const failed=await service.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS');assert.notEqual(failed.status,'complete');
-  const entry=store.db.prepare("SELECT key FROM meta WHERE key LIKE 'buildingResearch:v1:%'").get() as {key:string};store.set(entry.key,{...failed,checkedAt:new Date(Date.now()-25*3600000).toISOString()});store.set('buildingResearchPausedUntil',Date.now()-1);
+  const entry=store.db.prepare("SELECT key FROM meta WHERE key LIKE 'buildingResearch:v2:%'").get() as {key:string};store.set(entry.key,{...failed,checkedAt:new Date(Date.now()-25*3600000).toISOString()});store.set('buildingResearchPausedUntil',Date.now()-1);
   const recovered=await service.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS');assert.equal(requests,2);assert.equal(recovered.status,'complete');
  }finally{store.close();}
 });

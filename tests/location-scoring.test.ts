@@ -23,6 +23,6 @@ test('nearby and transit-accessible homes retain at least the configured outside
 });
 
 test('downtown and unconfirmed locations are never assigned a guessed outside-core deduction',()=>{
- for(const extra of [{location:'downtown'},{area:'Coal Harbour'},{location:'near-transit',downtownDistance:'downtown'},{}])assert.equal(locationAdjustment(listing(extra)).length,0);
+ for(const extra of [{location:'downtown'},{area:'Coal Harbour'},{area:'City Gate'},{area:'Citygate'},{location:'near-transit',downtownDistance:'downtown'},{}])assert.equal(locationAdjustment(listing(extra)).length,0);
  assert.ok(scoreListing(listing(),criteriaSchema.parse({})).flags.includes('Location Unsure'));
 });

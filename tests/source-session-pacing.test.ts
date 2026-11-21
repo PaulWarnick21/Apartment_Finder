@@ -13,6 +13,30 @@ function runningBudget(store:Store){
  return new Budget(store,plan.id,plan.caps);
 }
 
+for(const status of [404,410])for(const availability of [false,true])test(`HTTP ${status} retains its body only for availability checks (${availability})`,async t=>{
+ t.mock.timers.enable({apis:['Date','setTimeout'],now:100000});
+ const store=new Store(':memory:');try{
+  const budget=runningBudget(store),session=new SourceSession(sourceById('craigslist'),budget,'.');
+  const body='<div class="removed"><h2>This posting has expired.</h2></div>';
+  session.page={goto:async()=>({status:()=>status}),content:async()=>body,locator:()=>({innerText:async()=>'This posting has expired.'})} as any;
+  const pending=session.html('https://www.craigslist.org/view/d/example/saved-posting',{availability});
+  for(let i=0;i<10;i++)await Promise.resolve();t.mock.timers.tick(4000);
+  assert.equal(await pending,availability?body:null);assert.equal(session.lastResponseStatus,status);
+  assert.equal(session.stopped,false);assert.equal(budget.remaining('pages'),19);
+ }finally{store.close();}
+});
+
+test('availability error bodies still enforce access-warning stops',async t=>{
+ t.mock.timers.enable({apis:['Date','setTimeout'],now:100000});
+ const store=new Store(':memory:');try{
+  const session=new SourceSession(sourceById('craigslist'),runningBudget(store),'.');
+  session.page={goto:async()=>({status:()=>410}),content:async()=>'<h1>Access denied</h1>',locator:()=>({innerText:async()=>'Access denied'})} as any;
+  const pending=assert.rejects(session.html('https://www.craigslist.org/view/d/example/saved-posting',{availability:true}),/access challenge/);
+  for(let i=0;i<10;i++)await Promise.resolve();t.mock.timers.tick(4000);await pending;
+  assert.equal(session.stopped,true);assert.equal(store.health()[0].needs_attention,1);
+ }finally{store.close();}
+});
+
 test('real browser transport records adaptive success for both pages and downloaded photos',async t=>{
  t.mock.timers.enable({apis:['Date','setTimeout'],now:100000});
  const store=new Store(':memory:');try{

@@ -1,4 +1,5 @@
 import {usageCheckpoint} from './usage-guard.ts';
+import {discoveryAuthorized,type DiscoverySchedule} from './discovery-schedule-policy.ts';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {randomUUID} from 'node:crypto';
 import {sourceFilteredIntake} from './search-area.ts';
@@ -32,7 +33,7 @@ export function recoverInterrupted(store:Store){return recoverScan(store);}
 export class Budget {
  constructor(public store:Store,public id:string,public caps:Caps){}
  remaining(kind:'pages'|'listings'|'photos'|'aiCalls'){const cap={pages:this.caps.maxPages,listings:this.caps.maxListings,photos:this.caps.maxPhotos,aiCalls:this.caps.maxAiCalls}[kind];return Math.max(0,cap-getPlan(this.store,this.id).usage[kind]);}
- check(){usageCheckpoint(this.store,this.id);const p=getPlan(this.store,this.id);if(p.caps.stopAt&&Date.now()>=Date.parse(p.caps.stopAt))throw new Error('Scan deadline reached; remaining work retained');if(p.state!=='running')throw new Error('Scan stopped');if(p.caps.purpose==='listings'&&p.caps.phase!=='inventory'&&p.caps.assessmentMode!=='quick')assertFeedbackReady(this.store);}
+ check(){if(this.store.get<boolean>(`scheduledPlan:${this.id}`)&&!discoveryAuthorized(this.store.get<DiscoverySchedule>('scanSchedule'),new Date()))throw Error('Scheduled discovery is disabled or outside its authorized window');usageCheckpoint(this.store,this.id);const p=getPlan(this.store,this.id);if(p.caps.stopAt&&Date.now()>=Date.parse(p.caps.stopAt))throw new Error('Scan deadline reached; remaining work retained');if(p.state!=='running')throw new Error('Scan stopped');if(p.caps.purpose==='listings'&&p.caps.phase!=='inventory'&&p.caps.assessmentMode!=='quick')assertFeedbackReady(this.store);}
  reserve(kind:keyof Usage,amount=1){if(this.caps.cachedReviewOnly&&['pages','photos','requests'].includes(kind))throw Error('Cached assessment cannot access listing sources or download photos');this.store.transaction(()=>{this.check();const p=getPlan(this.store,this.id),u=p.usage;const limit={pages:this.caps.maxPages,listings:this.caps.maxListings,photos:this.caps.maxPhotos,aiCalls:this.caps.maxAiCalls,reservedUsd:this.caps.maxReservedUsd,requests:requestLimit(this.caps)}[kind];if(u[kind]+amount>limit+1e-8)throw new Error(`${kind} cap reached; remaining work deferred`);u[kind]+=amount;this.store.db.prepare('UPDATE plans SET usage=? WHERE id=?').run(JSON.stringify(u),this.id);heartbeatScan(this.store,this.id);});}
  async waitForAi(){
   const guard=this.store.get<{accountId:string;stopAt:number}>(`fullReviewGuard:${this.id}`);

@@ -42,13 +42,13 @@ test('building research is explicit, bounded, cached, and preserves user decisio
  const store=new Store(':memory:');try{const id=store.ingest(listing()).id;store.update(id,store.home(id)!.revision,{stage:'Interested',notes:'Keep these notes',followUp:'',viewing:'',rescued:false});
  let maps=0,requests=0;const service=new BuildingResearchService(store,{get:async()=>{maps++;return {status:'ready',label:'100 Example Street',lat:49.2827,lon:-123.1207,approximate:false};}} as unknown as LocationMaps,false,async url=>{requests++;assert.match(String(url),/^https:\/\/opendata.vancouver.ca/);assert.ok(!String(url).includes('Keep these notes'));return new Response(JSON.stringify({total_count:1,results:[{permitnumber:'TEST',address:'100 Example Street, Vancouver',issuedate:'2025-01-01',projectdescription:'Historical repair'}]}));});
  assert.equal(service.saved(store.home(id)!.listing).research,null);assert.equal(requests,0);await assert.rejects(service.run(id,'yes'),/Approve/);assert.equal(maps,0);
- const result=await service.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS');assert.equal(result.requestCount,2);assert.equal(result.permits.length,1);assert.match(result.notes[0],/not proof/);assert.equal(store.home(id)!.notes,'Keep these notes');assert.equal(store.home(id)!.stage,'Interested');assert.equal(store.home(id)!.listing.area,'Downtown');
+ const result=await service.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS');assert.equal(result.requestCount,2);assert.equal(result.permits.length,1);assert.match(result.notes.join(' '),/not proof/);assert.equal(store.home(id)!.notes,'Keep these notes');assert.equal(store.home(id)!.stage,'Interested');assert.equal(store.home(id)!.listing.area,'Downtown');
  await service.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS');assert.equal(requests,1);assert.equal(maps,1);
  }finally{store.close();}
 });
 test('building research never requests records for an approximate address and demo remains offline',async()=>{
  const store=new Store(':memory:');try{const id=store.ingest(listing()).id;let calls=0;const maps={get:async()=>({status:'ready',approximate:true,lat:49.2827,lon:-123.1207})} as unknown as LocationMaps;
- const service=new BuildingResearchService(store,maps,false,async()=>{calls++;throw new Error('Unexpected request');});assert.equal((await service.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS')).status,'unavailable');assert.equal(calls,0);
+ const service=new BuildingResearchService(store,maps,false,async url=>{calls++;assert.match(String(url),/geocoder.api.gov.bc.ca/);return new Response(JSON.stringify({features:[]}));});assert.equal((await service.run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS')).status,'unavailable');assert.equal(calls,1);
  await assert.rejects(new BuildingResearchService(store,maps,true).run(id,'APPROVE TWO PUBLIC RESEARCH REQUESTS'),/offline/);
  }finally{store.close();}
 });

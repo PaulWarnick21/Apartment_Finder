@@ -8,13 +8,25 @@ import {geographicContext} from './geography.ts';
 import {sourceFilteredIntake} from './search-area.ts';
 
 export const addressGeocoder='https://geocoder.api.gov.bc.ca/addresses.geojson';
+// This provincial API penalizes the country/full province wording accepted by maps.
+// Keep exact-match thresholds; supply the API's canonical BC address syntax instead.
+export const bcAddressString=(query:{label:string})=>query.label.replace(/,?\s*Canada\s*$/i,'').replace(/British Columbia/gi,'BC')+(/\b(?:BC|British Columbia)\b/i.test(query.label)?'':', BC');
 const cities=/\b(North Vancouver|West Vancouver|Port Coquitlam|Port Moody|New Westminster|Vancouver|Burnaby|Richmond|Coquitlam|Surrey|Delta|Langley|White Rock)\b/i;
 const normalize=(text:string)=>text.toLowerCase().replace(/\b(w|e|n|s|st|ave?|rd|blvd|dr|ln|cres|pl)\b\.?/g,w=>({w:'west',e:'east',n:'north',s:'south',st:'street',av:'avenue',ave:'avenue',rd:'road',blvd:'boulevard',dr:'drive',ln:'lane',cres:'crescent',pl:'place'}[w.replace('.','')]!)).replace(/(\d+)(?:st|nd|rd|th)\b/g,'$1').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 export function quickAddressQuery(l:Listing){
  // Some source address blocks include their adjacent "google map" link label.
- const addressText=l.address.replace(/\s+google\s+maps?\b[\s\S]*$/i,'').replace(/\s+/g,' ').trim();
- const initial=locationQuery({...l,address:addressText});if(!initial?.street)return null;
- const city=initial.label.match(cities)?.[0]??l.area.match(cities)?.[0]??'Vancouver';
+ const recordedAddress=l.evidence.researchedAddressSource?l.evidence.researchedAddress:undefined;
+ const addressText=(recordedAddress||l.address).replace(/\s*google\s+maps?\b[\s\S]*$/i,'').replace(/\s+/g,' ').trim();
+ let initial=locationQuery({...l,address:addressText});
+ // Read only explicit rental-address lines (or the opening address), never an
+ // agency's office address or descriptions of downtown transit/nearby attractions.
+ const addressLines=l.description.split('\n').filter((line,index)=>/^(?:Address|Location)\s*:/i.test(line.trim())||index===0&&/^\s*#?[\w*]+-\d+\s/.test(line)).map(line=>line.replace(/^(?:Address|Location)\s*:\s*/i,'').replace(/^#?[\w*]+-\s*(?=\d+\s)/,'').trim());
+ const scoped=addressLines.map(address=>locationQuery({...l,address})).filter(q=>q?.street);
+ if(!initial?.street)initial=scoped[0]??null;
+ if(!initial?.street)return null;
+ const streetWords=(text:string)=>normalize(text.split(',')[0]).replace(/\b(?:street|avenue|road|boulevard|drive|lane)\b/g,'').replace(/\s+/g,' ').trim();
+ const exactLine=scoped.find(q=>streetWords(q!.label)===streetWords(initial!.label));
+ const city=initial.label.match(cities)?.[0]??exactLine?.label.match(cities)?.[0]??l.area.match(cities)?.[0]??'Vancouver';
  const address=initial.label.match(cities)?initial.label:initial.label+', '+city;
  const query=locationQuery({...l,address});
  return query?.street?{...query,city}:null;
@@ -35,7 +47,9 @@ export function matchQuickAddress(payload:unknown,query:NonNullable<ReturnType<t
   if(p.faults.some(f=>/CIVIC_NUMBER|STREET_NAME|STREET_DIRECTION|LOCALITY/.test(f.element)&&f.penalty>0))return [];
   const road=normalize([p.streetDirection,p.streetName,p.streetType].filter(Boolean).join(' '));
   // Direction may appear after the street type in source addresses.
-  if(requested.split(' ').sort().join(' ')!==road.split(' ').sort().join(' '))return [];
+  const requestedWords=requested.split(' '),types=new Set(['street','avenue','road','boulevard','drive','lane','way','place','crescent']);
+  const roadWords=requestedWords.some(w=>types.has(w))?road.split(' '):road.split(' ').filter(w=>!types.has(w));
+  if(requestedWords.sort().join(' ')!==roadWords.sort().join(' '))return [];
   return [{lat,lon}];
  });
  if(!matches.length||matches.some(p=>Math.abs(p.lat-matches[0].lat)>.0005||Math.abs(p.lon-matches[0].lon)>.0005))return unavailable;
@@ -60,7 +74,7 @@ export async function resolveQuickLocation(store:Store,budget:Budget,l:Listing,h
  budget.check();
  const query=quickAddressQuery(l);
  if(!query){apply(l,{status:'unavailable',checkedAt:new Date().toISOString(),detail:'No complete street address was provided for location lookup'});return;}
- const key='quickAddress:v1:'+hash(query.query.toLowerCase()),cached=store.get<{expires:number;result:LocationResult}>(key);
+ const key='quickAddress:v2:'+hash(query.query.toLowerCase()),cached=store.get<{expires:number;result:LocationResult}>(key);
  if(cached&&cached.expires>Date.now()){apply(l,cached.result);return;}
  const note=(detail:string)=>apply(l,{status:'unavailable',detail,checkedAt:new Date().toISOString()});
  const cap=budget.caps.maxAddressLookups??0;
@@ -78,7 +92,7 @@ export async function resolveQuickLocation(store:Store,budget:Budget,l:Listing,h
  if(!reserved){note('Address lookup allowance exhausted; location remains unverified');return;}
  let result:LocationResult={status:'unavailable',checkedAt:new Date().toISOString(),detail:'Address service could not be reached; location remains unverified'};
  try{
-  const url=new URL(addressGeocoder);url.search=new URLSearchParams({addressString:query.query,outputSRS:'4326',maxResults:'5',minScore:'95',autoComplete:'false',interpolation:'none'}).toString();
+  const url=new URL(addressGeocoder);url.search=new URLSearchParams({addressString:bcAddressString(query),outputSRS:'4326',maxResults:'5',minScore:'95',autoComplete:'false',interpolation:'none'}).toString();
   const response=await lookup(url,{headers:{'User-Agent':'ApartmentFinder/0.1 (personal address lookup)','Accept':'application/geo+json,application/json'},signal:AbortSignal.timeout(8000),redirect:'error'});
   if([401,403,429,503].includes(response.status)){
    const retry=response.headers.get('retry-after'),delay=retry&&/^\d+$/.test(retry)?Number(retry)*1000:retry?Date.parse(retry)-Date.now():0;

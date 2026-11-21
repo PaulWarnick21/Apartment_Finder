@@ -1,15 +1,45 @@
 # Listing sources
 
+November 20 Kijiji price correction: retain the scoped advertised header price (or
+structured offer when the header is absent) even when description prose quotes a
+different monthly rate. Preserve both amounts and the rent-conflict warning;
+conflicting prose-only rates remain unresolved. Apartment #89's saved capture has
+$2,450 in both header and offer, versus $2,650/month in prose. The earlier parser
+cleared rent on any conflict, incorrectly displaying “price not listed.” Restore
+its advertised $2,450 without changing personal decisions or photo assessments.
+
+November 20 recurring discovery uses the retained source set with persistent adaptive
+cadence and rolling 24-hour traffic bounds in docs/design.md. Existing source warnings
+remain hard stops. In particular, Apartments.com's November 19 19:54 Toronto Access Denied
+warning remains paused; its earlier recovery does not authorize another recovery probe.
+Low-yield pauses require review, not blind retries. Ordinary source pacing is unchanged;
+candidate rejection memory removes repeated room/out-of-area work. Rechecks do not imply
+new geographic/parser coverage, and uncertain location is retained explicitly.
+
 ## Daily shortlist availability — November 19, 2026
 
+November 20 extension: expiry triggers matching saved-record checks and bounded public
+searches on other supported sources, within the existing 240 pages / 60 minutes, with
+no new intake, photos or AI. Native search coverage remains partial; it can discover a
+replacement, but an empty/blocked search does not prove the apartment is unavailable.
+#1995 now retains #1171 as an alias and uses its live Zumper posting for unit 1806 at
+1239 West Georgia Street. Its unit-specific address-page redirect was validated from
+the retained November 20 capture; unrelated redirects and siblings remain unverified.
+
 Separately authorized by the user: check only saved Interested-and-later active homes and
-their confirmed duplicate ads around noon Toronto each day. Maximum 240 saved page visits,
-60 minutes, one source navigation at a time; no discovery, gallery downloads, AI or address
+their confirmed duplicate ads around noon Toronto each day. Maximum 240 page visits,
+60 minutes, one source navigation at a time; no general intake, gallery downloads, AI or address
 lookups. Normal shared pacing, persistent sessions, pauses and exclusive scan locking apply.
 The paired Chrome route uses facts-only capture. Initial fixture coverage includes Craigslist
 removed notices, matching Zillow property status, matching Facebook sold status and existing
 unit-specific availability extraction. This is not live validation of all source closure
 layouts. Missing content, failed fetches, redirects and absent inventory remain unknown.
+
+November 20 expiry correction: a bounded recheck of saved Craigslist #1995 returned
+HTTP 410 with a scoped “This posting has expired.” notice. Availability transport now
+retains 404/410 bodies, and the parser recognizes this wording. Bare error status codes
+remain unverified. The captured page supports this closure layout; other sources and
+layouts still require their own evidence. No discovery, photos or AI were used.
 
 
 At 04:47 Toronto the repaired scan had 71 new eligible homes with complete galleries across seven sources and no current recovery errors. The user then authorized continuation through 2pm. The same run was resumed without resetting counts or frontiers; aggregate limits are now 6,000 pages, 4,000 attempts and 80,000 photos, zero AI/address calls. This supersedes the initial 05:07 cutoff below. The Hollyburn map-centred route has now returned 20 queued links in a live bounded batch; these are candidates, not final new-home counts.

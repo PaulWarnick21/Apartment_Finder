@@ -13,6 +13,60 @@ const home=(id:number):Home=>({id,listing:listingSchema.parse({source:'fixture',
 function deferred<T>(){let resolve!:(value:T)=>void,reject!:(error:Error)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};}
 const flush=()=>new Promise<void>(resolve=>setImmediate(resolve));
 const saved=(h:Home,stage:Home['stage']):Home=>({...h,stage,revision:h.revision+1});
+const rating={requestId:'85fadba9-75bf-40c4-9a3f-2af48b050188',score:3.7,reason:'More room for my workspace'};
+const ratingReply={rating:{id:1,homeId:1,userScore:rating.score,reason:rating.reason}};
+
+test('rating decisions project instantly and save feedback before stage without blocking other homes',async()=>{
+ const h=home(1),pending=deferred<unknown>(),calls:string[]=[];
+ const queue=new DecisionQueue(async(path,method,body)=>{
+  calls.push(`${method??'GET'} ${path}`);
+  if(path.endsWith('/ratings'))return pending.promise;
+  if(method!=='PUT')return {...h,revision:2,notes:'Concurrent note'};
+  return {...(path==='homes/1'?{...h,notes:'Concurrent note',revision:2}:home(2)),...(body as object),revision:3};
+ });
+ queue.enqueue(h,'Not Interested',{},rating);
+ assert.equal(queue.project([h])[0].stage,'Not Interested');
+ assert.equal(queue.snapshot()[0].status,'saving');
+ assert.deepEqual(calls,['POST homes/1/ratings']);
+ queue.enqueue(home(2),'Interested');await flush();assert.equal(queue.snapshot()[1].status,'saved');
+ pending.resolve(ratingReply);await flush();
+ assert.deepEqual(calls,['POST homes/1/ratings','PUT homes/2','GET homes/1','PUT homes/1']);
+ assert.equal(queue.snapshot()[0].saved!.notes,'Concurrent note');assert.equal(queue.snapshot()[0].ratingSaved,true);
+});
+
+test('unconfirmed feedback cannot be cleared by stage polls; retry keeps the draft and submission ID',async()=>{
+ const h=home(1),bodies:unknown[]=[];let offline=true,puts=0;
+ const queue=new DecisionQueue(async(path,method,body)=>{
+  if(path.endsWith('/ratings')){bodies.push(body);if(offline)throw new ApiError('Offline',true);return ratingReply;}
+  if(method==='PUT'){puts++;return saved(h,'Not Interested');}return h;
+ });
+ queue.enqueue(h,'Not Interested',{},rating);await flush();
+ assert.equal(queue.snapshot()[0].status,'failed');assert.equal(puts,0);assert.equal(queue.project([h])[0].stage,h.stage);
+ queue.reconcile([saved(h,'Not Interested')]);assert.equal(queue.snapshot()[0].status,'failed');
+ assert.deepEqual(queue.snapshot()[0].rating,rating);
+ const html=renderToStaticMarkup(createElement(DecisionSaveNotice,{entry:queue.snapshot()[0],retry:()=>{},dismiss:()=>{}}));
+ assert.match(html,/3.7 \/ 5/);assert.match(html,/More room for my workspace/);
+ offline=false;queue.retry(1);await flush();
+ assert.equal(queue.snapshot()[0].status,'saved');assert.equal(puts,1);
+ assert.equal(bodies.length,3);assert.ok(bodies.every(body=>JSON.stringify(body)===JSON.stringify(rating)));
+});
+
+test('lost rating reply is replayed with the same ID; a later stage retry does not resubmit feedback',async()=>{
+ const h=home(1);let ratings=0,stageFails=true;const ids:string[]=[];
+ const queue=new DecisionQueue(async(path,method,body)=>{
+  if(path.endsWith('/ratings')){ratings++;ids.push((body as typeof rating).requestId);if(ratings===1)throw new ApiError('Lost reply',true);return ratingReply;}
+  if(method==='PUT'){if(stageFails)throw Error('Stage save failed');return saved(h,'Not Interested');}return h;
+ });
+ queue.enqueue(h,'Not Interested',{},rating);await flush();assert.equal(queue.snapshot()[0].status,'failed');
+ assert.equal(queue.snapshot()[0].ratingSaved,true);assert.deepEqual(ids,[rating.requestId,rating.requestId]);
+ stageFails=false;queue.retry(1);await flush();assert.equal(queue.snapshot()[0].status,'saved');assert.equal(ratings,2);
+});
+
+test('an invalid rating acknowledgement never permits the stage write',async()=>{
+ let puts=0;const queue=new DecisionQueue(async(_path,method)=>{if(method==='PUT')puts++;return {rating:{...ratingReply.rating,homeId:99}};});
+ queue.enqueue(home(1),'Not Interested',{},rating);await flush();
+ assert.equal(queue.snapshot()[0].status,'failed');assert.equal(puts,0);assert.equal(queue.snapshot()[0].ratingSaved,undefined);
+});
 
 test('rapid independent clicks move cards immediately while only two writes run; duplicate clicks cannot enqueue twice',async()=>{
  const sends:Array<{path:string;body:any;pending:ReturnType<typeof deferred<Home>>}>=[];
@@ -61,7 +115,7 @@ test('retry refuses conflicting stage or note edits, retaining the failed decisi
  const h=home(1);let writes=0;
  const queue=new DecisionQueue(async(_path,method)=>{if(method==='PUT'){writes++;throw Error('Stale revision');}return {...h,revision:2,notes:'A newer note'};});
  queue.enqueue(h,'Not Interested',{notes:'Unsaved detail draft'});await flush();queue.retry(h.id);await flush();
- assert.equal(writes,1);assert.equal(queue.snapshot()[0].status,'failed');assert.match(queue.snapshot()[0].error!,/notes or dates changed/);
+ assert.equal(writes,1);assert.equal(queue.snapshot()[0].status,'failed');assert.match(queue.snapshot()[0].error!,/notes, dates or review choices changed/);
  queue.dismiss(h.id);queue.reconcile([h]);assert.equal(queue.snapshot().length,0);
  const other=new DecisionQueue(async(_path,method)=>{if(method==='PUT')throw Error('Response failed');return saved(h,'Not Interested');});
  other.enqueue(h,'Interested');await flush();other.retry(h.id);await flush();assert.match(other.snapshot()[0].error!,/saved stage changed/);

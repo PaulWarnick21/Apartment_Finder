@@ -1,5 +1,6 @@
 import {spawn,type ChildProcessWithoutNullStreams} from 'node:child_process';
 import {z} from 'zod';
+import {codexExecutable} from './codex-executable.ts';
 
 const windowSchema=z.object({usedPercent:z.number().min(0).max(100),windowDurationMins:z.number(),resetsAt:z.number().nullable()});
 const bucketSchema=z.object({primary:windowSchema.nullable(),secondary:windowSchema.nullable(),spendControlReached:z.boolean().nullable().optional()});
@@ -25,7 +26,7 @@ export class AccountUsageClient{
  private async start(){
   if(this.ready)return this.ready;
   this.ready=(async()=>{
-   const child=spawn(process.env.AF_CODEX_EXECUTABLE||'codex',['app-server','--stdio'],{windowsHide:true,stdio:['pipe','pipe','pipe']});this.child=child;
+   const child=spawn(await codexExecutable(),['app-server','--stdio'],{windowsHide:true,stdio:['pipe','pipe','pipe']});this.child=child;
    child.stderr.resume(); // Do not expose local configuration/authentication diagnostics.
    child.stdout.setEncoding('utf8');child.stdout.on('data',(chunk:string)=>{
     this.buffer+=chunk;if(this.buffer.length>2_000_000){this.close();return;}
