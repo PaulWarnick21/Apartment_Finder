@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,symlinkSync,readFileSync,renameSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,symlinkSync,readFileSync,renameSync,unlinkSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {resolve,join} from 'node:path';
@@ -32,4 +32,17 @@ test('real Git hooks include fresh shortlist, block stale pushes and fail safely
  const before=readFileSync(join(repo,'backups/shortlist.json'),'utf8');renameSync(database,database+'.saved');
  git(['commit','--allow-empty','-m','Must fail without database'],false);
  assert.equal(readFileSync(join(repo,'backups/shortlist.json'),'utf8'),before);
+ const empty=new Store(database);empty.close();
+ assert.match(git(['commit','--allow-empty','-m','Must fail with empty database'],false).stderr,/Restore your private backup/);
+ assert.equal(readFileSync(join(repo,'backups/shortlist.json'),'utf8'),before);
+ unlinkSync(join(repo,'backups/shortlist.json'));
+ assert.match(git(['commit','--allow-empty','-m','Must check committed shortlist'],false).stderr,/Restore your private backup/);
+ assert.equal(git(['show','HEAD:backups/shortlist.json']).stdout,before);
+
+ unlinkSync(database);renameSync(database+'.saved',database);
+ const existing=new Store(database);
+ try{existing.db.prepare("UPDATE homes SET stage='Not Interested'").run();}
+ finally{existing.close();}
+ git(['commit','--allow-empty','-m','All homes were declined locally']);
+ assert.deepEqual(JSON.parse(git(['show','HEAD:backups/shortlist.json']).stdout).apartments,[]);
 });

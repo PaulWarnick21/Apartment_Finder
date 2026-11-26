@@ -46,8 +46,9 @@ The ChatGPT/Codex mobile connection is separate and can continue to be used for 
 - Open the bookmark in Chrome on iPhone. You do not need Safari or a separate apartment app.
 - Normal Chrome on the PC is needed for approved scans using its extension. Reading saved
   apartments and saving notes do not require the PC browser to be open.
-- Scanning retains the same bounded-plan approvals, budgets and source pauses. Setup and
-  ordinary startup never start a scan or enable recurring runs.
+- Scanning retains bounded-plan approvals, budgets and source pauses. Phone setup does
+  not enable work. Discovery and availability schedules are off after the November 26
+  pause. Keep them off until a new explicit authorization.
 - Initiate any new ChatGPT account connection on the desktop. Existing connected credentials
   remain on Windows and continue to support the app's approved operations.
 

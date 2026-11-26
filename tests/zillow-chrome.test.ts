@@ -35,10 +35,22 @@ test('Zillow capture scopes public property data and preserves full resolution g
 });
 test('Regular Zillow scans dispatch through the paired Chrome bridge and apply the rent gate',async()=>{
  const {db,p,jobs}=setup(),dir=mkdtempSync(join(tmpdir(),'af-zillow-'));db.set('discoveryQueue:zillow',{urls:[url],next:null});
- try{const done=runRegularPlan(db,p.id,dir,jobs);await new Promise(resolve=>setTimeout(resolve,20));const discovery=jobs.poll().job!;assert.equal(discovery.kind,'discovery');jobs.result({id:discovery.id,snapshot:capture(null,'Rental search','/vancouver-bc/rentals/')});await new Promise(resolve=>setTimeout(resolve,20));const job=jobs.poll().job!;assert.equal(job.kind,'listing');
- jobs.result({id:job.id,snapshot:capture({...property,price:5000})});await done;
- assert.equal(db.homes().length,1);assert.equal(db.homes()[0].listing.source,'zillow');assert.equal(getPlan(db,p.id).usage.photos,0);assert.equal(getPlan(db,p.id).usage.aiCalls,0);assert.equal(getPlan(db,p.id).usage.pages,2);
- }finally{jobs.fail('cleanup');db.close();rmSync(dir,{recursive:true,force:true});}
+ const done=runRegularPlan(db,p.id,dir,jobs);
+ try{
+  const {job:discovery}=await jobs.waitForJob();
+  assert.ok(discovery,'expected the Zillow discovery dispatch');assert.equal(discovery.kind,'discovery');
+  jobs.result({id:discovery.id,snapshot:capture(null,'Rental search','/vancouver-bc/rentals/')});
+  const {job:listing}=await jobs.waitForJob();
+  assert.ok(listing,'expected the Zillow listing dispatch');assert.equal(listing.kind,'listing');
+  jobs.result({id:listing.id,snapshot:capture({...property,price:5000})});
+  await done;
+  assert.equal(db.homes().length,1);assert.equal(db.homes()[0].listing.source,'zillow');assert.equal(getPlan(db,p.id).usage.photos,0);assert.equal(getPlan(db,p.id).usage.aiCalls,0);assert.equal(getPlan(db,p.id).usage.pages,2);
+ }finally{
+  db.db.prepare("UPDATE plans SET state='cancelled' WHERE id=? AND state IN ('approved','running')").run(p.id);
+  jobs.fail('cleanup');
+  await Promise.allSettled([done]);
+  db.close();rmSync(dir,{recursive:true,force:true});
+ }
 });
 
 test('Zillow placeholder or missing rent stays unknown instead of losing the rental',()=>{

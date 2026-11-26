@@ -1,5 +1,11 @@
 # Design
 
+The November 26 pause turns off recurring quick discovery and scheduled availability checks.
+The Windows sign-in supervisor and the app's Tailscale Serve listener are part of the
+shutdown. Fresh clones and private backup installs keep both schedules off. Restarting
+the server allows local review of saved data. Live work requires fresh user authorization.
+See the [README](../README.md) for the move to a new computer.
+
 November 23 responsive interactions: DiscoveryAlerts hides each dismissed ID locally
 before its authenticated POST. Independent requests may overlap, failures restore only
 their own alert, and acknowledged IDs remain hidden from stale polls for the mounted
@@ -971,6 +977,13 @@ or unavailable databases stop the operation. npm prepare installs hooks on clone
 schedules are added. Git history retains prior versions. Hooks are local safeguards, not
 server enforcement. Full runtime data and private criteria remain gitignored.
 
+The user approved a second, compressed recovery file on November 26 at
+`backups/desk.json.gz`. It carries compact records, decisions, history and saved
+search/scoring preferences so a clone can recreate the desk locally. Its export omits
+image references, credentials, account identities, raw captures and operational work.
+`npx tsx scripts/portable-desk.ts --restore` installs it before the first normal launch.
+Both schedules stay off. Raw private reference files and full runtime data stay gitignored.
+
 Live criteria/research are in gitignored `private/` and `data/`; optional API credentials
 are in `.env`. Connected ChatGPT credentials are Windows-DPAPI protected for the current
 Windows user. Credentials never enter browser bundles, model prompts, or ordinary logs.
@@ -999,6 +1012,11 @@ overwrite an existing destination and never replaces the running live database. 
 to a restored workspace remains a deliberate offline recovery operation after stopping
 the app and preserving the previous data directory. Automatic retention/purge is not enabled.
 
+For a fresh clone, `scripts/restore.ts <backup-folder> --install` verifies and installs the
+database and media into `data/live` and restores available private reference files. The
+live directory must be absent. The install disables both recurring schedules in the
+restored copy and protects any existing private reference files.
+
 ## 11. Validation and remaining work
 
 The implementation uses pinned TypeScript/React/Vite dependencies, Node 24 SQLite,
@@ -1014,8 +1032,8 @@ and model quality must still be checked through a separately approved bounded pl
 
 Remaining choices/work include:
 
-- Whether continuous hosting is wanted. Daily 08:00 America/Toronto catch-up/new-listing
-  scans are now authorized and configured; see `catchup-scans.md`.
+- Whether continuous hosting is wanted when the search resumes. The earlier 08:00
+  America/Toronto catch-up automation described in `catchup-scans.md` is retired.
 - Additional unique-source trials and long-running source reliability validation.
 - Move-in timing, minimum size, lease duration, pets/cooling/noise preferences, budget basis,
   station walking/airport tolerance, parking exclusions, and studio exceptions where unset.

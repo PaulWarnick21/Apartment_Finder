@@ -1,7 +1,7 @@
 {
   "format": "apartment-finder-shortlist",
   "version": 1,
-  "exportedAt": "2026-11-26T20:09:34.852Z",
+  "exportedAt": "2026-11-26T20:26:11.610Z",
   "coverage": "Current Interested and later stages, including pending assessments, Leased and Closed; canonical homes with all saved cross-post URLs and alias IDs.",
   "recovery": "Use apartments to rebuild a shortlist in any tool. Preserve IDs, stages, notes and score snapshots. Scores reflect saved evidence at export time; assessmentStatus distinguishes incomplete reviews. Source pages may expire. No automatic full-app import is provided.",
   "buildings": [

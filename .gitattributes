@@ -1,2 +1,3 @@
 .githooks/* text eol=lf
 backups/*.json text eol=lf
+backups/*.gz binary

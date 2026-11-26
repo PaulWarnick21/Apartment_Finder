@@ -1,9 +1,21 @@
 # Apartment Finder
 
-A personal apartment-search assistant: discover rental listings directly, filter and score
-them against private criteria, and manage promising homes in a persistent Sorting Desk.
+A personal apartment-search assistant that discovers rental listings directly, scores
+them against the user's criteria, and manages promising homes in a persistent Sorting Desk.
+
+Restart preference (November 26, 2026): preserve existing apartments and decisions as
+historical records. On a future restart, get explicit approval for bounded revalidation
+before returning any previously saved apartment to the active Sorting Desk. Check original
+postings, verified cross-posts, and matching saved records, then search other sources within
+approved limits if needed. Confirm exact unit identity, live availability, and fit for the
+new search. Leave inconclusive records historical and preserve notes, ratings and stages.
 
 ## Status and documents
+
+On November 26, 2026 the user paused the project. The prior recurring quick-discovery and
+daily availability authorizations are superseded. Keep both schedules off across restarts
+and backup restores unless the user explicitly reauthorizes them. The catch-up automation
+remains retired. A future one-off scan requires a new user request and recorded bounds.
 
 Implementation in progress; live scanning requires explicit user approval. Read before changes:
 
@@ -66,20 +78,21 @@ proprietary connectors, or manual detail collection as prerequisites.
   Include City Gate near Science World as downtown, per the user's explicit clarification.
   Keep this research in full scoring, with zero address requests during quick intake.
 
-- Standing recurring authorization (November 20, 2026): use the app's bounded quick-discovery
-  scheduler indefinitely until disabled, daily 21:00–03:00 and Monday–Thursday 05:00–13:00
-  America/Toronto. This explicitly enables these windows, not unrestricted scans. Preserve
-  adaptive source slowdowns, low-yield pauses, rolling budgets, warning stops and zero intake
-  AI/address requests. Constructors/tests/demos stay offline; the authorized timer may run
-  inside its windows after app restart. Never use the retired catch-up automation for this.
+- Historical recurring authorization (November 20, 2026, paused November 26): the bounded
+  quick-discovery scheduler used daily 21:00–03:00 and Monday–Thursday 05:00–13:00 windows
+  in America/Toronto. If newly authorized, preserve adaptive source slowdowns, low-yield
+  pauses, rolling budgets, warning stops and zero intake AI/address requests. Constructors,
+  tests and demos stay offline. Keep the retired catch-up automation disabled.
 
 - Before every commit and push, refresh and include `backups/shortlist.json`. The user
-  authorized this lightweight recovery file in the existing public GitHub repository on
-  November 20, 2026, including notes, ratings and apartment choices. This is the sole
-  runtime-data exception; keep `data/`, `private/`, credentials and galleries gitignored.
+  authorized the public shortlist on November 20, 2026 and `backups/desk.json.gz` on
+  November 26. Refresh the compact desk snapshot at explicit backup or migration
+  checkpoints to avoid growing Git history. It may include apartment history, notes,
+  ratings, decisions, and search and scoring preferences. Keep `data/`, `private/`,
+  credentials, galleries and full runtime data gitignored.
   Install `.githooks` with `npm run setup:hooks` (also run by npm's prepare script).
-  Pre-commit refreshes/stages the backup; pre-push rejects missing or stale snapshots.
-  Do not bypass these hooks. A missing database must not erase the recovery file.
+  Pre-commit refreshes and stages the shortlist. Pre-push rejects a missing or stale
+  shortlist. Do not bypass these hooks. A missing database must not erase either file.
 
 - A direct user instruction to start or continue scanning authorizes the assistant to choose
   suitable bounded scan limits and proceed without asking for separate approval of those
@@ -92,7 +105,7 @@ proprietary connectors, or manual detail collection as prerequisites.
   for sources needing browser rendering. Pin compatible versions at setup.
 - Keep AI behind a provider interface. Code handles filtering and score arithmetic; a
   multimodal model assesses evidence. Do not depend on an interactive chat session.
-- Read the private search criteria before recommending listings. Confirm a nature view only
+- Read the saved search criteria before recommending listings. Confirm a nature view only
   after inspecting listing photos showing it through the actual unit's windows. Keep marketing
   claims unverified; distinguish unobstructed nature views from building-dominated glimpses.
 - Full assessments review every accessible gallery photo, reusing unchanged image assessments.

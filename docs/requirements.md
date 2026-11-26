@@ -1,5 +1,24 @@
 # Requirements
 
+On November 26, the user authorized a compact GitHub recovery snapshot containing desk
+history, decisions, notes, ratings and detailed search and scoring preferences. A new
+clone should restore that desk locally and retain the historical-only posture described
+below. Keep gallery images, credentials, browser sessions and full runtime data private.
+
+November 26 restart revalidation: preserve saved apartments and decisions. When the user
+returns to the search, treat those records as historical until a thorough, newly authorized
+availability pass. Before bringing a previously saved apartment back into the active desk,
+check the original postings, verified cross-posts, and matching saved records. Search other
+sources within approved bounds if needed. Verify the same unit and current availability and
+check fit against the new search. Keep expired-ad history and leave inconclusive or
+unverified records historical. Pausing and restoring the app do not authorize this check.
+
+On November 26, the user found a home and paused automated discovery and availability
+checks. Keep both schedules disabled on this PC and for any restore on a new PC. Earlier
+recurring permissions are superseded. A new explicit authorization is required to run a
+scheduled check or enable recurring discovery again. Retain saved evidence, decisions
+and the recovery backup. The retired catch-up automation stays disabled.
+
 November 23 UI responsiveness: scan alerts disappear immediately on Dismiss, allowing
 successive dismissals while each acknowledgement saves in the background. Failed saves
 restore only the affected alert with a retry path; stale polls must not bring back
@@ -137,7 +156,8 @@ Remove the separate Submit Rating button. Save Changes uses the same background 
 Untouched ratings are optional; invalid drafts stay open. Failed saves restore the confirmed
 stage and retain feedback for Retry Save. Do not duplicate ratings or reviews on retries.
 
-November 20 recurring quick discovery: enabled indefinitely until the user turns it off.
+The user enabled recurring quick discovery on November 20 and paused it on November 26.
+The original schedule and limits follow.
 Use America/Toronto: every day 21:00–03:00, plus 05:00–13:00 Monday through Thursday
 (the morning window follows the current calendar weekday). Recover the app after sign-in;
 resume only scheduled work within an authorized window and retained rolling allowances.
@@ -193,8 +213,8 @@ November 19 availability display refinement: show an apartment-level notice only
 the apartment is confirmed unavailable. Omit Still listed, not-yet-checked and uncertain
 availability badges from cards and details; retain check outcomes in Activity.
 
-November 19 daily availability monitoring: the user authorized a recurring facts-only
-check around 12:00 America/Toronto for Interested, Serious Candidates, Ready to Apply,
+The user authorized daily availability monitoring on November 19 and paused it on November 26.
+This facts-only check ran around 12:00 America/Toronto for Interested, Serious Candidates, Ready to Apply,
 In Progress, Inquiry Sent, Viewing Booked and Applied homes, including confirmed duplicate
 postings. Leased, Closed and Not Interested are excluded. Check all known cross-posts before
 marking a home unavailable; a live duplicate keeps it available, while blocked/missing pages

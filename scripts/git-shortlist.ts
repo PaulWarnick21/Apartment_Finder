@@ -1,15 +1,35 @@
 import {execFileSync} from 'node:child_process';
-import {mkdirSync,readFileSync,writeFileSync,renameSync,rmSync} from 'node:fs';
+import {existsSync,mkdirSync,readFileSync,writeFileSync,renameSync,rmSync} from 'node:fs';
 import {resolve,dirname} from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {DatabaseSync} from 'node:sqlite';
 import {shortlistBackup} from '../server/shortlist-backup.ts';
 
 const git=(args:string[])=>execFileSync('git',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],maxBuffer:16*1024*1024});
 const root=git(['rev-parse','--show-toplevel']).trim();
 process.chdir(root);
 const file='backups/shortlist.json';
+const database=resolve('data/live/apartments.sqlite');
 // Missing/unreadable databases must fail, never replace a saved shortlist with an invented empty one.
-const snapshot=shortlistBackup(resolve('data/live/apartments.sqlite'));
+const snapshot=shortlistBackup(database);
+if(!snapshot.apartments.length){
+ const db=new DatabaseSync(database,{readOnly:true});
+ let hasHomes:boolean;
+ try{hasHomes=!!db.prepare('SELECT 1 FROM homes LIMIT 1').get();}finally{db.close();}
+ if(!hasHomes&&hasSavedShortlist()){
+  throw new Error('The local database is empty. Restore your private backup before replacing the existing recovery shortlist.');
+ }
+}
+
+function hasSavedShortlist(){
+ const nonempty=(json:string)=>JSON.parse(json).apartments.length>0;
+ if(existsSync(file)&&nonempty(readFileSync(file,'utf8')))return true;
+ let head:string;
+ try{head=git(['rev-parse','--verify','--quiet','HEAD']).trim();}
+ catch(error){if((error as {status?:number}).status===1)return false;throw error;}
+ return !!git(['ls-tree',head,'--',file]).trim()&&nonempty(git(['show',`${head}:${file}`]));
+}
+
 const comparable=(value:ReturnType<typeof shortlistBackup>)=>{const {exportedAt,...data}=value;return JSON.stringify(data);};
 const mode=process.argv[2];
 if(mode==='commit'||mode==='refresh'){

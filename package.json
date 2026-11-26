@@ -17,6 +17,7 @@
     "backup": "tsx scripts/backup.ts",
     "backup:shortlist": "tsx scripts/backup-shortlist.ts",
     "backup:shortlist:tracked": "tsx scripts/git-shortlist.ts refresh",
+    "configure:review-account": "tsx scripts/rebind-review-account.ts",
     "setup:hooks": "node scripts/install-git-hooks.mjs",
     "prepare": "node scripts/install-git-hooks.mjs"
   },

@@ -20,13 +20,14 @@ export function ReviewActions({home,busy,onDecision}:{home:Home;busy:boolean;onD
 
 export function QuickReviewContent({home:h,busy,onDecision,onRetry,decisionNotice}:{home:Home;busy:boolean;onDecision:(stage:Home['stage'])=>void;onRetry:()=>void;decisionNotice?:ReactNode}){
  const l=h.listing,known=l.photos.length,saved=l.photos.filter(p=>p.local).length;
+ const archived=saved===0&&l.evidence.archivedScore;
  const money=l.rent===null?'Rent not listed':new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(l.rent);
  return <div className="quick-review-content">
   <div className="quick-review-facts"><div><span className="eyebrow">MONTHLY RENT</span><h3>{money}</h3></div><div><span className="eyebrow">LOCATION</span><p>{l.address||l.area||'Location not confirmed'}</p>{l.address&&l.area!=='Unknown'&&<small>{l.area}</small>}{l.evidence.searchAreaBasis&&<small className="quick-location-status">Area from website filter · exact address not independently verified</small>}{!l.evidence.searchAreaBasis&&l.evidence.addressLookupStatus&&<small className="quick-location-status">{l.evidence.addressLookupStatus==='verified'?'Address location verified':l.evidence.addressLookupDetail}</small>}</div><GradeBadge home={h}/></div>
-  <p className="quick-review-explainer">{h.stage==='Interested'?'This apartment stays in Scoring in Progress until its full assessment is complete, then moves automatically to Interested for your review.':'Quick rank from listing details and saved evidence. Choose Interested to queue full scoring in Scoring in Progress.'}</p>
+  {archived?<div className="quick-review-explainer"><p><strong>Saved decision</strong> {h.stage}</p><p>{archived}</p></div>:<p className="quick-review-explainer">{h.stage==='Interested'?'This apartment stays in Scoring in Progress until its full assessment is complete, then moves automatically to Interested for your review.':'Quick rank from listing details and saved evidence. Choose Interested to queue full scoring in Scoring in Progress.'}</p>}
   {decisionNotice??<ReviewActions home={h} busy={busy} onDecision={onDecision}/>}
   {h.deskExclusion&&<p className="warning" role="status">{h.deskExclusion}</p>}
-  <FullReviewStatus home={h} busy={busy} retry={onRetry}/>
+  {!archived&&<FullReviewStatus home={h} busy={busy} retry={onRetry}/>}
   {h.quickRank&&!h.quickRank.eligible&&h.quickRank.reasons.map(reason=><p className="warning" key={reason}>{reason}</p>)}
   <div className="quick-photo-heading"><h3>Listing Photos</h3><span>{saved} saved · {l.expectedPhotos??known} {l.expectedPhotos===null?'known ':''}photos</span></div>
   {(saved<known||!l.galleryComplete)&&<p className="quick-photo-note">{saved<known?'Some listing photos are still pending or inaccessible. ':''}{!l.galleryComplete?'Complete gallery not confirmed.':''}</p>}

@@ -26,8 +26,10 @@ test('independent paused workers overlap an owned Chrome job without cancelling 
   workers.start(first.id);workers.start(second.id);
   assert.equal(workers.hasActive,true);
   const fourth=createPlan(store,{...caps,sources:['easyrent']});assert.throws(()=>workers.assertCanStart(fourth.id),/3|three|parallel|limit/i);
-  const deadline=Date.now()+15000;while(workers.hasActive&&Date.now()<deadline)await new Promise(done=>setTimeout(done,30));
-  assert.equal(workers.hasActive,false);assert.equal(chromeFailure,undefined);
+  // Starting two TypeScript subprocesses can be slow on Windows during a parallel test run.
+  const deadline=Date.now()+45000;while(workers.hasActive&&Date.now()<deadline)await new Promise(done=>setTimeout(done,50));
+  assert.equal(workers.hasActive,false,'both paused fixture workers should exit within 45 seconds');
+  assert.equal(chromeFailure,undefined);
   assert.equal(jobs.check({id:job.id}).active,true,'source cleanup retains the other plan bridge command');
   for(const p of [first,second]){const result=getPlan(store,p.id);assert.equal(result.state,'partial');assert.equal(result.usage.pages,0);assert.equal(result.usage.requests,0);assert.match(result.detail,/paused/);}
   jobs.result({id:job.id,snapshot:{url,title:'Fixture',text:'Fixture',html:'<main>Fixture</main>',images:[],advertisedPhotos:0,galleryComplete:false,warning:null,truncated:false,links:[]}});

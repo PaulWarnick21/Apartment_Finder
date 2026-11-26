@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile} from 'node:fs/promises';
+import {access,mkdtemp,mkdir,writeFile,readFile,readdir,unlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
 import {DatabaseSync} from 'node:sqlite';
 import {Store} from '../server/db.ts';
 import {listingSchema} from '../src/domain.ts';
@@ -51,4 +53,69 @@ test('large gallery backups retain every file across disk batches and reject mis
   await assert.rejects(()=>createFullBackup(store,data,join(root,'incomplete'),join(root,'no-private')),/ENOENT/);
   await assert.rejects(()=>verifyBackup(join(root,'incomplete')),/ENOENT/);
  }finally{store.close();}
+});
+
+test('installing a verified backup preserves desk state and keeps copied work stopped',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'finder-install-')),source=join(root,'source'),privateDir=join(root,'private');
+ const bundle=join(root,'backup'),clone=join(root,'clone'),clonePrivate=join(clone,'private');
+ const media='a'.repeat(64)+'.jpg';
+ await mkdir(join(source,'media'),{recursive:true});
+ await writeFile(join(source,'media',media),'saved photo');
+ await mkdir(privateDir);
+ await writeFile(join(privateDir,'criteria.md'),'saved criteria');
+ await writeFile(join(privateDir,'settings.json'),'{}');
+ await mkdir(clonePrivate,{recursive:true});
+ await writeFile(join(clonePrivate,'unrelated.md'),'keep me');
+ await writeFile(join(clonePrivate,'criteria.md'),'newer criteria');
+ const sourceStore=new Store(join(source,'apartments.sqlite'));
+ const backupPlan='saved-plan',now=new Date().toISOString();
+ let id:number;
+ try{
+  id=sourceStore.ingest(listing('install',{photos:[{id:'photo',url:'https://example.com/photo',local:media}]})).id;
+  sourceStore.db.prepare("UPDATE homes SET stage='Interested',notes='Keep this decision' WHERE id=?").run(id);
+  sourceStore.set('scanSchedule',{enabled:true,notBefore:now});
+  sourceStore.set('availabilitySchedule',{enabled:true,notBefore:now});
+  sourceStore.set('availabilityRun',{state:'running'});
+  sourceStore.set(`fullReview:${id}`,{status:'queued',updatedAt:now,waitingForFeedback:1});
+  sourceStore.set('browserExtension',{id:'fixture',tokenHash:'fake'});
+  sourceStore.set('browserExtensionRuntime',{extensionId:'fixture'});
+  sourceStore.db.prepare('INSERT INTO plans VALUES (?, ?, ?, ?, ?, ?, ?)').run(backupPlan,'{}','running',now,now,'{}','running');
+  sourceStore.db.prepare('INSERT INTO scan_lock VALUES (1,?,?)').run(backupPlan,now);
+  await createFullBackup(sourceStore,source,bundle,privateDir);
+ }finally{sourceStore.close();}
+
+ const script=fileURLToPath(new URL('../scripts/restore.ts',import.meta.url));
+ const install=()=>spawnSync(process.execPath,['--import',import.meta.resolve('tsx'),script,bundle,'--install'],{cwd:clone,encoding:'utf8'});
+ const live=join(clone,'data','live'),database=join(live,'apartments.sqlite');
+ const conflict=install();
+ assert.equal(conflict.status,1,conflict.stderr);
+ assert.match(conflict.stderr,/private\/criteria\.md already exists/);
+ assert.equal(await readFile(join(clonePrivate,'criteria.md'),'utf8'),'newer criteria');
+ await assert.rejects(access(live),{code:'ENOENT'});
+ assert.deepEqual(await readdir(join(clone,'data')),[]);
+ await unlink(join(clonePrivate,'criteria.md'));
+
+ const result=install();
+ assert.equal(result.status,0,result.stderr);
+ assert.match(result.stdout,/discoveryEnabled: false/);
+ assert.equal(await readFile(join(live,'media',media),'utf8'),'saved photo');
+ assert.equal(await readFile(join(clonePrivate,'criteria.md'),'utf8'),'saved criteria');
+ assert.equal(await readFile(join(clonePrivate,'settings.json'),'utf8'),'{}');
+ assert.equal(await readFile(join(clonePrivate,'unrelated.md'),'utf8'),'keep me');
+ const db=new DatabaseSync(database,{readOnly:true});
+ try{
+  const meta=(key:string)=>{const row=db.prepare('SELECT value FROM meta WHERE key=?').get(key) as {value:string}|undefined;return row&&JSON.parse(row.value);};
+  assert.equal(db.prepare('SELECT notes FROM homes WHERE id=?').get(id)?.notes,'Keep this decision');
+  assert.equal(meta('scanSchedule').enabled,false);
+  assert.equal(meta('availabilitySchedule').enabled,false);
+  assert.equal(meta('availabilityRun').state,'partial');
+  assert.equal(meta(`fullReview:${id}`).status,'paused');
+  assert.equal(meta(`fullReview:${id}`).waitingForFeedback,undefined);
+  assert.equal(meta('browserExtension'),undefined);
+  assert.equal(meta('browserExtensionRuntime'),undefined);
+  assert.equal(db.prepare('SELECT state FROM plans WHERE id=?').get(backupPlan)?.state,'interrupted');
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM scan_lock').get()?.count,0);
+ }finally{db.close();}
+ assert.equal((await verifyBackup(bundle)).valid,true,'the original bundle is unchanged');
+ assert.match(install().stderr,/data\/live already exists/);
 });
