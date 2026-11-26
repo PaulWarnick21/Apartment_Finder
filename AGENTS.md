@@ -18,6 +18,21 @@ proprietary connectors, or manual detail collection as prerequisites.
 
 ## Conventions
 
+- Responsive UI (November 23): acknowledge clicks immediately. Use optimistic updates
+  for safe reversible changes, save in the background, and restore failed changes with
+  a retry path. Scope pending/disabled state to the affected item or conflicting action;
+  never block unrelated alerts, apartment decisions or navigation on network work or a
+  full desk refresh. Protect optimistic changes from stale polls. Longer work needs
+  visible background progress. Verify slow/failing requests and successive interactions
+  in offline desktop/phone UI checks when changing asynchronous controls.
+
+- Scheduled pacing (November 21): productive sources continue within authorized windows
+  without a fixed batch wait. Weak results back off 30/60/120 minutes maximum; retain
+  transport pacing, rolling caps, actual warning stops and three-day low-yield pauses.
+  Persist source-specific slowdown alerts in the phone/web app and Activity. Use recent
+  distinct qualifying additions, never seeded historical yield, to measure conversion.
+
+
 - Building grouping (November 20): group separate apartments; merge records only for
   the exact same unit. Grouped cards require completed full scoring and departure from
   sections 1 and 1.5. Show each active building group only in its furthest active section

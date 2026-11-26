@@ -70,7 +70,7 @@ test('Zillow search diagnostics retain bounded schema keys without application v
  assert.match(page.html,/searchPageState.cat1.searchResults.listResults/);
  assert.ok(!page.html.includes('private@example.test'));assert.ok(!page.html.includes('do-not-copy'));assert.ok(!page.html.includes('privateValue'));
 });
-function setup(recovery=false){const db=new Store(':memory:');db.set('browserExtension',{id:'a'.repeat(32)});if(recovery)db.pause('zillow','Previous 403',true);const p=createPlan(db,{purpose:recovery?'access-check':'listings',sources:['zillow'],billingMode:'chatgpt',maxPages:recovery?1:2,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0},{accessRecovery:recovery});approvePlan(db,p.id,'APPROVE ONE SCAN');return {db,p,jobs:new ChromeJobs(db)};}
+function setup(recovery=false){const db=new Store(':memory:');db.set('browserExtension',{id:'a'.repeat(32)});if(recovery)db.pause('zillow','Previous 403',true,Date.now()-1);const p=createPlan(db,{purpose:recovery?'access-check':'listings',sources:['zillow'],billingMode:'chatgpt',maxPages:recovery?1:2,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0},{accessRecovery:recovery});approvePlan(db,p.id,'APPROVE ONE SCAN');return {db,p,jobs:new ChromeJobs(db)};}
 test('Chrome jobs enforce approved source, matching origin, and source-specific warnings',async()=>{
  const {db,p,jobs}=setup();try{claimPlan(db,p.id);const budget=new Budget(db,p.id,p.caps);assert.throws(()=>jobs.request(budget,'https://www.apartments.com/unit/abcdefg/','listing',null,0),/not included/);
  const done=jobs.request(budget,url,'listing',null,0);const rejected=assert.rejects(done,/Zillow shows/);const job=jobs.poll().job!;

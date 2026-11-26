@@ -2,8 +2,8 @@ import type {Home,Listing} from './domain';
 import {deskCategory} from './desk-category';
 import {fullReviewComplete} from './review-presentation';
 
-export type BuildingMemory={revision:number;assigned?:Record<string,string>;notes:Record<string,string>;links:Record<string,string>;separate:Record<string,boolean>;dismissed:string[]};
-export type BuildingGroup={key:string;label:string;homeIds:number[];notes:string};
+export type BuildingMemory={revision:number;assigned?:Record<string,string>;earlyGrouping?:Record<string,{key:string;confirmedAt:string}>;notes:Record<string,string>;links:Record<string,string>;separate:Record<string,boolean>;dismissed:string[]};
+export type BuildingGroup={key:string;label:string;homeIds:number[];notes:string;earlyHomeIds?:number[]};
 export type BuildingIndex={revision:number;groups:BuildingGroup[];suggestions:{a:string;b:string}[];ratings:Record<string,{score:number;reason:string}>};
 export const emptyBuildingMemory=():BuildingMemory=>({revision:0,notes:{},links:{},separate:{},dismissed:[]});
 export const buildingPair=(a:string,b:string)=>JSON.stringify([a,b].sort());
@@ -36,6 +36,8 @@ export function buildBuildingIndex(homes:Pick<Home,'id'|'listing'>[],memory=empt
   const key=memory.separate[String(home.id)]?`separate:${home.id}`:buildingRoot(memory.assigned?.[String(home.id)]??base,memory);
   let group=groups.get(key);if(!group){group={key,label:address?.label||`Building for apartment #${home.id}`,homeIds:[],notes:memory.notes[key]??''};groups.set(key,group);}
   group.homeIds.push(home.id);
+  const early=memory.earlyGrouping?.[home.id];
+  if(early&&!memory.separate[home.id]&&buildingRoot(early.key,memory)===key)(group.earlyHomeIds??=[]).push(home.id);
   if(address?.certain&&key===base)group.label=address.label;
   if(address){const bucket=candidates.get(address.street)??[];bucket.push({key,city:address.city});candidates.set(address.street,bucket);}
  }
@@ -57,16 +59,20 @@ export function buildingReady(home:Home){
 }
 export type BuildingPlacement={section:string;revisitLater:boolean};
 const activeSections=['Interested','Serious Candidates','Ready to Apply','In Progress'];
+// An explicit user exception can display selected Interested units before scoring.
+// It never changes assessment status, and later rejection/separation still wins.
+export const earlyBuildingMember=(home:Home,group:BuildingGroup)=>home.stage==='Interested'&&!!group.earlyHomeIds?.includes(home.id);
+const groupSection=(home:Home,group:BuildingGroup)=>earlyBuildingMember(home,group)?'Interested':deskCategory(home);
 /** Display a completed building group at its furthest active section; closed/excluded homes stay put. */
 export function buildingPlacements(homes:Home[],index:BuildingIndex,enabled=true){
  const placements=new Map<number,BuildingPlacement>(homes.map(h=>[h.id,{section:deskCategory(h),revisitLater:!!h.revisitLater}]));
  if(!enabled)return placements;
  const byId=new Map(homes.map(h=>[h.id,h]));
  for(const group of index.groups){
-  const members=group.homeIds.map(id=>byId.get(id)).filter((h):h is Home=>!!h&&buildingReady(h)&&activeSections.includes(deskCategory(h)));
-  if(members.length<2)continue;
-  const rank=Math.max(...members.map(h=>activeSections.indexOf(deskCategory(h)))),section=activeSections[rank];
-  const leaders=members.filter(h=>deskCategory(h)===section);
+  const members=group.homeIds.map(id=>byId.get(id)).filter((h):h is Home=>!!h&&(buildingReady(h)||earlyBuildingMember(h,group))&&activeSections.includes(groupSection(h,group)));
+  if(!members.length)continue;
+  const rank=Math.max(...members.map(h=>activeSections.indexOf(groupSection(h,group)))),section=activeSections[rank];
+  const leaders=members.filter(h=>groupSection(h,group)===section);
   const revisitLater=['Interested','Serious Candidates'].includes(section)&&leaders.some(h=>h.revisitLater);
   for(const home of members)placements.set(home.id,{section,revisitLater});
  }
@@ -77,6 +83,6 @@ export function buildingPlacements(homes:Home[],index:BuildingIndex,enabled=true
 export function groupVisibleHomes(homes:Home[],index:BuildingIndex){
  const byId=new Map(index.groups.flatMap(group=>group.homeIds.map(id=>[id,group] as const)));
  const buckets=new Map<string,{key:string;group?:BuildingGroup;homes:Home[]}>();
- for(const home of homes){const group=buildingReady(home)?byId.get(home.id):undefined,key=group?.key??`home:${home.id}`;let bucket=buckets.get(key);if(!bucket){bucket={key,group,homes:[]};buckets.set(key,bucket);}bucket.homes.push(home);}
+ for(const home of homes){const candidate=byId.get(home.id),group=candidate&&(buildingReady(home)||earlyBuildingMember(home,candidate))?candidate:undefined,key=group?.key??`home:${home.id}`;let bucket=buckets.get(key);if(!bucket){bucket={key,group,homes:[]};buckets.set(key,bucket);}bucket.homes.push(home);}
  return [...buckets.values()];
 }

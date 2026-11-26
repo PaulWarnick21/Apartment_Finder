@@ -20,6 +20,7 @@ import {BrowserBridge,extensionOrigin} from './browser-bridge.ts';
 import {ChromeJobs} from './chrome-jobs.ts';
 import {LocationMaps} from './location-map.ts';
 import {recoverChromeSource} from './chrome-recovery.ts';
+import {recoverKijijiSource} from './kijiji-recovery.ts';
 import {runApartmentsPlan} from './apartments-worker.ts';
 import {RatingFeedbackService,planFeedbackReviewer,type FeedbackReviewer} from './rating-feedback.ts';
 import {assertFeedbackReady,rebuildLearning} from './feedback-learning.ts';
@@ -32,6 +33,7 @@ import {createFullBackup} from './full-backup.ts';
 import {retryCandidate} from './discovery-queue.ts';
 import {requestAccess,type RemoteAccess} from './request-access.ts';
 import {FullReviewService} from './full-review.ts';
+import {discoveryAlerts,dismissDiscoveryAlert} from './discovery-alerts.ts';
 import {DiscoveryScheduler,discoveryScheduleStatus} from './discovery-scheduler.ts';
 import {closeAccountUsage} from './account-usage.ts';
 const decisionSchema=z.object({revision:z.number().int(),stage:stageSchema,notes:z.string().max(10000),followUp:z.string().max(40),viewing:z.string().max(40),rescued:z.boolean(),revisitLater:z.boolean().optional(),tagLongTermLease:z.boolean().optional(),tagUnfurnished:z.boolean().optional()}).strict();
@@ -89,22 +91,23 @@ export function createApp(store:Store,dataDir:string,{demo=false,dev=false,feedb
  }
  if(path==='/api/state'&&req.method==='GET'){
   const homes=store.homes(),criteria=store.criteria,chatgpt=await connectionStatus.get(),mode=aiMode();
-  const value={csrf,demo,buildings:buildingDesk(store,homes),availabilitySchedule:store.get('availabilitySchedule'),availabilityRun:store.get('availabilityRun'),searchAreaSummary:searchAreaSummary(store),areaMix:areaMixSettings(store),homes:url.searchParams.get('compact')==='1'?homes.map(cardSummary):homes,criteria,criteriaRevision:preferencesRevision(criteria),sources:sourceStatuses(store,Date.now(),homes),events:store.events(),plans:(store.db.prepare('SELECT id FROM plans ORDER BY created_at DESC LIMIT 30').all() as any[]).map(p=>getPlan(store,p.id)),providerReady:mode==='api'?!!process.env.OPENAI_API_KEY&&!!process.env.OPENAI_MODEL:!chatgpt.pending&&chatgpt.sharing&&!!chatgpt.model,aiMode:mode,chatgpt,schedule:store.get('scanSchedule')??{enabled:false,reason:'Recurring scans are not enabled. Each run needs bounded approval.'}};
+  const value={csrf,demo,discoveryAlerts:discoveryAlerts(store),buildings:buildingDesk(store,homes),availabilitySchedule:store.get('availabilitySchedule'),availabilityRun:store.get('availabilityRun'),searchAreaSummary:searchAreaSummary(store),areaMix:areaMixSettings(store),homes:url.searchParams.get('compact')==='1'?homes.map(cardSummary):homes,criteria,criteriaRevision:preferencesRevision(criteria),sources:sourceStatuses(store,Date.now(),homes),events:store.events(),plans:(store.db.prepare('SELECT id FROM plans ORDER BY created_at DESC LIMIT 30').all() as any[]).map(p=>getPlan(store,p.id)),providerReady:mode==='api'?!!process.env.OPENAI_API_KEY&&!!process.env.OPENAI_MODEL:!chatgpt.pending&&chatgpt.sharing&&!!chatgpt.model,aiMode:mode,chatgpt,schedule:store.get('scanSchedule')??{enabled:false,reason:'Recurring scans are not enabled. Each run needs bounded approval.'}};
   const content=JSON.stringify(value),etag='"'+createHash('sha256').update(content).digest('hex')+'"';res.setHeader('ETag',etag);
   if(req.headers['if-none-match']===etag){res.writeHead(304,{'Cache-Control':'private, no-cache'});return res.end();}
   res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'private, no-cache'});return res.end(content);
  }
  if(path==='/api/buildings'&&req.method==='PATCH')return send(200,updateBuildingDesk(store,await body(req)));
+ if(path==='/api/discovery-alerts/dismiss'&&req.method==='POST'){const {id}=z.object({id:z.string().uuid()}).strict().parse(await body(req));return send(200,dismissDiscoveryAlert(store,id));}
  if(path==='/api/discovery-schedule'&&req.method==='GET')return send(200,discoveryScheduleStatus(store));
  if(path==='/api/browser/state'&&req.method==='GET')return send(200,browserBridge.state());
  if(path==='/api/area-mix'&&req.method==='PATCH')return send(200,updateAreaMixSettings(store,await body(req)));
- if((path==='/api/browser/recover-zillow'||path==='/api/browser/recover-apartments')&&req.method==='POST'){
+ if(['/api/browser/recover-zillow','/api/browser/recover-apartments','/api/browser/recover-kijiji'].includes(path)&&req.method==='POST'){
   if(demo)throw new Error('Live access checks are disabled in demo mode');
-  const source=path.endsWith('recover-apartments')?'apartments':'zillow';
-  z.object({confirmation:z.literal(source==='apartments'?'APPROVE ONE APARTMENTS RECOVERY':'APPROVE ONE ZILLOW RECOVERY')}).strict().parse(await body(req));
+  const source=path.slice(path.lastIndexOf('-')+1);
+  z.object({confirmation:z.literal(`APPROVE ONE ${source.toUpperCase()} RECOVERY`)}).strict().parse(await body(req));
   if(scanProcesses.hasActive||store.db.prepare('SELECT 1 FROM scan_lock WHERE id=1').get())throw new Error('Another scan is running');
   const plan=createPlan(store,{purpose:'access-check',sources:[source],billingMode:'chatgpt',maxPages:1,maxListings:1,maxPhotos:0,maxAiCalls:0,maxReservedUsd:0,maxAddressLookups:0,stopAt:new Date(Date.now()+300000).toISOString()},{accessRecovery:true});
-  approvePlan(store,plan.id,'APPROVE ONE SCAN');void recoverChromeSource(store,plan.id,dataDir,chromeJobs).catch(e=>store.event(String(e)));return send(202,{id:plan.id});
+  approvePlan(store,plan.id,'APPROVE ONE SCAN');void (source==='kijiji'?recoverKijijiSource(store,plan.id,dataDir):recoverChromeSource(store,plan.id,dataDir,chromeJobs)).catch(e=>store.event(String(e)));return send(202,{id:plan.id});
  }
  if(path==='/api/browser/prepare'&&req.method==='POST')return send(200,browserBridge.prepare());
  if(path==='/api/browser/disconnect'&&req.method==='POST'){chromeJobs.fail('Chrome disconnected');browserBridge.disconnect();return send(200,{ok:true});}

@@ -3,7 +3,7 @@ import {chromium,type BrowserContext,type Page} from 'playwright';
 import {join} from 'node:path';
 import timers from 'node:timers/promises';
 import {type Source,allowedUrl} from './sources.ts';
-import {Budget,assertAccessRecoveryCaps} from './plans.ts';
+import {Budget,assertAccessRecoveryCaps,assertRecoveryCooldown} from './plans.ts';
 import {recordSourceAccess,sessionTraffic} from './traffic-policy.ts';
 import {waitForSourceAccess,recordAccessSuccess} from './source-pacing.ts';
 import {facetPagination} from './source-discovery.ts';
@@ -22,7 +22,7 @@ export class SourceSession {
  context?:BrowserContext;page?:Page;stopped=false;pages=0;browserRequests=0;stopReason='Source paused';
  facebookInventoryHtml?:string;facebookScrolls=0;facebookNoProgress=0;
  diagnostics:AccessDiagnostic[]=[];
- constructor(public source:Source,public budget:Budget,public dataDir:string,public options:{visibleChrome?:boolean;accessRecovery?:boolean}={}){if(options.accessRecovery){assertAccessRecoveryCaps(budget.caps);if(!options.visibleChrome)throw new Error('Access recovery requires visible Chrome');}}
+ constructor(public source:Source,public budget:Budget,public dataDir:string,public options:{visibleChrome?:boolean;accessRecovery?:boolean}={}){if(options.accessRecovery){assertAccessRecoveryCaps(budget.caps);assertRecoveryCooldown(budget.store,source.id);if(!options.visibleChrome&&source.id!=='kijiji')throw new Error('Access recovery requires visible Chrome');}}
  checkSource(){if(!this.options.accessRecovery)this.budget.store.checkSource(this.source.id);}
  async start(){this.budget.check();this.checkSource();this.context=await chromium.launchPersistentContext(join(this.dataDir,this.options.visibleChrome?'chrome-profiles':'profiles',this.source.id),{...(this.options.visibleChrome?{channel:'chrome'}:{}),headless:!this.options.visibleChrome,serviceWorkers:'block',acceptDownloads:false});
  await this.context.route('**/*',async route=>{try{this.budget.check();if(this.stopped)throw new Error('Source stopped');const url=route.request().url(),type=route.request().resourceType();if(['image','media','font'].includes(type))return await route.abort();if(!this.options.visibleChrome){if(!allowedUrl(url,[...this.source.hosts,...this.source.mediaHosts,...(this.source.assetHosts??[])]))return await route.abort();}else if(!/^https:\/\//.test(url))return await route.abort();this.browserRequests++;if(!sessionTraffic(this.budget.caps))this.budget.reserve('requests');await route.continue();}catch(e){if(/cap reached/.test(String(e))&&!this.stopped){this.stopped=true;this.stopReason='Local request allowance reached; remaining work deferred';this.budget.store.event(`${this.source.name}: local request cap reached; browser requests stopped.`);}await route.abort();}});

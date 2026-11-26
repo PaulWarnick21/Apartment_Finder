@@ -1,7 +1,7 @@
 import {mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {Store} from './db.ts';
-import {Budget,claimPlan,getPlan,assertAccessRecoveryCaps} from './plans.ts';
+import {Budget,claimPlan,getPlan,assertAccessRecoveryCaps,assertRecoveryCooldown} from './plans.ts';
 import {ChromeJobs} from './chrome-jobs.ts';
 import {sourceById} from './sources.ts';
 import {discoverSource,listingUrl} from './source-discovery.ts';
@@ -13,6 +13,7 @@ export async function recoverChromeSource(store:Store,id:string,dataDir:string,j
  const source=sourceById(sourceId),route=areaSearchRoutes(store,sourceId)[0];
  if(sourceFilteredIntake(store)&&!route)throw new Error('Configure a geographic search before checking source access');
  const url=route?.url??source.search;
+ assertRecoveryCooldown(store,sourceId);
  claimPlan(store,id);const budget=new Budget(store,id,plan.caps);let state='partial',detail=`${source.name} recovery did not complete.`;
  try{
   const page=await jobs.request(budget,url,'discovery',null,0,true);

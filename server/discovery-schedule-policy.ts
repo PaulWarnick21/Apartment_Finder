@@ -9,9 +9,19 @@ export function discoveryWindowEnd(now:Date){
  throw Error('Scheduled window must have a finite end');
 }
 export function discoveryAuthorized(schedule:DiscoverySchedule|undefined,now:Date){return schedule?.version===1&&schedule.enabled&&schedule.timeZone==='America/Toronto'&&Number.isFinite(Date.parse(schedule.authorizedAt))&&Date.parse(schedule.notBefore)<=now.getTime()&&discoveryWindowOpen(now);}
-export function sourceCadence(valid72h:number,attempts72h:number,dryStreak:number){
- let minutes=valid72h>=6&&(!attempts72h||valid72h/attempts72h>=.1)?30:valid72h>=2?120:valid72h===1?360:360;
- if(dryStreak>=2)minutes=Math.max(minutes,120);if(dryStreak>=3)minutes=Math.max(minutes,360);if(dryStreak>=6)minutes=Math.max(minutes,1440);
- return minutes;
+export type YieldSample={at:string;found:number;attempts:number};
+/** Recent batches only: seeded historical homes must not inflate current conversion. */
+export function recentSourceYield(samples:YieldSample[]){
+ const sum=(rows:YieldSample[])=>rows.reduce((s,r)=>({found:s.found+r.found,attempts:s.attempts+r.attempts}),{found:0,attempts:0});
+ const recent=sum(samples.slice(-3)),baseline=sum(samples.slice(-9,-3));
+ const rate=recent.attempts?recent.found/recent.attempts:0,priorRate=baseline.attempts?baseline.found/baseline.attempts:0;
+ const dropped=recent.attempts>=12&&baseline.attempts>=12&&baseline.found>=3&&rate<=priorRate/2;
+ const low=recent.attempts>=12&&rate<.1;
+ const dry=samples.length>=3&&samples.slice(-3).every(s=>s.found===0);
+ return {recent,baseline,rate,priorRate,dropped,low,dry,significant:dropped||low||dry,
+  productive:(samples.at(-1)?.found??0)>0&&!dropped&&!low};
+}
+export function sourceCadence(productive:boolean,weakStreak:number){
+ return productive?0:weakStreak<=1?30:weakStreak===2?60:120;
 }
 export function pauseLowYield(valid72h:number,checks:number,since:string,now:Date){return valid72h<2&&checks>=3&&now.getTime()-Date.parse(since)>=72*3600000;}

@@ -90,6 +90,14 @@ export async function runApartmentsSource(store:Store,budget:Budget,dataDir:stri
     partial=await collectGalleryPhotos(listing,budget,sourceById('apartments'),dataDir,url=>(deps.image??downloadApartmentImage)(url,budget))||partial;
     if(!quickIntake(store,budget.caps)&&listing.photos.some(p=>p.local&&(p.status!=='reviewed'||p.attributionPending))&&budget.remaining('aiCalls'))await(deps.review??reviewGallery)(listing,budget,dataDir);
    }}finally{partial=saveGalleryProgress(store,home,listing,budget,'apartments')||partial;}
+   }catch(error){
+    // A redirected/mismatched listing is a candidate issue, not an access warning.
+    // Retain saved homes; quarantine this URL so it cannot stall every later batch.
+    if(!(error instanceof Error)||!error.message.startsWith('Chrome returned a different page'))throw error;
+    budget.check();store.checkSource('apartments');
+    removeCandidate(store,'apartments',queue,url);
+    recordCandidateFailure(store,'apartments',url,error.message,'parse',{preserveExistingGallery:true});
+    validationOutcome(budget,'apartments',{url,result:'parse-failure',reason:error.message});failed++;partial=true;
    }finally{settleAreaCandidate(store,budget,areaToken,home?.id);}
   }
   saveQueue(store,'apartments',queue);const more=!!queue.urls.length||!!queue.next||!!pending.length;return {source:'apartments',state:partial||failed||more||areaDeferred?'partial':'complete',...(areaDeferred?{areaDeferred:true}:{}),detail:`${areaDeferred?areaReason+' ':''}Fresh discovery checked; ${processed} candidates processed.${more?' More inventory remains queued.':''}${partial?' Gallery gaps or pending review are recorded.':''}${failed?` ${failed} listing issues retained for review.`:''}`};

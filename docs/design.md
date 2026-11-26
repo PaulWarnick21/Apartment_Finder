@@ -1,5 +1,50 @@
 # Design
 
+November 23 responsive interactions: DiscoveryAlerts hides each dismissed ID locally
+before its authenticated POST. Independent requests may overlap, failures restore only
+their own alert, and acknowledged IDs remain hidden from stale polls for the mounted
+session. Dismissal requires no full-state refresh; ordinary polling synchronizes devices.
+Shared background actions deduplicate by resource key and expose local pending state,
+without a global UI lock. A successful write releases its control before refreshing the
+desk; refresh failures are reported separately from save failures. New asynchronous UI
+work follows the same pattern, retaining drafts, revision guards and retry paths.
+
+November 23 source recovery: Sources exposes an explicit one-page access check for
+Apartments.com, Zillow and Kijiji after the persisted cooldown. Kijiji uses its existing
+scanner profile; the other two use the paired Chrome session. Recovery requires usable
+rental links and a still-running approved plan before clearing source health. Empty results,
+warnings and cancellation retain the pause. No photos, AI or address lookups are allowed.
+This is not a scheduled challenge retry. Cooldown expiry and manual attention are shown
+separately. Apartments.com listing URL mismatches are quarantined as candidate issues so
+later URLs can proceed; same-source warning redirects still stop the source. Bounded
+requested/returned URL diagnostics omit queries and fragments.
+
+November 21 Boundary Road rejection: all five saved 435 Boundary Road listings are
+Not Interested, displayed in Closed. Their `earlyGrouping` entries were removed after
+the user rejected the property as outside downtown. Building identity/history remains.
+
+November 21 explicit early grouping: building memory can retain `earlyGrouping` entries
+keyed by home ID with the confirmed building key and date. Only those selected homes,
+while their saved stage is Interested and they remain in that building, can project into
+section 2 before full review (including an explicitly restored intake-excluded listing).
+Other homes still require full scoring. The exception changes display placement, never
+evidence, score eligibility or full-review status. A group prefers completed scores for
+its representative, otherwise uses quick rank and labels the assessment pending.
+
+November 21 pacing: scheduled source state now retains up to nine batch yield samples
+within 72 hours. Compare the latest three checks with the preceding six: require at
+least 12 candidate attempts in each group and three baseline additions before a 50%
+conversion decline is significant. Below 10% on 12 recent attempts or three dry
+checks also alerts. A productive latest batch with no significant conversion weakness
+continues on the next timer tick; weak streaks wait 30/60/120 minutes. Inventory-to-
+candidate handoff is immediate and does not count as a dry check. Seeded yield remains
+only for the three-day pause rule. Legacy six/24-hour waits migrate once without
+resetting budgets or clearing source warnings. Batches remain deadline-bounded.
+Discovery alerts persist in meta, with one ID per source episode, dismissal and recovery
+timestamps. API state carries them to phone/web banners; CSRF-protected dismissal
+synchronizes devices. Activity retains alerts/recoveries; review pauses also alert.
+
+
 Compact building groups (November 20): BuildingGroupCards renders the highest numeric
 full score among the already-filtered group, with apartment ID breaking ties consistently.
 Local expansion state survives background refreshes and sort changes; new mounts default

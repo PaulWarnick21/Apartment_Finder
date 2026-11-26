@@ -32,6 +32,19 @@ test('Chrome warnings pause the source and fail the job without fallback navigat
  }finally{jobs.fail('test cleanup');db.close();}
 });
 
+test('same-source redirected warning still pauses; other redirects retain safe diagnostics',async()=>{
+ const {db,p,jobs,budget}=setup();try{
+  approvePlan(db,p.id,'APPROVE ONE SCAN');claimPlan(db,p.id);
+  const done=jobs.request(budget,url,'listing',3000,0),job=jobs.poll().job!;
+  assert.throws(()=>jobs.result({id:job.id,snapshot:{...page,url:'https://www.apartments.com/vancouver-bc/?tracking=private'}}),/identity unverified/);
+  const rows=db.get<any[]>('chromePageMismatches:apartments')!;
+  assert.equal(rows[0].returned,'https://www.apartments.com/vancouver-bc/');assert.doesNotThrow(()=>db.checkSource('apartments'));
+  const rejected=assert.rejects(done,/Access denied/);
+  jobs.result({id:job.id,snapshot:{...page,url:'https://www.apartments.com/blocked/',warning:'Access denied'}});await rejected;
+  assert.throws(()=>db.checkSource('apartments'),/paused/);
+ }finally{jobs.fail('cleanup');db.close();}
+});
+
 test('worker cleanup cannot cancel a different plan Chrome job',async()=>{
  const {db,p,jobs,budget}=setup();try{
   approvePlan(db,p.id,'APPROVE ONE SCAN');claimPlan(db,p.id);

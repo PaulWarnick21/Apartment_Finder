@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import type {Home} from './domain';
-import {buildingReady,type BuildingGroup,type BuildingIndex,type BuildingPlacement} from './buildings';
+import {buildingReady,earlyBuildingMember,type BuildingGroup,type BuildingIndex,type BuildingPlacement} from './buildings';
 import {deskSections} from './desk-sections';
 import {reviewLabel} from './review-presentation';
 import {deskCategory} from './desk-category';
@@ -22,7 +22,7 @@ export function BuildingContext({compact=false,placement,group,index,homes,visib
  async function change(patch:Record<string,unknown>){setSaving(true);setError('');setSaved(false);try{const next=await onChange({...patch,revision:patch.action==='notes'?revision:index.revision});setRevision(next.revision);if(patch.action==='notes'){keepDraft(group.key,null);setEditing(false);setSaved(true);}}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setSaving(false);}}
  return <div className={`building-context${compact?' building-context-compact':''}${expanded?' context-open':''}`} aria-label={`Building: ${group.label}`}>
   <div className="building-heading"><div><span className="eyebrow">BUILDING</span><h3>{group.label}</h3><p hidden={compact}>{visibleIds.length?`${visibleIds.length} ${visibleIds.length===1?'unit':'units'} in this group · `:''}{group.homeIds.length} saved {group.homeIds.length===1?'unit':'units'}{reviewed>0?` · ${reviewed} ${currentId?'other ':''}previously reviewed`:''}{rejected>0?` · ${rejected} rejected`:''}</p></div><div className="building-buttons"><button aria-label={expanded?'Hide building context':'Building notes & other units'} aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?'Hide building context':compact?'Notes & history':'Building notes & other units'}</button></div></div>
-  {(!compact||expanded)&&placement&&currentId===undefined&&group.homeIds.length>1&&<p className="building-placement">Fully scored active units stay together in {deskSections.find(s=>s.title===placement.section)?.number}. {placement.section}{placement.revisitLater?' · Revisit Later':''}. Revisit Later takes priority within the destination section. Each unit keeps its own decision; unfinished and closed units stay in their sections.</p>}
+  {(!compact||expanded)&&placement&&currentId===undefined&&group.homeIds.length>1&&<p className="building-placement">{peers.some(h=>earlyBuildingMember(h,group))?'These listings were explicitly grouped together, including pending assessments, in ':'Fully scored active units stay together in '}{deskSections.find(s=>s.title===placement.section)?.number}. {placement.section}{placement.revisitLater?' · Revisit Later':''}. Each unit keeps its own notes, rating and assessment status. Closed units stay in their own section.</p>}
   {group.notes&&!editing&&<p className="building-note prewrap"><b>Building notes: </b>{group.notes}</p>}
   {saved&&<p role="status">Building notes saved.</p>}
   {expanded&&<div className="building-expanded">

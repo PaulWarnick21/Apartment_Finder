@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {Store} from '../server/db.ts';
 import {createApp} from '../server/api.ts';
 import {listingSchema,type Home} from '../src/domain.ts';
-import {buildingAddress,buildBuildingIndex,buildingPlacements,buildingReady,groupVisibleHomes} from '../src/buildings.ts';
+import {buildingAddress,buildBuildingIndex,buildingPlacements,buildingReady,emptyBuildingMemory,groupVisibleHomes} from '../src/buildings.ts';
 import {buildingDesk,updateBuildingDesk} from '../server/building-desk.ts';
 import {shortlistBackup} from '../server/shortlist-backup.ts';
 import {compareHomes} from '../src/desk-sort.ts';
@@ -14,6 +14,22 @@ import {compareHomes} from '../src/desk-sort.ts';
 function completed(store:Store,ids:number[]){store.set('reviewWorkflow',{mode:'quick-first'});for(const id of ids){store.set(`fullReview:${id}`,{status:'complete',detail:'Completed fixture',updatedAt:'2026-11-20T12:00:00Z'});if(store.home(id)!.stage==='Unreviewed')store.db.prepare("UPDATE homes SET stage='Interested' WHERE id=?").run(id);}}
 const listing=(id:string,address='1889 Alberni Street, Vancouver, BC',unit=id)=>listingSchema.parse({source:'fixture',sourceId:id,url:`https://example.test/${id}`,title:'Apartment',address,unit,rent:2800,beds:1});
 const reviewedHome=(id:number,stage:Home['stage']='Serious Candidates',revisitLater=false):Home=>({id,listing:listing(String(id)),stage,revisitLater,notes:`Unit ${id}`,followUp:'',viewing:'',revision:2,rescued:false,firstSeen:'2026-11-20',updatedAt:'2026-11-20',possibleDuplicates:[],postings:[],reviewMode:'full',fullReview:{status:'complete',detail:'Complete',updatedAt:'2026-11-20'},score:{value:4,low:4,high:4,base:4,eligible:true,uncertain:false,view:'Reviewed',adjustments:[],flags:[],reasons:[]}});
+
+test('explicit early grouping places only selected Interested units together without completing assessments',()=>{
+ const homes=[1,2,3].map(id=>({...reviewedHome(id,'Interested'),reviewMode:'quick' as const,fullReview:{status:'paused' as const,detail:'Pending',updatedAt:'2026-11-21'}}));
+ homes[0].deskExclusion='Studio excluded by ordinary intake';
+ const memory=emptyBuildingMemory(),key=buildBuildingIndex(homes).groups[0].key;
+ memory.earlyGrouping=Object.fromEntries([1,2].map(id=>[id,{key,confirmedAt:'2026-11-21'}]));
+ const before=JSON.stringify(homes);let index=buildBuildingIndex(homes,memory),placements=buildingPlacements(homes,index);
+ assert.equal(placements.get(1)?.section,'Interested');assert.equal(placements.get(2)?.section,'Interested');assert.equal(placements.get(3)?.section,'Scoring in Progress');
+ assert.deepEqual(groupVisibleHomes(homes,index).map(g=>g.homes.map(h=>h.id)),[[1,2],[3]]);
+ assert.equal(JSON.stringify(homes),before);assert.equal(buildingReady(homes[0]),false);
+ assert.equal(buildingPlacements(homes,index,false).get(1)?.section,'Excluded');
+ assert.equal(buildingPlacements(homes,index,false).get(2)?.section,'Scoring in Progress');
+ homes[1].stage='Not Interested';assert.equal(buildingPlacements(homes,index).get(2)?.section,'Closed');
+ assert.equal(buildingPlacements(homes,index).get(1)?.section,'Interested','Remaining selected unit stays at its requested stage');
+ memory.separate['1']=true;index=buildBuildingIndex(homes,memory);assert.equal(buildingPlacements(homes,index).get(1)?.section,'Excluded');
+});
 
 test('verified researched addresses group Harbourview suites without replacing advertised facts',()=>{
  const a=reviewedHome(1038),b=reviewedHome(1039,'Ready to Apply');

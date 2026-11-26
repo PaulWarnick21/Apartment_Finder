@@ -9,10 +9,11 @@ import {readQueue} from './discovery-queue.ts';
 import {inventoryRoutes} from './inventory-discovery.ts';
 import {quickRank} from './quick-rank.ts';
 import {availabilityDue,type AvailabilityRun,type AvailabilitySchedule} from './availability-monitor.ts';
-import {discoveryAuthorized,discoveryWindowEnd,discoveryLimits,sourceCadence,pauseLowYield,type DiscoverySchedule} from './discovery-schedule-policy.ts';
+import {discoveryAuthorized,discoveryWindowEnd,discoveryLimits,sourceCadence,recentSourceYield,pauseLowYield,type YieldSample,type DiscoverySchedule} from './discovery-schedule-policy.ts';
+import {discoveryAlerts,raiseDiscoveryAlert,resolveDiscoveryAlert} from './discovery-alerts.ts';
 
 type Run={plan_id:string;source:string;started_at:string;finished_at:string|null;settled:number};
-export type ScheduledSource={since:string;checks:number;dryStreak:number;nextAt:string;paused?:string;lastDetail?:string;cadenceMinutes?:number};
+export type ScheduledSource={since:string;checks:number;dryStreak:number;nextAt:string;paused?:string;lastDetail?:string;cadenceMinutes?:number;weakStreak?:number;samples?:YieldSample[];pacingVersion?:2};
 export function ensureDiscoverySchedule(store:Store){store.db.exec(`
  CREATE TABLE IF NOT EXISTS scheduled_discovery_runs(plan_id TEXT PRIMARY KEY REFERENCES plans(id),source TEXT NOT NULL,started_at TEXT NOT NULL,finished_at TEXT,settled INTEGER NOT NULL DEFAULT 0);
  CREATE TABLE IF NOT EXISTS scheduled_discovery_yield(home_id INTEGER PRIMARY KEY REFERENCES homes(id),source TEXT NOT NULL,first_seen TEXT NOT NULL);
@@ -42,7 +43,7 @@ export function seedScheduledYield(store:Store,now=new Date()){
  for(const {id} of rows){const home=validHome(store,id);if(home)store.db.prepare('INSERT OR IGNORE INTO scheduled_discovery_yield VALUES (?,?,?)').run(id,home.listing.source,home.firstSeen);}
 }
 export function discoveryScheduleStatus(store:Store,now=new Date()){
- ensureDiscoverySchedule(store);return {schedule:store.get<DiscoverySchedule>('scanSchedule'),windowEnd:discoveryWindowEnd(now)?.toISOString()??null,limits:discoveryLimits,usage24h:scheduledUsage(store,now),sources:sources.map(s=>({source:s.id,...sourceState(store,s.id,now),...sourceYield(store,s.id,now),health:store.health().find(h=>h.source===s.id)})),active:store.db.prepare('SELECT plan_id,source,started_at FROM scheduled_discovery_runs WHERE settled=0').all()};
+ ensureDiscoverySchedule(store);return {pacingVersion:2,alerts:discoveryAlerts(store),schedule:store.get<DiscoverySchedule>('scanSchedule'),windowEnd:discoveryWindowEnd(now)?.toISOString()??null,limits:discoveryLimits,usage24h:scheduledUsage(store,now),sources:sources.map(s=>({source:s.id,...sourceState(store,s.id,now),...sourceYield(store,s.id,now),health:store.health().find(h=>h.source===s.id)})),active:store.db.prepare('SELECT plan_id,source,started_at FROM scheduled_discovery_runs WHERE settled=0').all()};
 }
 type Runner=Pick<ScanProcesses,'hasActive'|'assertCanStart'|'start'>;
 /** Deterministic app timer. Construction and configuration never start network work. */
@@ -78,9 +79,27 @@ export class DiscoveryScheduler{
    const continuation=plan.caps.phase==='inventory'&&(q.urls.length||q.offerings?.length)&&!['cancelled','interrupted'].includes(plan.state);
    if(!continuation){state.checks++;state.dryStreak=found?0:state.dryStreak+1;}
    const stats=sourceYield(this.store,run.source,now);
-   state.cadenceMinutes=sourceCadence(stats.valid,stats.attempts,state.dryStreak);
+   let significant=false,productive=false;
+   if(!continuation&&['complete','partial'].includes(plan.state)&&!this.store.health().find(h=>h.source===run.source)?.needs_attention){
+    state.samples=[...(state.samples??[]).filter(s=>Date.parse(s.at)>=now.getTime()-72*3600000),{at:now.toISOString(),found,attempts:plan.usage.listings}].slice(-9);
+    const recent=recentSourceYield(state.samples);significant=recent.significant;productive=recent.productive;
+    state.weakStreak=productive?0:(state.weakStreak??0)+1;
+    state.cadenceMinutes=sourceCadence(productive,state.weakStreak);
+    const name=sources.find(s=>s.id===run.source)?.name??run.source;
+    if(significant){
+     const reason=recent.dry?'The last three checks produced no new qualifying apartments.':`Recent checks produced ${recent.recent.found} qualifying additions from ${recent.recent.attempts} listing attempts (${Math.round(recent.rate*100)}%).`;
+     const comparison=recent.dropped?` Previously ${Math.round(recent.priorRate*100)}% of attempts produced additions; the rate has fallen by at least half.`:'';
+     raiseDiscoveryAlert(this.store,run.source,`${name} scan results have slowed. ${reason}${comparison} Checks now wait ${state.cadenceMinutes} minutes, increasing to at most two hours if results stay weak. Incomplete coverage or access problems can also reduce results.`,now);
+    }else if(productive)resolveDiscoveryAlert(this.store,run.source,now);
+   }else state.cadenceMinutes=Math.min(120,Math.max(30,state.cadenceMinutes??30));
+   state.pacingVersion=2;
    state.nextAt=new Date(now.getTime()+(continuation?0:state.cadenceMinutes*60000)).toISOString();state.lastDetail=plan.detail.slice(0,800);
-   if(pauseLowYield(stats.valid,state.checks,state.since,now))state.paused='Fewer than two valid apartments in 72 hours; paused for review.';
+   if(pauseLowYield(stats.valid,state.checks,state.since,now)){
+    state.paused='Fewer than two valid apartments in 72 hours; paused for review.';
+    // A pause is a separate, material escalation even if an earlier slowdown was dismissed.
+    resolveDiscoveryAlert(this.store,run.source,now,false);
+    raiseDiscoveryAlert(this.store,run.source,`${run.source}: ${state.paused}`,now);
+   }
    if(plan.state==='cancelled'&&!plan.detail.startsWith('Scheduled window'))state.paused='User cancelled this source; explicit resume required.';
    if(['interrupted'].includes(plan.state))state.nextAt=new Date(now.getTime()+3600000).toISOString();
    this.store.transaction(()=>{this.store.set('scheduledSource:'+run.source,state);this.store.db.prepare('UPDATE scheduled_discovery_runs SET settled=1,finished_at=? WHERE plan_id=?').run(now.toISOString(),plan.id);});
@@ -95,8 +114,17 @@ export class DiscoveryScheduler{
    // Give the separately authorized noon availability check first access to the source lane.
    if(availabilityDue(this.store.get<AvailabilitySchedule>('availabilitySchedule'),this.store.get<AvailabilityRun>('availabilityRun'),now))return;
    const due=sources.filter(source=>{
-    const state=sourceState(this.store,source.id,now);if(state.paused||Date.parse(state.nextAt)>now.getTime()||!areaSearchRoutes(this.store,source.id).length)return false;
-    const stats=sourceYield(this.store,source.id,now);if(pauseLowYield(stats.valid,state.checks,state.since,now)){state.paused='Fewer than two valid apartments in 72 hours; paused for review.';this.store.set('scheduledSource:'+source.id,state);return false;}
+    const state=sourceState(this.store,source.id,now);
+    // Replace legacy six/24-hour yield waits once; retain warning stops and review pauses.
+    if(state.pacingVersion!==2){
+     const last=this.store.db.prepare('SELECT finished_at FROM scheduled_discovery_runs WHERE source=? AND settled=1 ORDER BY finished_at DESC LIMIT 1').get(source.id) as {finished_at:string}|undefined;
+     const delay=state.dryStreak?sourceCadence(false,state.dryStreak):0;
+     state.cadenceMinutes=delay;state.weakStreak=state.dryStreak;state.pacingVersion=2;
+     if(last)state.nextAt=new Date(Math.min(Date.parse(state.nextAt),Date.parse(last.finished_at)+delay*60000)).toISOString();
+     this.store.set('scheduledSource:'+source.id,state);
+    }
+    if(state.paused||Date.parse(state.nextAt)>now.getTime()||!areaSearchRoutes(this.store,source.id).length)return false;
+    const stats=sourceYield(this.store,source.id,now);if(pauseLowYield(stats.valid,state.checks,state.since,now)){state.paused='Fewer than two valid apartments in 72 hours; paused for review.';this.store.set('scheduledSource:'+source.id,state);resolveDiscoveryAlert(this.store,source.id,now,false);raiseDiscoveryAlert(this.store,source.id,`${source.name}: ${state.paused}`,now);return false;}
     try{this.store.checkSource(source.id);}catch{return false;}
     if(source.visibleChrome||['apartments','zillow'].includes(source.id)){const runtime=this.store.get<{lastSeenAt:string}>('browserExtensionRuntime');if(!runtime||now.getTime()-Date.parse(runtime.lastSeenAt)>120000)return false;}
     return true;

@@ -13,6 +13,16 @@ test('successful source notes are not pauses; real cooldowns and attention flags
   s.db.prepare('UPDATE source_health SET needs_attention=1').run();assert.equal(sourceStatuses(s).find(r=>r.id==='apartments')!.paused,true);
  }finally{s.close();}
 });
+
+test('Kijiji offers explicit recovery only after cooldown and keeps manual pause distinct',()=>{
+ const store=new Store(':memory:');try{
+  const now=Date.now();store.pause('kijiji','HTTP 429',true,now+60000);
+  let status=sourceStatuses(store,now).find(s=>s.id==='kijiji')!;
+  assert.equal(status.recoverySupported,true);assert.equal(status.recoveryReady,false);
+  status=sourceStatuses(store,now+60001).find(s=>s.id==='kijiji')!;
+  assert.equal(status.paused,true);assert.equal(status.recoveryReady,true);
+ }finally{store.close();}
+});
 test('saved results and current active counts remain separate from connected app scanning',()=>{
  const s=new Store(':memory:');try{
   s.set('trialSourceReports',{zillow:'3 test candidates; obsolete active count 3'});

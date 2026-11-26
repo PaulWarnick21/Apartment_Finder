@@ -1,5 +1,34 @@
 # Listing sources
 
+## Source recovery — November 23, 2026
+
+The user requested repairing the Apartments.com and Kijiji pauses. Apartments.com's saved
+November 20 00:54 UTC response was an actual Access Denied page. Kijiji's November 20
+21:38 UTC stop was recorded during an assistant price-verification request (HTTP 429),
+not a scheduled scanner batch. Both retained manual-attention flags after their cooldowns.
+Explicit one-page recovery succeeded in the existing sessions: Apartments.com recognized
+50 rental links; Kijiji recognized 40. Neither recovery imported homes, downloaded photos,
+or made AI/address requests. Scheduled intake subsequently resumed.
+
+Kijiji now has a supported explicit recovery action alongside Apartments.com/Zillow.
+Recovery cannot run before the cooldown, and empty/challenged/cancelled checks do not clear
+the pause. Resumed Apartments.com intake exposed a separate mismatched-page error; candidate
+quarantine now lets other listings continue, with safe URL diagnostics retained locally.
+Successful access is not proof of complete coverage or future qualifying yield.
+
+Follow-up validation at 11:59 UTC: two saved Apartments.com unit URLs redirected to the
+general Vancouver results page. They were quarantined without inferring apartment removal;
+later candidates continued. The bounded validation used 5/8 pages, 4/4 candidate attempts,
+5/120 photos and zero AI/address requests; it was partial (1/2 new-record target), with
+inventory remaining. Since recovery, 2 Apartments.com and 6 Kijiji records were in Unreviewed.
+The 33 focused offline tests, TypeScript check and production build passed; the running app
+was restarted while idle. Private evidence: `data/live/source-recovery-results-20261123.json`.
+
+November 21: productive scheduled sources continue without a fixed batch wait. Weak
+sources use 30/60/120-minute waits and persistent source slowdown alerts. Traffic caps,
+transport pacing, access-warning stops and three-day review pauses remain enforced.
+
+
 November 20 Kijiji price correction: retain the scoped advertised header price (or
 structured offer when the header is absent) even when description prose quotes a
 different monthly rate. Preserve both amounts and the rent-conflict warning;

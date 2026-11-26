@@ -1,7 +1,7 @@
 {
   "format": "apartment-finder-shortlist",
   "version": 1,
-  "exportedAt": "2026-11-21T16:38:40.878Z",
+  "exportedAt": "2026-11-26T20:09:34.852Z",
   "coverage": "Current Interested and later stages, including pending assessments, Leased and Closed; canonical homes with all saved cross-post URLs and alias IDs.",
   "recovery": "Use apartments to rebuild a shortlist in any tool. Preserve IDs, stages, notes and score snapshots. Scores reflect saved evidence at export time; assessmentStatus distinguishes incomplete reviews. Source pages may expire. No automatic full-app import is provided.",
   "buildings": [
@@ -15,7 +15,7 @@
     },
     {
       "key": "address:vancouver|1920 alberni st",
-      "label": "1920 Alberni Street, Vancouver",
+      "label": "1920 Alberni St, Vancouver",
       "homeIds": [
         1038,
         1039
@@ -211,7 +211,7 @@
     },
     {
       "key": "address:vancouver|3438 vanness ave",
-      "label": "3438 Vanness Avenue, Vancouver",
+      "label": "3438 Vanness Ave, Vancouver",
       "homeIds": [
         1071
       ],
@@ -298,8 +298,8 @@
       "notes": ""
     },
     {
-      "key": "address:vancouver|384 e 1st ave",
-      "label": "384 E 1st Ave, Vancouver",
+      "key": "home:1467",
+      "label": "Building for apartment #1467",
       "homeIds": [
         1467
       ],
@@ -350,7 +350,8 @@
       "key": "address:vancouver|1022 nelson st",
       "label": "1022 Nelson Street, Vancouver",
       "homeIds": [
-        1713
+        1713,
+        2376
       ],
       "notes": ""
     },
@@ -411,10 +412,90 @@
       "notes": ""
     },
     {
-      "key": "home:2151",
-      "label": "435 Boundary Rd",
+      "key": "home:2178",
+      "label": "97 Georgia St W",
       "homeIds": [
-        2151
+        2178
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2182",
+      "label": "97 Georgia St W",
+      "homeIds": [
+        2182
+      ],
+      "notes": ""
+    },
+    {
+      "key": "address:vancouver|1331 georgia st w",
+      "label": "1331 Georgia St W, Vancouver",
+      "homeIds": [
+        2251
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2252",
+      "label": "Building for apartment #2252",
+      "homeIds": [
+        2252
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2260",
+      "label": "Building for apartment #2260",
+      "homeIds": [
+        2260
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2288",
+      "label": "1881 E 11 Ave",
+      "homeIds": [
+        2288
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2321",
+      "label": "518 Clarke Rd",
+      "homeIds": [
+        2321
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2326",
+      "label": "1783 West 14th Avenue",
+      "homeIds": [
+        2326
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2389",
+      "label": "Building for apartment #2389",
+      "homeIds": [
+        2389
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2391",
+      "label": "Building for apartment #2391",
+      "homeIds": [
+        2391
+      ],
+      "notes": ""
+    },
+    {
+      "key": "home:2414",
+      "label": "188 keefer st near main st",
+      "homeIds": [
+        2414
       ],
       "notes": ""
     }
@@ -566,7 +647,7 @@
       "id": 89,
       "buildingKey": "home:89",
       "aliases": [],
-      "stage": "Ready to Apply",
+      "stage": "In Progress",
       "revisitLater": false,
       "tagLongTermLease": false,
       "tagUnfurnished": false,
@@ -606,7 +687,7 @@
       "viewing": "",
       "firstSeen": "2026-11-14T23:13:51.045Z",
       "listingUpdatedAt": "2026-11-20T21:38:45.236Z",
-      "revision": 8
+      "revision": 9
     },
     {
       "id": 117,
@@ -659,7 +740,7 @@
       "buildingKey": "address:west vancouver|2020 bellevue ave",
       "aliases": [],
       "stage": "Serious Candidates",
-      "revisitLater": false,
+      "revisitLater": true,
       "tagLongTermLease": false,
       "tagUnfurnished": false,
       "title": "1 Bedroom w/ city/mountain/ocean view",
@@ -694,13 +775,13 @@
       "viewing": "",
       "firstSeen": "2026-11-16T02:10:15.574Z",
       "listingUpdatedAt": "2026-11-18T15:17:38.504Z",
-      "revision": 4
+      "revision": 5
     },
     {
       "id": 258,
       "buildingKey": "home:258",
       "aliases": [],
-      "stage": "Ready to Apply",
+      "stage": "In Progress",
       "revisitLater": false,
       "tagLongTermLease": false,
       "tagUnfurnished": false,
@@ -736,7 +817,7 @@
       "viewing": "",
       "firstSeen": "2026-11-16T04:18:44.794Z",
       "listingUpdatedAt": "2026-11-18T14:58:55.438Z",
-      "revision": 6
+      "revision": 7
     },
     {
       "id": 410,
@@ -965,7 +1046,7 @@
       "id": 720,
       "buildingKey": "home:720",
       "aliases": [],
-      "stage": "Ready to Apply",
+      "stage": "In Progress",
       "revisitLater": false,
       "tagLongTermLease": false,
       "tagUnfurnished": false,
@@ -981,6 +1062,11 @@
       "source": "rew",
       "sourceId": "7660974",
       "postings": [
+        {
+          "source": "apartments",
+          "sourceId": "qs9ky6x",
+          "url": "https://www.apartments.com/531-beatty-st-vancouver-bc-unit-504/qs9ky6x/"
+        },
         {
           "source": "rew",
           "sourceId": "7660974",
@@ -1001,7 +1087,7 @@
       "viewing": "",
       "firstSeen": "2026-11-18T18:15:57.447Z",
       "listingUpdatedAt": "2026-11-18T19:06:56.336Z",
-      "revision": 8
+      "revision": 9
     },
     {
       "id": 755,
@@ -1053,7 +1139,7 @@
       "id": 802,
       "buildingKey": "address:vancouver|1238 richards st",
       "aliases": [],
-      "stage": "Serious Candidates",
+      "stage": "In Progress",
       "revisitLater": false,
       "tagLongTermLease": false,
       "tagUnfurnished": false,
@@ -1061,7 +1147,7 @@
       "address": "1238 Richards Street",
       "unit": "1808",
       "area": "Downtown",
-      "rent": 3500,
+      "rent": 3300,
       "beds": 1,
       "baths": 1,
       "sqft": 823,
@@ -1076,20 +1162,24 @@
         }
       ],
       "score": {
-        "value": 2.9,
-        "eligible": false,
+        "value": 3.9,
+        "eligible": true,
         "uncertain": true,
         "view": "Unverified"
       },
       "quickGrade": "A",
       "assessmentStatus": "complete",
-      "userRating": null,
-      "notes": "",
+      "userRating": {
+        "score": 4,
+        "reason": "For this apartment only: raise my score to 4.0 because it is furnished and a very nice apartment. Rent is $3,300/month. I am leaning toward submitting an application for around a 3-month term.",
+        "at": "2026-11-24T17:12:18.172Z"
+      },
+      "notes": "6 month lease preferred\n\n2026-11-24: Rent corrected to $3,300/month. Personal score 4.0: furnished and a very nice apartment. Leaning toward submitting an application for approximately a 3-month term (updated preference from the earlier 6-month note; landlord acceptance not yet confirmed).",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-18T19:32:55.003Z",
-      "listingUpdatedAt": "2026-11-20T18:26:54.260Z",
-      "revision": 6
+      "listingUpdatedAt": "2026-11-24T17:12:18.172Z",
+      "revision": 10
     },
     {
       "id": 853,
@@ -1531,7 +1621,7 @@
       "id": 1039,
       "buildingKey": "address:vancouver|1920 alberni st",
       "aliases": [],
-      "stage": "Ready to Apply",
+      "stage": "In Progress",
       "revisitLater": false,
       "tagLongTermLease": false,
       "tagUnfurnished": false,
@@ -1571,7 +1661,7 @@
       "viewing": "",
       "firstSeen": "2026-11-19T09:30:56.940Z",
       "listingUpdatedAt": "2026-11-20T18:29:36.700Z",
-      "revision": 7
+      "revision": 8
     },
     {
       "id": 1063,
@@ -1914,8 +2004,8 @@
       "buildingKey": "address:vancouver|1068 hornby st",
       "aliases": [],
       "stage": "Serious Candidates",
-      "revisitLater": false,
-      "tagLongTermLease": false,
+      "revisitLater": true,
+      "tagLongTermLease": true,
       "tagUnfurnished": false,
       "title": "Apartment",
       "address": "1068 Hornby Street #2607",
@@ -1944,12 +2034,12 @@
       "quickGrade": "B",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "Partially furnished, but it's a long term lease and not super nice.",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T10:17:52.459Z",
       "listingUpdatedAt": "2026-11-20T18:26:37.756Z",
-      "revision": 6
+      "revision": 8
     },
     {
       "id": 1280,
@@ -2079,32 +2169,39 @@
     },
     {
       "id": 1467,
-      "buildingKey": "address:vancouver|384 e 1st ave",
-      "aliases": [],
+      "buildingKey": "home:1467",
+      "aliases": [
+        2352
+      ],
       "stage": "Interested",
       "revisitLater": false,
       "tagLongTermLease": false,
       "tagUnfurnished": false,
-      "title": "1 Bed, 1 Bath + Den FURNISHED PENTHOUSE apt with PRIVATE ROOFTOP PATIO",
-      "address": "384 E 1st Ave.\n        \n            google map",
+      "title": "1 Bd, 1 Bth + Den FURNISHED PENTHOUSE Apt PRIVATE ROOFTOP PATIO",
+      "address": "Vancouver, BC V5T 0G5",
       "unit": "",
       "area": "Strathcona",
-      "rent": 3400,
+      "rent": 3350,
       "beds": 1,
       "baths": 1,
       "sqft": 630,
-      "url": "https://www.craigslist.org/view/d/vancouver-bed-bath-den-furnished/xu3RFBCzUjPgHDVFz3KizP",
-      "source": "craigslist",
-      "sourceId": "4ad51f7fdf4ce692",
+      "url": "https://www.kijiji.ca/v-apartments-condos/vancouver/1-bd-1-bth-den-furnished-penthouse-apt-private-rooftop-patio/1746549499",
+      "source": "kijiji",
+      "sourceId": "1746549499",
       "postings": [
         {
           "source": "craigslist",
           "sourceId": "4ad51f7fdf4ce692",
           "url": "https://www.craigslist.org/view/d/vancouver-bed-bath-den-furnished/xu3RFBCzUjPgHDVFz3KizP"
+        },
+        {
+          "source": "kijiji",
+          "sourceId": "1746549499",
+          "url": "https://www.kijiji.ca/v-apartments-condos/vancouver/1-bd-1-bth-den-furnished-penthouse-apt-private-rooftop-patio/1746549499"
         }
       ],
       "score": {
-        "value": 3.2,
+        "value": 3.3,
         "eligible": true,
         "uncertain": true,
         "view": "Partial nature"
@@ -2116,8 +2213,8 @@
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T11:45:34.194Z",
-      "listingUpdatedAt": "2026-11-20T18:29:32.295Z",
-      "revision": 5
+      "listingUpdatedAt": "2026-11-25T17:01:15.597Z",
+      "revision": 7
     },
     {
       "id": 1587,
@@ -2548,8 +2645,8 @@
       "buildingKey": "home:1913",
       "aliases": [],
       "stage": "Serious Candidates",
-      "revisitLater": false,
-      "tagLongTermLease": false,
+      "revisitLater": true,
+      "tagLongTermLease": true,
       "tagUnfurnished": false,
       "title": "Furnished 2 Level Loft | City View Office | 16' Ceilings | Jan 1",
       "address": "1238 Seymour\n        \n            google map",
@@ -2578,12 +2675,12 @@
       "quickGrade": "B",
       "assessmentStatus": "complete",
       "userRating": null,
-      "notes": "",
+      "notes": "Parking not guaranteed. Bedroom a bit weird with the curtain",
       "followUp": "",
       "viewing": "",
       "firstSeen": "2026-11-19T18:58:11.346Z",
       "listingUpdatedAt": "2026-11-20T18:26:19.183Z",
-      "revision": 5
+      "revision": 7
     },
     {
       "id": 1924,
@@ -2803,29 +2900,71 @@
       "revision": 5
     },
     {
-      "id": 2151,
-      "buildingKey": "home:2151",
+      "id": 2178,
+      "buildingKey": "home:2178",
       "aliases": [],
       "stage": "Interested",
       "revisitLater": false,
       "tagLongTermLease": false,
       "tagUnfurnished": false,
-      "title": "1 Bd 1BATH Stylish look apartment in Vancouver  A1301 A1101",
-      "address": "435 Boundary Rd\n        \n            google map",
-      "unit": "",
-      "area": "Vancouver",
-      "rent": 2275,
+      "title": "Aquilini Centre West - 1806",
+      "address": "97 Georgia St W #1806",
+      "unit": "1806",
+      "area": "Downtown Vancouver",
+      "rent": 2650,
       "beds": 1,
       "baths": 1,
-      "sqft": 584,
-      "url": "https://www.craigslist.org/view/d/burnaby-bd-1bath-stylish-look-apartment/chMhte55X3B341mvkAhiWr",
-      "source": "craigslist",
-      "sourceId": "dada3512f969f737",
+      "sqft": 637,
+      "url": "https://www.zumper.com/listings/30168984p/1-bedroom-downtown-vancouver-vancouver-bc",
+      "source": "zumper",
+      "sourceId": "65827560",
       "postings": [
         {
-          "source": "craigslist",
-          "sourceId": "dada3512f969f737",
-          "url": "https://www.craigslist.org/view/d/burnaby-bd-1bath-stylish-look-apartment/chMhte55X3B341mvkAhiWr"
+          "source": "zumper",
+          "sourceId": "65827560",
+          "url": "https://www.zumper.com/listings/30168984p/1-bedroom-downtown-vancouver-vancouver-bc"
+        }
+      ],
+      "score": {
+        "value": 3.8,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-22T02:15:02.545Z",
+      "listingUpdatedAt": "2026-11-22T02:15:11.791Z",
+      "revision": 2
+    },
+    {
+      "id": 2182,
+      "buildingKey": "home:2182",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Aquilini Centre West - 1705",
+      "address": "97 Georgia St W #1705",
+      "unit": "1705",
+      "area": "Downtown Vancouver",
+      "rent": 2395,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 543,
+      "url": "https://www.zumper.com/listings/30168985p/1-bedroom-downtown-vancouver-vancouver-bc",
+      "source": "zumper",
+      "sourceId": "65827561",
+      "postings": [
+        {
+          "source": "zumper",
+          "sourceId": "65827561",
+          "url": "https://www.zumper.com/listings/30168985p/1-bedroom-downtown-vancouver-vancouver-bc"
         }
       ],
       "score": {
@@ -2840,8 +2979,428 @@
       "notes": "",
       "followUp": "",
       "viewing": "",
-      "firstSeen": "2026-11-21T03:35:33.504Z",
-      "listingUpdatedAt": "2026-11-21T03:35:43.173Z",
+      "firstSeen": "2026-11-22T02:18:22.882Z",
+      "listingUpdatedAt": "2026-11-22T02:18:29.857Z",
+      "revision": 2
+    },
+    {
+      "id": 2251,
+      "buildingKey": "address:vancouver|1331 georgia st w",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "1331 Georgia St W #2202",
+      "address": "1331 Georgia St W, Vancouver, BC",
+      "unit": "2202",
+      "area": "Downtown",
+      "rent": 2800,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 623,
+      "url": "https://www.zillow.com/homedetails/1331-Georgia-St-W-2202-Vancouver-BC-V6E-4P1/463034470_zpid/",
+      "source": "zillow",
+      "sourceId": "463034470",
+      "postings": [
+        {
+          "source": "zillow",
+          "sourceId": "463034470",
+          "url": "https://www.zillow.com/homedetails/1331-Georgia-St-W-2202-Vancouver-BC-V6E-4P1/463034470_zpid/"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-22T05:56:53.622Z",
+      "listingUpdatedAt": "2026-11-22T05:57:02.924Z",
+      "revision": 2
+    },
+    {
+      "id": 2252,
+      "buildingKey": "home:2252",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Levo Building · 2980 Atlantic Avenue",
+      "address": "",
+      "unit": "",
+      "area": "Unknown",
+      "rent": 2700,
+      "beds": 2,
+      "baths": 2,
+      "sqft": 881,
+      "url": "https://www.craigslist.org/view/d/port-coquitlam-central-levo-building/ba5hTVkJk8f6YJUV2ZWyit",
+      "source": "craigslist",
+      "sourceId": "7d48dafbb17da1ee",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "7d48dafbb17da1ee",
+          "url": "https://www.craigslist.org/view/d/port-coquitlam-central-levo-building/ba5hTVkJk8f6YJUV2ZWyit"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-22T06:11:32.672Z",
+      "listingUpdatedAt": "2026-11-22T06:11:41.846Z",
+      "revision": 2
+    },
+    {
+      "id": 2260,
+      "buildingKey": "home:2260",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Bright, large south facing 07 suite - 1 bed 1 bath",
+      "address": "google map",
+      "unit": "2907",
+      "area": "Gastown",
+      "rent": 2500,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 654,
+      "url": "https://www.craigslist.org/view/d/vancouver-bright-large-south-facing-07/4xFST1MkKR48q2G2Gt6SEL",
+      "source": "craigslist",
+      "sourceId": "2afd230f11f0776c",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "2afd230f11f0776c",
+          "url": "https://www.craigslist.org/view/d/vancouver-bright-large-south-facing-07/4xFST1MkKR48q2G2Gt6SEL"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-22T07:45:24.474Z",
+      "listingUpdatedAt": "2026-11-22T07:45:39.532Z",
+      "revision": 2
+    },
+    {
+      "id": 2288,
+      "buildingKey": "home:2288",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Top Floor Corner 2 Bed + 1.5 Bath near Commercial",
+      "address": "1881 E 11 Ave\n        \n            google map",
+      "unit": "2",
+      "area": "Vancouver",
+      "rent": 3198,
+      "beds": 2,
+      "baths": 1.5,
+      "sqft": 700,
+      "url": "https://www.craigslist.org/view/d/west-vancouver-top-floor-corner-bed-15/odJxz4yaya8zqaCXbe8m7V",
+      "source": "craigslist",
+      "sourceId": "a4e10603660ffb4d",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "a4e10603660ffb4d",
+          "url": "https://www.craigslist.org/view/d/west-vancouver-top-floor-corner-bed-15/odJxz4yaya8zqaCXbe8m7V"
+        }
+      ],
+      "score": {
+        "value": 3.6,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-23T04:26:04.368Z",
+      "listingUpdatedAt": "2026-11-23T04:26:10.037Z",
+      "revision": 2
+    },
+    {
+      "id": 2321,
+      "buildingKey": "home:2321",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "High-Rise 2 Bed 2 Bath near SFU, Lougheed, BEST LOCATION NEAR SKYTRIAN",
+      "address": "518 Clarke Rd\n        \n            google map",
+      "unit": "",
+      "area": "Unknown",
+      "rent": 2700,
+      "beds": 2,
+      "baths": 2,
+      "sqft": null,
+      "url": "https://www.craigslist.org/view/d/coquitlam-high-rise-bed-bath-near-sfu/4qf9Y2pxVLHYik2MX2Jt7G",
+      "source": "craigslist",
+      "sourceId": "128c25354f0fe1ea",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "128c25354f0fe1ea",
+          "url": "https://www.craigslist.org/view/d/coquitlam-high-rise-bed-bath-near-sfu/4qf9Y2pxVLHYik2MX2Jt7G"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-23T05:42:34.372Z",
+      "listingUpdatedAt": "2026-11-23T05:42:56.741Z",
+      "revision": 2
+    },
+    {
+      "id": 2326,
+      "buildingKey": "home:2326",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "2/bd, Pet Friendly, Bike repair area",
+      "address": "1783 West 14th Avenue\n        \n            google map",
+      "unit": "",
+      "area": "1783 West 14th Avenue, Vancouver, BC",
+      "rent": 3395,
+      "beds": 2,
+      "baths": 1,
+      "sqft": 699,
+      "url": "https://www.craigslist.org/view/d/vancouver-bd-pet-friendly-bike-repair/kraske83sjyZkbZrcMTVMJ",
+      "source": "craigslist",
+      "sourceId": "0f3c5e1e1df4e980",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "0f3c5e1e1df4e980",
+          "url": "https://www.craigslist.org/view/d/vancouver-bd-pet-friendly-bike-repair/kraske83sjyZkbZrcMTVMJ"
+        }
+      ],
+      "score": {
+        "value": 3.4,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "B",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-23T05:44:43.637Z",
+      "listingUpdatedAt": "2026-11-23T05:44:47.774Z",
+      "revision": 2
+    },
+    {
+      "id": 2376,
+      "buildingKey": "address:vancouver|1022 nelson st",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "1BD 1BA, Social Room, Quartz countertops",
+      "address": "1022 Nelson Street\n        \n            google map",
+      "unit": "",
+      "area": "West End",
+      "rent": 2495,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 554,
+      "url": "https://www.craigslist.org/view/d/vancouver-1bd-1ba-social-room-quartz/bUDe4yTEAyGX8j1aebdP5k",
+      "source": "craigslist",
+      "sourceId": "dda53c85ccbef80b",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "dda53c85ccbef80b",
+          "url": "https://www.craigslist.org/view/d/vancouver-1bd-1ba-social-room-quartz/bUDe4yTEAyGX8j1aebdP5k"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-24T02:19:15.075Z",
+      "listingUpdatedAt": "2026-11-24T02:19:34.405Z",
+      "revision": 2
+    },
+    {
+      "id": 2389,
+      "buildingKey": "home:2389",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Unfurnished Condo 2 Bdrm 2 Baths 2 Parking spot High Rise",
+      "address": "google map",
+      "unit": "",
+      "area": "Lansdowne Centre",
+      "rent": 2380,
+      "beds": 2,
+      "baths": 2,
+      "sqft": 862,
+      "url": "https://www.craigslist.org/view/d/richmond-unfurnished-condo-bdrm-baths/dsJK7jgcHvP9sXyX51nGxR",
+      "source": "craigslist",
+      "sourceId": "2adab2c4a4f1400d",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "2adab2c4a4f1400d",
+          "url": "https://www.craigslist.org/view/d/richmond-unfurnished-condo-bdrm-baths/dsJK7jgcHvP9sXyX51nGxR"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-24T03:56:05.279Z",
+      "listingUpdatedAt": "2026-11-24T03:56:11.976Z",
+      "revision": 2
+    },
+    {
+      "id": 2391,
+      "buildingKey": "home:2391",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "1 Bdrm with 1 Parking 1 Locker Hi-Rise Condo at The City of Lougheed",
+      "address": "530 Whiting Way\n        \n            google map",
+      "unit": "",
+      "area": "Close to Skytrain",
+      "rent": 2000,
+      "beds": 1,
+      "baths": 1,
+      "sqft": 518,
+      "url": "https://www.craigslist.org/view/d/coquitlam-bdrm-with-parking-locker-hi/3rrGNC68vSAjVjfVRii9mC",
+      "source": "craigslist",
+      "sourceId": "687b43f6aecfa416",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "687b43f6aecfa416",
+          "url": "https://www.craigslist.org/view/d/coquitlam-bdrm-with-parking-locker-hi/3rrGNC68vSAjVjfVRii9mC"
+        }
+      ],
+      "score": {
+        "value": 3.9,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-24T04:05:37.893Z",
+      "listingUpdatedAt": "2026-11-24T04:05:47.119Z",
+      "revision": 2
+    },
+    {
+      "id": 2414,
+      "buildingKey": "home:2414",
+      "aliases": [],
+      "stage": "Interested",
+      "revisitLater": false,
+      "tagLongTermLease": false,
+      "tagUnfurnished": false,
+      "title": "Premium 18th-Floor Views | 2BR + 2BA @ 188 Keefer st",
+      "address": "188 keefer st near main st\n        \n            google map",
+      "unit": "1807",
+      "area": "vancouver /  China town",
+      "rent": 2900,
+      "beds": 2,
+      "baths": 2,
+      "sqft": 907,
+      "url": "https://www.craigslist.org/view/d/vancouver-premium-18th-floor-views-2br/sJEmvsZhS4Lm1Gm7USzqWb",
+      "source": "craigslist",
+      "sourceId": "a97c69003281e4ed",
+      "postings": [
+        {
+          "source": "craigslist",
+          "sourceId": "a97c69003281e4ed",
+          "url": "https://www.craigslist.org/view/d/vancouver-premium-18th-floor-views-2br/sJEmvsZhS4Lm1Gm7USzqWb"
+        }
+      ],
+      "score": {
+        "value": 3.8,
+        "eligible": false,
+        "uncertain": true,
+        "view": "Unverified"
+      },
+      "quickGrade": "A",
+      "assessmentStatus": "paused",
+      "userRating": null,
+      "notes": "",
+      "followUp": "",
+      "viewing": "",
+      "firstSeen": "2026-11-24T04:27:37.417Z",
+      "listingUpdatedAt": "2026-11-24T04:27:47.125Z",
       "revision": 2
     }
   ]

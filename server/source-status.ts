@@ -25,7 +25,9 @@ export function sourceStatuses(store:Store,now=Date.now(),homes:Home[]=store.hom
   const active=rows.filter(h=>!['Excluded','Closed'].includes(deskCategory(h))).length;
   const failures=store.get<{url:string;reason:string;kind:string;at:string;attempts:number}[]>(`candidateFailures:${source.id}`)??[];
   const queue=readQueue(store,source.id);
-  return {id:source.id,name:source.name,ready,paused,health:state,allocation:allocation.get(source.id),
+  const recoverySupported=['apartments','zillow','kijiji'].includes(source.id);
+  const recoveryReady=recoverySupported&&paused&&!(Date.parse(state?.paused_until??'')>now);
+  return {id:source.id,name:source.name,ready,paused,health:state,recoverySupported,recoveryReady,allocation:allocation.get(source.id),
    lastScan:lastScans.get(source.id),discovery:store.get<DiscoverySummary>(`discoverySummary:${source.id}`)??undefined,
    inventory:sourceFilteredIntake(store)?inventoryRoutes(store,source):store.get<InventoryRoute[]>(`inventoryCoverage:${source.id}`)??[],
    fullAssessments:rows.filter(h=>h.listing.galleryComplete&&h.listing.photos.length>0&&(h.listing.expectedPhotos===null||h.listing.photos.length>=h.listing.expectedPhotos)&&h.listing.photos.every(p=>p.status==='reviewed'&&!p.attributionPending)).length,

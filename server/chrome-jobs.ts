@@ -46,7 +46,7 @@ export class ChromeJobs {
   current.budget.check();
   if(result.error){this.fail(result.error);return {ok:true};}
   const snapshot=result.snapshot;if(!snapshot)throw new Error('Chrome snapshot required');
-  if(chromeSource(snapshot.url)!==chromeSource(current.job.url)||new URL(snapshot.url).pathname!==new URL(current.job.url).pathname)throw new Error('Chrome returned a different page');
+  if(chromeSource(snapshot.url)!==chromeSource(current.job.url))throw new Error('Chrome returned a different page');
   if(snapshot.warning){
    const source=chromeSource(current.job.url)!;
    // Save diagnosis before rejecting: workers never receive rejected snapshots.
@@ -55,6 +55,12 @@ export class ChromeJobs {
    const pageUrl=new URL(snapshot.url);
    this.store.set(key,[...previous,{at:new Date().toISOString(),planId:current.job.planId,jobId:current.job.id,url:pageUrl.origin+pageUrl.pathname,title:snapshot.title,warning:snapshot.warning,excerpt:(snapshot.warningEvidence??snapshot.text).slice(0,2000),truncated:snapshot.truncated}].slice(-10));
    pauseAccess(current.budget,source,snapshot.warning,true);this.fail(snapshot.warning);return {ok:true};
+  }
+  if(new URL(snapshot.url).pathname!==new URL(current.job.url).pathname){
+   const source=chromeSource(current.job.url)!,clean=(value:string)=>{const url=new URL(value);return url.origin+url.pathname;};
+   const key=`chromePageMismatches:${source}`,previous=this.store.get<unknown[]>(key)??[];
+   this.store.set(key,[...previous,{at:new Date().toISOString(),planId:current.job.planId,requested:clean(current.job.url),returned:clean(snapshot.url),title:snapshot.title.slice(0,300)}].slice(-20));
+   throw new Error('Chrome returned a different page; listing identity unverified');
   }
   recordAccessSuccess(current.budget,chromeSource(current.job.url)!,'page',0);
   clearInterval(current.timer);this.active=null;current.resolve(snapshot);return {ok:true};

@@ -1,5 +1,47 @@
 # Requirements
 
+November 23 UI responsiveness: scan alerts disappear immediately on Dismiss, allowing
+successive dismissals while each acknowledgement saves in the background. Failed saves
+restore only the affected alert with a retry path; stale polls must not bring back
+pending or confirmed dismissals. Apply this interaction preference throughout future UI
+work: immediate feedback, background processing for anything longer than a moment,
+local pending state and visible progress/errors, with unrelated controls always usable.
+Do not wait for a full desk refresh before acknowledging a successful action.
+
+November 23 source repair: the user requested diagnosing and resolving the Apartments.com
+and Kijiji stops and reducing recurrence. This authorizes bounded recovery and validation
+now, while preserving the existing scheduled windows, traffic caps and stop-on-warning
+policy. Do not promise uninterrupted website access or a supply of qualifying apartments.
+Provide a clear cooldown/manual-attention distinction and an explicit one-page recovery
+action; this request does not establish an automatic challenge-bypass or retry schedule.
+
+November 21 follow-up: the user rejected all 435 Boundary Road / Yarrow & Aster
+listings because the property is not downtown. All five saved listings belong in
+Not Interested (displayed under Closed). Remove their section-2 early-grouping
+exception; the earlier request below is superseded. Preserve notes, ratings and history.
+
+November 21 explicit building exception: the user confirmed all five saved 435 Boundary
+Road / Yarrow & Aster listings (#1185, #1194, #1344, #1905, #2151) as one building and
+requested one card in section 2 Interested, including the previously rejected listings.
+Allow these specifically selected listings to group before full scoring; retain pending
+assessment status, factual exclusions, individual records, notes, ratings and history.
+This does not authorize scanning or relax the default full-scoring gate for other homes.
+Later rejection or explicit building separation removes the unit from the active group.
+
+November 21 productive-source pacing and alerts: during authorized windows, continue
+productive batches without a fixed wait, retaining transport pacing, concurrency and
+rolling traffic caps. Measure recent distinct qualifying photo-collected additions, not
+raw created/excluded/duplicate records or historical seeded yield. Weak batches wait
+30, 60, then 120 minutes; recovery restores continuous batches. A source-specific
+persistent banner on phone/web and Activity entry alerts after three dry checks, below
+10% conversion over at least 12 recent attempts, or a conversion decline of at least
+50% against an adequately sampled earlier baseline. Deduplicate each episode across
+restarts/dismissals; recoveries mark the banner resolved until acknowledged. Three-day low-yield review
+pauses and actual source access-warning stops remain separate from the two-hour
+ordinary backoff ceiling. No external push/email setup is required.
+
+
+
 November 20 compact building groups: a group defaults to one card showing its highest
 full-scored matching unit, regardless of the selected desk sort. Expand to see its other
 units and collapse again. Collapsed groups share the normal card grid with ungrouped
@@ -103,8 +145,8 @@ No catching up outside windows, automatic access-warning recovery or purchased A
 Quick scans add to Unreviewed using local ranks, never automatically promote homes.
 
 Source checks adapt to distinct valid photo-collected additions, not discovered URLs or
-excluded/duplicate records. Healthy sources can run every 30 minutes; weak sources slow
-to two, six or twenty-four hours. After at least three completed checks and seventy-two
+excluded/duplicate records. Productive sources continue without an added batch interval; weak sources back off
+30, 60, then at most 120 minutes (November 21 correction). After at least three completed checks and seventy-two
 hours, fewer than two valid additions in the rolling three-day period pauses a source for
 review. Keep coverage/access failures distinct from exhausted inventory. Persist rejected
 candidate outcomes to prevent repeated out-of-area/room checks; allow expiry, criteria

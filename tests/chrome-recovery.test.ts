@@ -12,7 +12,7 @@ for(const outcome of ['success','warning','empty','truncated','cancelled'] as co
  const db=new Store(':memory:'),jobs=new ChromeJobs(db),dir=await mkdtemp(join(tmpdir(),'af-recovery-'));
  const search='https://www.apartments.com/downtown-vancouver-vancouver-bc/',listing='https://www.apartments.com/example-unit-201/abc1234/';
  try{
-  db.set('browserExtension',{id:'a'.repeat(32),tokenHash:'test'});db.pause('apartments','Previous access warning',true);
+  db.set('browserExtension',{id:'a'.repeat(32),tokenHash:'test'});db.pause('apartments','Previous access warning',true,Date.now()-1);
   db.set('searchAreaPolicy',{mode:'source-filtered',regions:['downtown-vancouver'],sourceRoutes:{apartments:[{url:search,region:'downtown-vancouver'}]}});
   const queue={urls:[listing],next:search+'2/',cards:{[listing]:{url:listing,searchUrl:search}},freshCheckedAt:'2026-11-01T00:00:00.000Z'};
   db.set('discoveryQueue:apartments',queue);

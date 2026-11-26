@@ -3,16 +3,85 @@ import assert from 'node:assert/strict';
 import {Store} from '../server/db.ts';
 import {criteriaSchema,listingSchema} from '../src/domain.ts';
 import {DiscoveryScheduler,ensureDiscoverySchedule,scheduledUsage,seedScheduledYield} from '../server/discovery-scheduler.ts';
-import {discoveryWindowOpen,discoveryWindowEnd,sourceCadence,pauseLowYield,discoveryLimits} from '../server/discovery-schedule-policy.ts';
+import {discoveryWindowOpen,discoveryWindowEnd,sourceCadence,recentSourceYield,pauseLowYield,discoveryLimits} from '../server/discovery-schedule-policy.ts';
 import {createPlan,getPlan,Budget} from '../server/plans.ts';
 import {readQueue,mergeDiscovery,saveQueue,retryCandidate} from '../server/discovery-queue.ts';
 import {rememberIntakeRejection,intakeRejected,buildingRecentlyChecked} from '../server/intake-memory.ts';
 import {quickRank} from '../server/quick-rank.ts';
 import {hash} from '../server/db.ts';
+import {discoveryAlerts,dismissDiscoveryAlert} from '../server/discovery-alerts.ts';
 
 const root='https://vancouver.craigslist.org/search/van/apa',url='https://vancouver.craigslist.org/van/apa/d/example/1234567890.html';
 function setup(){const s=new Store(':memory:');s.set('criteria',criteriaSchema.parse({...s.criteria,quickIntake:{minRent:1500,maxRent:3500,minPhotos:0,allowedBeds:[1,2]}}));s.set('reviewWorkflow',{mode:'quick-first'});s.set('searchAreaPolicy',{regions:['downtown-vancouver'],mode:'source-filters',sourceRoutes:{craigslist:[{url:root,region:'downtown-vancouver'}]},existingHomeIds:[],configuredAt:'2026-11-20T12:00:00Z'});ensureDiscoverySchedule(s);return s;}
 const saved=()=>listingSchema.parse({source:'craigslist',sourceId:'1234567890',url,title:'Apartment',address:'123 Example Street',rent:2500,beds:1,area:'Downtown',laundry:'in-unit',evidence:{searchAreaSourceUrl:root,searchAreaRegion:'downtown-vancouver'},photos:[{id:'photo',url:'https://images.craigslist.org/a.jpg',local:'a.jpg',status:'downloaded'}]});
+
+test('recent conversion detects substantial declines with sufficient evidence, and recovery ignores old seeded totals',()=>{
+ const samples=(found:number,attempts:number,n:number)=>Array.from({length:n},()=>({at:'2026-11-21T03:00:00Z',found,attempts}));
+ assert.equal(recentSourceYield(samples(1,2,1)).productive,true);
+ assert.equal(recentSourceYield(samples(0,0,2)).significant,false);
+ assert.equal(recentSourceYield(samples(0,0,3)).significant,true);
+ assert.equal(recentSourceYield([...samples(2,4,6),...samples(1,4,3)]).dropped,true);
+ assert.equal(recentSourceYield([...samples(2,2,6),...samples(1,2,3)]).dropped,false,'Do not infer a trend from too few recent attempts');
+ assert.equal(recentSourceYield([...samples(1,4,6),...samples(2,4,3)]).productive,true);
+ assert.equal(recentSourceYield(samples(1,12,3)).low,true);
+});
+
+test('productive backlog continues immediately near cutoff, while the boundary still blocks new work',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-21T07:44:00Z')});
+ const s=setup(),ids:string[]=[];const engine=new DiscoveryScheduler(s,{hasActive:false,assertCanStart:()=>{},start:id=>ids.push(id)},{timer:false});
+ try{
+  s.set('scanSchedule',{version:1,enabled:true,timeZone:'America/Toronto',authorizedAt:'2026-11-20T12:00:00Z',notBefore:'2026-11-21T02:00:00Z'});
+  s.set('browserExtensionRuntime',{lastSeenAt:new Date().toISOString()});
+  saveQueue(s,'craigslist',{urls:[url],next:null,cards:{[url]:{url,searchUrl:root,searchRegion:'downtown-vancouver'}}});
+  const first=engine.tick()!;const good=s.ingest(saved()).id;
+  s.set('newListingValidation:'+first,{sources:{craigslist:{newHomeIds:[good]}}});
+  s.db.prepare("UPDATE plans SET state='complete' WHERE id=?").run(first);
+  const second=engine.tick()!;assert.ok(second&&second!==first);assert.equal(ids.length,2);
+  assert.equal(s.get<any>('scheduledSource:craigslist').cadenceMinutes,0);
+  s.db.prepare("UPDATE plans SET state='complete' WHERE id=?").run(second);
+  t.mock.timers.setTime(new Date('2026-11-21T08:00:00Z').getTime());engine.tick();assert.equal(ids.length,2);
+ }finally{s.close();}
+});
+
+test('weak checks back off 30/60/120, alert once across restarts and dismissal, then recover',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-21T02:00:00Z')});
+ const s=setup(),runner={hasActive:false,assertCanStart:()=>{},start:()=>{}};let engine=new DiscoveryScheduler(s,runner,{timer:false});
+ try{
+  s.set('scanSchedule',{version:1,enabled:true,timeZone:'America/Toronto',authorizedAt:'2026-11-20T12:00:00Z',notBefore:'2026-11-21T02:00:00Z'});
+  // All are qualifying candidates in the queue, but each batch can still fail to add a home.
+  saveQueue(s,'craigslist',{urls:[url],next:null,cards:{[url]:{url,searchUrl:root,searchRegion:'downtown-vancouver'}}});
+  for(let check=0;check<4;check++){
+   s.set('browserExtensionRuntime',{lastSeenAt:new Date().toISOString()});
+   const id=engine.tick()!;assert.ok(id);
+   s.db.prepare("UPDATE plans SET state='complete' WHERE id=?").run(id);
+   engine.tick();const state=s.get<any>('scheduledSource:craigslist');
+   assert.equal(state.cadenceMinutes,[30,60,120,120][check]);
+   if(check===2){assert.equal(discoveryAlerts(s).length,1);dismissDiscoveryAlert(s,discoveryAlerts(s)[0].id);engine=new DiscoveryScheduler(s,runner,{timer:false});}
+   if(check>=2)assert.equal(discoveryAlerts(s).length,1,'No repeated alert after restart/dismissal');
+   assert.equal(engine.tick(),undefined);
+   t.mock.timers.setTime(Date.parse(state.nextAt));
+  }
+  s.set('browserExtensionRuntime',{lastSeenAt:new Date().toISOString()});
+  const id=engine.tick()!;assert.ok(id);const good=s.ingest(saved()).id;
+  s.set('newListingValidation:'+id,{sources:{craigslist:{newHomeIds:[good]}}});
+  s.db.prepare("UPDATE plans SET state='complete' WHERE id=?").run(id);
+  assert.ok(engine.tick());assert.equal(s.get<any>('scheduledSource:craigslist').cadenceMinutes,0);
+  assert.ok(discoveryAlerts(s)[0].resolvedAt);
+ }finally{s.close();}
+});
+
+test('legacy long waits are reduced to two hours without dropping review pauses or budgets',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-21T04:30:00Z')});const s=setup();
+ try{
+  s.set('scanSchedule',{version:1,enabled:true,timeZone:'America/Toronto',authorizedAt:'2026-11-20T12:00:00Z',notBefore:'2026-11-21T02:00:00Z'});
+  s.set('browserExtensionRuntime',{lastSeenAt:new Date().toISOString()});
+  const p=createPlan(s,{sources:['craigslist'],maxPages:20,maxListings:12,maxPhotos:400,maxAiCalls:0,maxReservedUsd:0});s.db.prepare("UPDATE plans SET state='complete' WHERE id=?").run(p.id);
+  s.db.prepare('INSERT INTO scheduled_discovery_runs VALUES (?,?,?,?,1)').run(p.id,'craigslist','2026-11-21T02:00:00Z','2026-11-21T02:01:00Z');
+  s.set('scheduledSource:craigslist',{since:'2026-11-21T02:00:00Z',checks:3,dryStreak:3,nextAt:'2026-11-21T08:01:00Z',cadenceMinutes:360,paused:'User paused'});
+  const engine=new DiscoveryScheduler(s,{hasActive:false,assertCanStart:()=>{},start:()=>{}},{timer:false});
+  assert.equal(engine.tick(),undefined);const state=s.get<any>('scheduledSource:craigslist');assert.equal(state.cadenceMinutes,120);assert.equal(state.paused,'User paused');assert.equal(state.nextAt,'2026-11-21T04:01:00.000Z');
+ }finally{s.close();}
+});
 
 test('Toronto windows cross midnight, include all daily nights, exclude Friday mornings, and follow DST',()=>{
  const cases:Record<string,boolean>={'2026-11-21T01:59:00Z':false,'2026-11-21T02:00:00Z':true,'2026-11-21T07:59:00Z':true,'2026-11-21T08:00:00Z':false,'2026-11-20T10:00:00Z':false,'2026-11-23T10:00:00Z':true,'2026-11-23T17:59:00Z':true,'2026-11-23T18:00:00Z':false,'2026-07-20T09:00:00Z':true,'2026-07-20T17:00:00Z':false};
@@ -21,7 +90,7 @@ test('Toronto windows cross midnight, include all daily nights, exclude Friday m
  assert.equal(discoveryWindowEnd(new Date('2027-03-14T02:00:00Z'))?.toISOString(),'2027-03-14T07:00:00.000Z');
 });
 test('source yield slows independently and requires several days plus sufficient checks before pausing',()=>{
- assert.equal(sourceCadence(12,30,0),30);assert.equal(sourceCadence(2,100,0),120);assert.equal(sourceCadence(1,60,0),360);assert.equal(sourceCadence(0,80,6),1440);
+ assert.equal(sourceCadence(true,0),0);assert.equal(sourceCadence(false,1),30);assert.equal(sourceCadence(false,2),60);assert.equal(sourceCadence(false,3),120);assert.equal(sourceCadence(false,100),120);
  assert.equal(pauseLowYield(0,2,'2026-11-16T00:00:00Z',new Date('2026-11-20')),false);
  assert.equal(pauseLowYield(1,3,'2026-11-16T00:00:00Z',new Date('2026-11-20')),true);
  assert.equal(pauseLowYield(2,9,'2026-11-16T00:00:00Z',new Date('2026-11-20')),false);
